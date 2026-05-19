@@ -1,0 +1,9 @@
+hrms-react/node_modules
+hrms-react/.vite
+__pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.git
+.gitignore
+*.md
