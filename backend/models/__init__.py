@@ -6,6 +6,7 @@ from .payroll import SalaryComponent, SalaryStructure, SalarySlip, PayrollEntry
 from .recruitment import JobOpening, JobApplicant
 from .appraisal import Appraisal
 from .auth import User
+from .document_request import DocumentRequest  # noqa: F401
 from .hrm import (  # noqa: F401
     EmergencyContact,
     EmployeeDocument,

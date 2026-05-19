@@ -680,3 +680,57 @@ def add_employee_history(
     db.commit()
     db.refresh(record)
     return {"id": record.id, "ok": True}
+
+
+# ===========================================================================
+# DOCUMENT REQUESTS (HR side)
+# ===========================================================================
+
+from backend.models.document_request import DocumentRequest
+from backend.models.employee import Employee as _Emp
+from datetime import datetime as _dt
+
+
+@router.get("/document-requests")
+def list_document_requests(status: Optional[str] = None, db: Session = Depends(get_db)):
+    q = db.query(DocumentRequest).join(_Emp, DocumentRequest.employee_id == _Emp.id)
+    if status and status != "All":
+        q = q.filter(DocumentRequest.status == status)
+    rows = q.order_by(DocumentRequest.requested_at.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "employee_id": r.employee_id,
+            "employee_name": r.employee.full_name if r.employee else "—",
+            "employee_code": r.employee.employee_id if r.employee else "—",
+            "doc_type": r.doc_type,
+            "remarks": r.remarks,
+            "status": r.status,
+            "requested_at": str(r.requested_at)[:10],
+            "fulfilled_at": str(r.fulfilled_at)[:10] if r.fulfilled_at else None,
+            "file_url": r.file_url,
+            "file_name": r.file_name,
+        }
+        for r in rows
+    ]
+
+
+@router.post("/document-requests/{req_id}/upload")
+async def upload_document(req_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    req = db.query(DocumentRequest).filter(DocumentRequest.id == req_id).first()
+    if not req:
+        raise HTTPException(404, "Request not found")
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if ext not in ("pdf", "doc", "docx", "jpg", "jpeg", "png"):
+        raise HTTPException(400, "Allowed formats: PDF, DOC, DOCX, JPG, PNG")
+    dest = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "uploads", "documents")
+    os.makedirs(dest, exist_ok=True)
+    fname = f"doc_{req_id}_{int(time.time())}.{ext}"
+    with open(os.path.join(dest, fname), "wb") as f:
+        f.write(await file.read())
+    req.file_url = f"/uploads/documents/{fname}"
+    req.file_name = file.filename
+    req.status = "Fulfilled"
+    req.fulfilled_at = _dt.utcnow()
+    db.commit()
+    return {"file_url": req.file_url, "ok": True}

@@ -28,6 +28,7 @@ import Assets from './pages/Assets';
 import JobOpenings from './pages/JobOpenings';
 import Applicants from './pages/Applicants';
 import Appraisals from './pages/Appraisals';
+import DocumentRequests from './pages/DocumentRequests';
 
 const PAGES = {
   'dashboard':          Dashboard,
@@ -48,6 +49,7 @@ const PAGES = {
   'job-openings':       JobOpenings,
   'applicants':         Applicants,
   'appraisals':         Appraisals,
+  'document-requests':  DocumentRequests,
 };
 
 export default function App() {

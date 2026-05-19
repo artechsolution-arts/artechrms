@@ -16,6 +16,7 @@ import EmpExpenses        from './pages/employee/EmpExpenses';
 import EmpAnnouncements   from './pages/employee/EmpAnnouncements';
 import EmpHolidays        from './pages/employee/EmpHolidays';
 import EmpAssets          from './pages/employee/EmpAssets';
+import EmpDocuments       from './pages/employee/EmpDocuments';
 
 const EMP_PAGES = {
   'emp-dashboard':      EmpDashboard,
@@ -28,6 +29,7 @@ const EMP_PAGES = {
   'emp-assets':         EmpAssets,
   'emp-announcements':  EmpAnnouncements,
   'emp-holidays':       EmpHolidays,
+  'emp-documents':      EmpDocuments,
 };
 
 export default function EmployeeApp({ user, logout }) {

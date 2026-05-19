@@ -318,3 +318,61 @@ async def upload_portal_photo(request: Request, file: UploadFile = File(...), db
     emp.profile_photo = f"/uploads/profiles/{fname}"
     db.commit()
     return {"profile_photo": emp.profile_photo}
+
+
+# ── Document Requests ──────────────────────────────────────────
+
+from backend.models.document_request import DocumentRequest
+
+DOC_TYPES = [
+    "Salary Certificate",
+    "Experience Letter",
+    "Offer Letter",
+    "Relieving Letter",
+    "No Objection Certificate (NOC)",
+    "Bank Verification Letter",
+    "Payslip Copy",
+    "Other",
+]
+
+
+class DocRequestIn(BaseModel):
+    doc_type: str
+    remarks: Optional[str] = None
+
+
+@router.get("/documents")
+def list_doc_requests(request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    rows = db.query(DocumentRequest).filter(
+        DocumentRequest.employee_id == emp.id
+    ).order_by(DocumentRequest.requested_at.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "doc_type": r.doc_type,
+            "remarks": r.remarks,
+            "status": r.status,
+            "requested_at": str(r.requested_at)[:10],
+            "fulfilled_at": str(r.fulfilled_at)[:10] if r.fulfilled_at else None,
+            "file_url": r.file_url,
+            "file_name": r.file_name,
+        }
+        for r in rows
+    ]
+
+
+@router.post("/documents", status_code=201)
+def create_doc_request(data: DocRequestIn, request: Request, db: Session = Depends(get_db)):
+    if data.doc_type not in DOC_TYPES:
+        raise HTTPException(400, "Invalid document type")
+    emp = _get_employee(request, db)
+    req = DocumentRequest(
+        employee_id=emp.id,
+        doc_type=data.doc_type,
+        remarks=data.remarks,
+    )
+    db.add(req)
+    db.commit()
+    db.refresh(req)
+    return {"id": req.id, "ok": True}

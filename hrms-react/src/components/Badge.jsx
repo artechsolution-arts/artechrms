@@ -10,6 +10,7 @@ const MAP = {
   Draft:       'bg-gray-100 text-gray-600',
   Submitted:   'bg-blue-100 text-blue-700',
   Completed:   'bg-green-100 text-green-700',
+  Fulfilled:   'bg-green-100 text-green-700',
   Applied:     'bg-gray-100 text-gray-600',
   Screening:   'bg-amber-100 text-amber-700',
   Interview:   'bg-amber-100 text-amber-700',

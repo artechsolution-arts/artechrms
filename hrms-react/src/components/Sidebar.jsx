@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Building2, CalendarDays, Clock,
   DollarSign, FileText, Settings, Briefcase, UserCheck,
   Star, X, Award, ListChecks, LogOut, Megaphone, Gift,
-  Receipt, Monitor, BookOpen
+  Receipt, Monitor, BookOpen, FileDown
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
@@ -26,6 +26,7 @@ const NAV = [
   { key: 'job-openings',       label: 'Job Openings',       icon: Briefcase,       section: 'Recruitment' },
   { key: 'applicants',         label: 'Applicants',         icon: UserCheck,       section: 'Recruitment' },
   { key: 'appraisals',         label: 'Appraisals',         icon: Star,            section: 'Appraisals' },
+  { key: 'document-requests', label: 'Document Requests',  icon: FileDown,        section: 'Documents' },
 ];
 
 export { NAV };

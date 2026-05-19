@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   LayoutDashboard, User, CalendarDays, Clock,
-  DollarSign, Star, X, LogOut, Megaphone, Receipt, Gift, Monitor
+  DollarSign, Star, X, LogOut, Megaphone, Receipt, Gift, Monitor, FileDown
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
@@ -14,6 +14,7 @@ const EMP_NAV = [
   { key: 'emp-appraisals',      label: 'My Appraisals',       icon: Star,            section: 'Self Service' },
   { key: 'emp-expenses',        label: 'My Expenses',         icon: Receipt,         section: 'Self Service' },
   { key: 'emp-assets',          label: 'My Assets',           icon: Monitor,         section: 'Self Service' },
+  { key: 'emp-documents',       label: 'My Documents',        icon: FileDown,        section: 'Self Service' },
   { key: 'emp-announcements',   label: 'Announcements',       icon: Megaphone,       section: 'Company' },
   { key: 'emp-holidays',        label: 'Holidays',            icon: Gift,            section: 'Company' },
 ];

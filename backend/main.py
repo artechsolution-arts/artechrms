@@ -39,7 +39,7 @@ with engine.connect() as _conn:
         "ALTER TABLE job_openings ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(500)",
         "ALTER TABLE job_openings ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(200)",
         "ALTER TABLE job_openings ADD COLUMN IF NOT EXISTS social_platforms JSONB DEFAULT '[]'::jsonb",
-        # social_accounts and social_posts are created fresh by SQLAlchemy
+        # Document requests table is created fresh by SQLAlchemy; no column patches needed
     ]:
         try:
             _conn.execute(text(_stmt))
