@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
-import { Plus, RefreshCw, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Search, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 
 function Avatar({ name }) {
   return (
@@ -57,6 +57,7 @@ export default function Employees({ toast }) {
   const [statusFilter, setStatusFilter] = useState('');
   const [modal, setModal] = useState(null); // null | { mode: 'add'|'edit', emp: {} }
   const [form, setForm] = useState({});
+  const [showPwd, setShowPwd] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const load = async (s = search, d = deptFilter, st = statusFilter) => {
@@ -104,6 +105,12 @@ export default function Employees({ toast }) {
   const save = async () => {
     if (!form.first_name?.trim()) return toast('First name is required', 'warning');
     if (!form.date_of_joining) return toast('Date of joining is required', 'warning');
+    if (modal.mode === 'add') {
+      if (!form.username?.trim()) return toast('Username is required', 'warning');
+      if (!form.email?.trim()) return toast('Email is required', 'warning');
+      if (!form.password?.trim()) return toast('Password is required', 'warning');
+      if (form.password.length < 6) return toast('Password must be at least 6 characters', 'warning');
+    }
     setSaving(true);
     try {
       const salaryFields = {
@@ -120,15 +127,17 @@ export default function Employees({ toast }) {
       if (modal.mode === 'add') {
         await api('POST', '/api/employees', {
           first_name: form.first_name, last_name: form.last_name || null,
-          email: form.email || null, mobile: form.mobile || null,
+          email: form.email, mobile: form.mobile || null,
           gender: form.gender || null, date_of_joining: form.date_of_joining,
           date_of_birth: form.date_of_birth || null,
           department_id: form.department_id ? parseInt(form.department_id) : null,
           designation_id: form.designation_id ? parseInt(form.designation_id) : null,
           employment_type: form.employment_type,
+          username: form.username,
+          password: form.password,
           ...salaryFields,
         });
-        toast('Employee added', 'success');
+        toast('Employee added and login account created', 'success');
       } else {
         await api('PUT', `/api/employees/${modal.id}`, {
           first_name: form.first_name, last_name: form.last_name || null,
@@ -253,6 +262,56 @@ export default function Employees({ toast }) {
       {/* Add/Edit Modal */}
       <Modal open={!!modal} title={modal?.mode === 'add' ? 'New Employee' : form.full_name || 'Edit Employee'}
         onClose={() => setModal(null)} onSave={save} saveLabel={modal?.mode === 'add' ? 'Save Employee' : 'Save Changes'}>
+        {/* Login Credentials — only shown when adding a new employee */}
+        {modal?.mode === 'add' && (
+          <FormSection title="Login Credentials">
+            <div className="mb-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                These credentials will be used by the employee to log into the portal. All fields are mandatory.
+              </p>
+            </div>
+            <FormGrid>
+              <Field label="Username" required>
+                <input
+                  className="form-input"
+                  value={form.username || ''}
+                  onChange={e => f({ username: e.target.value.toLowerCase().replace(/\s/g, '') })}
+                  placeholder="e.g. john.doe"
+                  autoComplete="off"
+                />
+              </Field>
+              <Field label="Email" required>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={form.email || ''}
+                  onChange={e => f({ email: e.target.value })}
+                  placeholder="john@company.com"
+                  autoComplete="off"
+                />
+              </Field>
+              <Field label="Password" required>
+                <div className="relative">
+                  <input
+                    type={showPwd ? 'text' : 'password'}
+                    className="form-input pr-10"
+                    value={form.password || ''}
+                    onChange={e => f({ password: e.target.value })}
+                    placeholder="Min 6 characters"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(v => !v)}
+                    className="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </Field>
+            </FormGrid>
+          </FormSection>
+        )}
         <FormSection title="Employment Details">
           <FormGrid>
             {modal?.mode === 'edit' && (
@@ -292,9 +351,11 @@ export default function Employees({ toast }) {
             <Field label="Last Name">
               <input className="form-input" value={form.last_name || ''} onChange={e => f({ last_name: e.target.value })} placeholder="Last name" />
             </Field>
-            <Field label="Email">
-              <input type="email" className="form-input" value={form.email || ''} onChange={e => f({ email: e.target.value })} placeholder="Email" />
-            </Field>
+            {modal?.mode === 'edit' && (
+              <Field label="Email">
+                <input type="email" className="form-input" value={form.email || ''} onChange={e => f({ email: e.target.value })} placeholder="Email" />
+              </Field>
+            )}
             <Field label="Mobile">
               <input className="form-input" value={form.mobile || ''} onChange={e => f({ mobile: e.target.value })} placeholder="Mobile" />
             </Field>

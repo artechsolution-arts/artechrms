@@ -46,6 +46,12 @@ class EmployeeIn(BaseModel):
     pt_state: str = "Karnataka"
 
 
+class EmployeeCreateIn(EmployeeIn):
+    username: str
+    email: str  # required when creating
+    password: str
+
+
 # ── Departments ────────────────────────────────────────────────
 @router.get("/departments")
 def list_departments(db: Session = Depends(get_db)):
@@ -180,16 +186,35 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("")
-def create_employee(data: EmployeeIn, db: Session = Depends(get_db)):
+def create_employee(data: EmployeeCreateIn, db: Session = Depends(get_db)):
     from sqlalchemy import func
+    from backend.models.auth import User
+    from backend.auth_utils import get_password_hash
+
+    if db.query(User).filter(User.username == data.username).first():
+        raise HTTPException(400, "Username already taken")
+    if db.query(User).filter(User.email == data.email).first():
+        raise HTTPException(400, "Email already registered")
+
     max_id = db.query(func.max(Employee.id)).scalar() or 0
     emp_id = f"EMP-{max_id + 1:04d}"
     full = f"{data.first_name} {data.last_name or ''}".strip()
-    dump = data.model_dump()
+
+    dump = data.model_dump(exclude={"username", "password"})
     dump["pf_applicable"] = 1 if dump.get("pf_applicable", True) else 0
     dump["esi_applicable"] = 1 if dump.get("esi_applicable", True) else 0
     emp = Employee(**dump, full_name=full, employee_id=emp_id)
     db.add(emp)
+
+    user = User(
+        username=data.username,
+        email=data.email,
+        full_name=full,
+        hashed_password=get_password_hash(data.password),
+        role="Employee",
+        is_active=True,
+    )
+    db.add(user)
     db.commit()
     db.refresh(emp)
     return {"id": emp.id, "employee_id": emp.employee_id, "full_name": emp.full_name}
