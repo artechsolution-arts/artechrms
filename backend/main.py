@@ -21,8 +21,11 @@ from backend.auth_utils import decode_token
 from backend.database import SessionLocal
 from backend.models.auth import User
 
-# Create all tables
-Base.metadata.create_all(bind=engine)
+# Create all tables — wrapped to handle multi-worker race on first boot
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception:
+    pass
 
 # Runtime column migrations (add new columns without Alembic)
 with engine.connect() as _conn:
