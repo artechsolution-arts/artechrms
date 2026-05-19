@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import EmployeeSidebar from './components/EmployeeSidebar';
 import Topbar from './components/Topbar';
 import ToastContainer from './components/Toast';
 import AIAssistant from './components/AIAssistant';
 import { useToast } from './hooks/useToast';
 import { useTheme } from './hooks/useTheme';
+import { api } from './api';
 
 import EmpDashboard       from './pages/employee/EmpDashboard';
 import EmpProfile         from './pages/employee/EmpProfile';
@@ -35,10 +36,24 @@ const EMP_PAGES = {
 export default function EmployeeApp({ user, logout }) {
   const [page, setPage] = useState('emp-dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [userState, setUserState] = useState(user);
   const { toasts, toast } = useToast();
   const { accent, setAccent, darkMode, setDarkMode } = useTheme();
 
-  const navigate = useCallback(p => { setPage(p); setSidebarOpen(false); }, []);
+  const navigate = useCallback(p => {
+    setPage(p);
+    if (window.innerWidth < 1024) setSidebarOpen(false);
+  }, []);
+
+  const handlePhotoUpdate = useCallback(photo => {
+    setUserState(prev => ({ ...prev, profile_photo: photo }));
+  }, []);
+
+  useEffect(() => {
+    api('GET', '/api/portal/profile')
+      .then(emp => setUserState(prev => ({ ...prev, profile_photo: emp.profile_photo })))
+      .catch(() => {});
+  }, []);
 
   const PageComponent = EMP_PAGES[page] || EmpDashboard;
 
@@ -49,11 +64,11 @@ export default function EmployeeApp({ user, logout }) {
         onNavigate={navigate}
         mobileOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        user={user}
+        user={userState}
         onLogout={logout}
       />
 
-      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[margin] duration-200 ${sidebarOpen ? 'ml-[220px]' : 'ml-0'}`}>
+      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[margin] duration-200 lg:ml-[220px]`}>
         <Topbar
           current={page}
           onNavigate={navigate}
@@ -62,8 +77,8 @@ export default function EmployeeApp({ user, logout }) {
           darkMode={darkMode} setDarkMode={setDarkMode}
         />
 
-        <main className="flex-1 overflow-auto flex flex-col">
-          <PageComponent toast={toast} onNavigate={navigate} />
+        <main className="flex-1 overflow-auto flex flex-col pb-16 lg:pb-0">
+          <PageComponent toast={toast} onNavigate={navigate} onPhotoUpdate={handlePhotoUpdate} />
         </main>
       </div>
 

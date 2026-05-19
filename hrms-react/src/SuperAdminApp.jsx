@@ -4,6 +4,7 @@ import { useToast } from './hooks/useToast';
 import { useTheme } from './hooks/useTheme';
 import ToastContainer from './components/Toast';
 import ConfirmModal from './components/ConfirmModal';
+import MobileBottomNav from './components/MobileBottomNav';
 import AdminOverview from './pages/superadmin/AdminOverview';
 import UserManagement from './pages/superadmin/UserManagement';
 import FeaturePermissions from './pages/superadmin/FeaturePermissions';
@@ -37,25 +38,23 @@ export default function SuperAdminApp({ user, logout }) {
     ? user.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
     : 'SA';
 
+  const drawerItems = [
+    ...NAV.map(item => ({ type: 'item', ...item })),
+    { type: 'sep', label: 'Account' },
+    { type: 'item', key: '__logout__', label: 'Sign Out', icon: LogOut },
+  ];
+
+  const handleMobileNav = key => {
+    if (key === '__logout__') { setConfirmLogout(true); return; }
+    navigate(key);
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
-      {/* Sidebar */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      <aside className={`
-        fixed inset-y-0 left-0 z-40 flex flex-col w-[240px] flex-shrink-0
-        bg-[#0f172a] text-white
-        transition-transform duration-200
-        lg:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <aside className="sidebar-desktop flex-col fixed inset-y-0 left-0 z-40 w-[240px] flex-shrink-0 bg-[#0f172a] text-white">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center flex-shrink-0">
-            <ShieldCheck size={18} className="text-white" />
-          </div>
+          <img src="/logo.svg" alt="Artech" className="w-9 h-9 flex-shrink-0" />
           <div className="min-w-0">
             <div className="text-sm font-bold text-white truncate">Artech HRMS</div>
             <div className="text-[11px] text-violet-300 font-medium">Super Admin Panel</div>
@@ -108,7 +107,7 @@ export default function SuperAdminApp({ user, logout }) {
       </aside>
 
       {/* Main content */}
-      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[margin] duration-200 lg:ml-[240px] ${sidebarOpen ? 'ml-[240px]' : 'ml-0'}`}>
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden lg:ml-[240px]">
         {/* Topbar */}
         <header className="flex items-center gap-3 px-4 h-13 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
           <button onClick={() => setSidebarOpen(o => !o)}
@@ -128,10 +127,18 @@ export default function SuperAdminApp({ user, logout }) {
         </header>
 
         {/* Page */}
-        <main className="flex-1 overflow-auto flex flex-col">
+        <main className="flex-1 overflow-auto flex flex-col pb-16 lg:pb-0">
           <PageComponent toast={toast} />
         </main>
       </div>
+
+      <MobileBottomNav
+        primaryItems={NAV}
+        allItems={drawerItems}
+        current={page}
+        onNavigate={handleMobileNav}
+        accentColor="#7c3aed"
+      />
 
       <ToastContainer toasts={toasts} />
       <ConfirmModal

@@ -71,7 +71,12 @@ export default function Login({ onLogin }) {
       const data = await res.json();
       onLogin(data.access_token, data.user);
     } catch (err) {
-      setError(err.message);
+      if (err.message?.toLowerCase().includes('setup already completed')) {
+        setMode('login');
+        setError('');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -206,10 +211,10 @@ export default function Login({ onLogin }) {
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Username</label>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Username or Email</label>
               <input
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-                placeholder={mode === 'setup' ? 'Choose a username' : 'Enter your username'}
+                placeholder={mode === 'setup' ? 'Choose a username' : 'Username or email address'}
                 value={form.username}
                 onChange={e => f({ username: e.target.value })}
                 autoFocus={mode === 'login'}
@@ -256,6 +261,20 @@ export default function Login({ onLogin }) {
               }
             </button>
           </form>
+
+          {/* Mode switch */}
+          {mode === 'setup' && (
+            <div className="mt-4 text-center">
+              <span className="text-slate-600 text-xs">Already have an account? </span>
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setError(''); }}
+                className="text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors"
+              >
+                Sign in instead
+              </button>
+            </div>
+          )}
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-6">

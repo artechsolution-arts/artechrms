@@ -2,9 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>hrms-react</title>
+    <title>Artech HRMS</title>
+    <style>
+      /* Cross-browser responsive: traditional min/max-width syntax, bypasses PostCSS */
+      @media (max-width: 1023px) {
+        .sidebar-desktop { display: none !important; }
+      }
+      @media (min-width: 1024px) {
+        .mobile-only { display: none !important; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

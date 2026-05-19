@@ -17,7 +17,7 @@ function InfoRow({ icon: Icon, label, value }) {
   );
 }
 
-export default function EmpProfile({ toast }) {
+export default function EmpProfile({ toast, onPhotoUpdate }) {
   const [emp, setEmp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -41,6 +41,7 @@ export default function EmpProfile({ toast }) {
     try {
       const { profile_photo } = await apiForm('/api/portal/profile/photo', fd);
       setEmp(prev => ({ ...prev, profile_photo }));
+      onPhotoUpdate?.(profile_photo);
       toast('Profile photo updated', 'success');
     } catch (e) {
       toast(e.message, 'error');

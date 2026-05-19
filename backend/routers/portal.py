@@ -79,6 +79,7 @@ def portal_dashboard(request: Request, db: Session = Depends(get_db)):
             "designation": emp.designation_rel.name if emp.designation_rel else None,
             "date_of_joining": str(emp.date_of_joining) if emp.date_of_joining else None,
             "status": emp.status,
+            "profile_photo": emp.profile_photo,
         },
         "stats": {
             "pending_leaves": pending_leaves,

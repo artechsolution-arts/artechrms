@@ -27,6 +27,7 @@ const FEATURE_LABELS = {
   'job-openings':    'Job Openings',
   applicants:        'Applicants',
   appraisals:        'Appraisals',
+  'document-requests': 'Document Requests',
 };
 
 function Toggle({ checked, onChange }) {

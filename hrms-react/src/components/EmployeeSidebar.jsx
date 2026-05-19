@@ -4,6 +4,14 @@ import {
   DollarSign, Star, X, LogOut, Megaphone, Receipt, Gift, Monitor, FileDown
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
+import MobileBottomNav from './MobileBottomNav';
+
+const EMP_PRIMARY = [
+  { key: 'emp-dashboard',  label: 'Home',      icon: LayoutDashboard },
+  { key: 'emp-leaves',     label: 'Leaves',    icon: CalendarDays },
+  { key: 'emp-attendance', label: 'Attendance',icon: Clock },
+  { key: 'emp-profile',    label: 'Profile',   icon: User },
+];
 
 const EMP_NAV = [
   { key: 'emp-dashboard',       label: 'My Dashboard',       icon: LayoutDashboard, section: null },
@@ -34,26 +42,25 @@ export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClo
     grouped.push({ type: 'item', ...item });
   });
 
+  // Mobile bottom nav drawer also includes logout at the bottom
+  const drawerItems = [...grouped, { type: 'sep', label: 'Account' }, { type: 'item', key: '__logout__', label: 'Sign Out', icon: LogOut }];
+
   const initials = user?.full_name
     ? user.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
     : 'E';
 
+  const handleMobileNav = key => {
+    if (key === '__logout__') { onLogout?.(); return; }
+    onNavigate(key);
+  };
+
   return (
     <>
-      {mobileOpen && (
-        <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={onClose} />
-      )}
-
-      <aside className={`
-        fixed inset-y-0 left-0 z-40 flex flex-col
-        w-[220px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-shrink-0
-        transition-transform duration-200
-        ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      {/* Desktop sidebar only */}
+      <aside className="sidebar-desktop flex-col fixed inset-y-0 left-0 z-40 w-[220px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-shrink-0">
         {/* App header */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-            style={{ backgroundColor: 'var(--accent-dark)' }}>A</div>
+          <img src="/logo.svg" alt="Artech" className="w-8 h-8 flex-shrink-0" />
           <div className="min-w-0">
             <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">Artech HRMS</div>
             <div className="text-[11px] text-gray-400">Employee Portal</div>
@@ -73,7 +80,7 @@ export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClo
             ) : (
               <button
                 key={item.key}
-                onClick={() => { onNavigate(item.key); onClose(); }}
+                onClick={() => { onNavigate(item.key); if (window.innerWidth < 1024) onClose(); }}
                 className={`
                   w-full flex items-center gap-2.5 px-4 py-2 text-sm rounded-none transition-all duration-100 text-left
                   ${current === item.key
@@ -120,6 +127,14 @@ export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClo
           </div>
         </div>
       </aside>
+
+      {/* Mobile bottom nav */}
+      <MobileBottomNav
+        primaryItems={EMP_PRIMARY}
+        allItems={drawerItems}
+        current={current}
+        onNavigate={handleMobileNav}
+      />
 
       <ConfirmModal
         open={confirmLogout}

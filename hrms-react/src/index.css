@@ -103,6 +103,17 @@ html.dark .form-label      { color: #94a3b8; }
 html.dark .btn-secondary   { background-color: #1e293b; color: #e2e8f0; border-color: #475569; }
 html.dark .btn-secondary:hover { background-color: #334155 !important; }
 
+/* ── Cross-browser responsive helpers (traditional min/max-width syntax) ──── */
+/* Used instead of Tailwind lg: classes to ensure Safari/WebKit compatibility  */
+.sidebar-desktop { display: flex; }
+@media screen and (max-width: 1023px) {
+  .sidebar-desktop { display: none !important; }
+}
+.mobile-only { display: block; }
+@media screen and (min-width: 1024px) {
+  .mobile-only { display: none !important; }
+}
+
 /* ── Dark mode: Tailwind gray text utilities ───────────────── */
 html.dark .text-gray-900 { color: #f1f5f9; }
 html.dark .text-gray-800 { color: #e2e8f0; }

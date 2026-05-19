@@ -59,7 +59,7 @@ export default function App() {
   const { token, user, login, logout, isAuthenticated } = useAuth();
   const { accent, setAccent, darkMode, setDarkMode } = useTheme();
 
-  const navigate = useCallback(p => { setPage(p); setSidebarOpen(false); }, []);
+  const navigate = useCallback(p => { setPage(p); if (window.innerWidth < 1024) setSidebarOpen(false); }, []);
 
   if (!isAuthenticated) {
     return (
@@ -93,7 +93,7 @@ export default function App() {
         onLogout={logout}
       />
 
-      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[margin] duration-200 ${sidebarOpen ? 'ml-[220px]' : 'ml-0'}`}>
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden lg:ml-[220px]">
         <Topbar
           current={page}
           onNavigate={navigate}
@@ -102,7 +102,7 @@ export default function App() {
           darkMode={darkMode} setDarkMode={setDarkMode}
         />
 
-        <main className="flex-1 overflow-auto flex flex-col">
+        <main className="flex-1 overflow-auto flex flex-col pb-16 lg:pb-0">
           <PageComponent toast={toast} onNavigate={navigate} />
         </main>
       </div>

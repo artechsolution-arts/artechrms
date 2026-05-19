@@ -10,12 +10,13 @@ ALL_FEATURES = [
     "salary-slips", "payroll-entry", "salary-components",
     "expenses", "assets",
     "job-openings", "applicants", "appraisals",
+    "document-requests",
 ]
 
 DEFAULT_PERMISSIONS = {
     "Admin": ALL_FEATURES,
     "Manager": ["dashboard", "employees", "leaves", "leave-balances", "attendance", "appraisals", "announcements"],
-    "HR User": ["dashboard", "employees", "leaves", "leave-types", "leave-balances", "attendance", "holidays", "announcements"],
+    "HR User": ["dashboard", "employees", "leaves", "leave-types", "leave-balances", "attendance", "holidays", "announcements", "document-requests"],
 }
 
 
