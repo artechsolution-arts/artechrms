@@ -119,6 +119,7 @@ function CreateUserModal({ onClose, onSave, toast }) {
 
 function EditUserModal({ user, onClose, onSave, toast }) {
   const [form, setForm] = useState({
+    username: user.username || '',
     full_name: user.full_name || '',
     email: user.email || '',
     role: user.role || 'HR User',
@@ -130,10 +131,11 @@ function EditUserModal({ user, onClose, onSave, toast }) {
 
   async function submit(e) {
     e.preventDefault();
+    if (!form.username.trim()) { toast('Username is required', 'error'); return; }
     setSaving(true);
     try {
       await api('PUT', `/api/admin/users/${user.id}`, form);
-      toast('User updated', 'success');
+      toast('User updated successfully', 'success');
       onSave();
     } catch (err) {
       toast(err.message, 'error');
@@ -145,9 +147,14 @@ function EditUserModal({ user, onClose, onSave, toast }) {
   return (
     <Modal title={`Edit — ${user.username}`} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Full Name">
-          <input className={INPUT} value={form.full_name} onChange={set('full_name')} />
-        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Username *">
+            <input className={INPUT} value={form.username} onChange={set('username')} placeholder="e.g. john.doe" />
+          </Field>
+          <Field label="Full Name *">
+            <input className={INPUT} value={form.full_name} onChange={set('full_name')} placeholder="John Doe" />
+          </Field>
+        </div>
         <Field label="Email">
           <input type="email" className={INPUT} value={form.email} onChange={set('email')} />
         </Field>
@@ -344,14 +351,15 @@ export default function UserManagement({ toast }) {
                   <th>Status</th>
                   <th>Linked Employee</th>
                   <th>Created</th>
+                  <th>Last Updated</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="text-center py-8 text-gray-400 text-sm">Loading…</td></tr>
+                  <tr><td colSpan={9} className="text-center py-8 text-gray-400 text-sm">Loading…</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-8 text-gray-400 text-sm">No users found</td></tr>
+                  <tr><td colSpan={9} className="text-center py-8 text-gray-400 text-sm">No users found</td></tr>
                 ) : filtered.map(u => (
                   <tr key={u.id}>
                     <td className="font-medium text-gray-900 dark:text-white">{u.full_name}</td>
@@ -366,7 +374,8 @@ export default function UserManagement({ toast }) {
                       </span>
                     </td>
                     <td className="text-gray-500 text-xs">{u.linked_employee || '—'}</td>
-                    <td className="text-gray-400 text-xs">{u.created_at || '—'}</td>
+                    <td className="text-gray-400 text-xs whitespace-nowrap">{u.created_at || '—'}</td>
+                    <td className="text-gray-400 text-xs whitespace-nowrap">{u.updated_at || '—'}</td>
                     <td>
                       <div className="flex items-center gap-1">
                         <button title="Edit" onClick={() => setModal({ type: 'edit', user: u })}

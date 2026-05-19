@@ -43,6 +43,7 @@ with engine.connect() as _conn:
         "ALTER TABLE job_openings ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(200)",
         "ALTER TABLE job_openings ADD COLUMN IF NOT EXISTS social_platforms JSONB DEFAULT '[]'::jsonb",
         # Document requests table is created fresh by SQLAlchemy; no column patches needed
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()",
     ]:
         try:
             _conn.execute(text(_stmt))

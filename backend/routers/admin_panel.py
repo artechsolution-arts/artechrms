@@ -69,7 +69,8 @@ def list_users(db: Session = Depends(get_db)):
             "email": u.email,
             "role": u.role,
             "is_active": u.is_active,
-            "created_at": str(u.created_at)[:10] if u.created_at else None,
+            "created_at": u.created_at.strftime("%Y-%m-%d %H:%M") if u.created_at else None,
+            "updated_at": u.updated_at.strftime("%Y-%m-%d %H:%M") if u.updated_at else None,
             "linked_employee": emp.full_name if emp else None,
             "linked_employee_id": emp.employee_id if emp else None,
         })
@@ -85,6 +86,7 @@ class UserCreateIn(BaseModel):
 
 
 class UserUpdateIn(BaseModel):
+    username: Optional[str] = None
     full_name: Optional[str] = None
     email: Optional[str] = None
     role: Optional[str] = None
@@ -120,6 +122,11 @@ def update_user(user_id: int, data: UserUpdateIn, db: Session = Depends(get_db))
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
+    if data.username is not None:
+        existing = db.query(User).filter(User.username == data.username, User.id != user_id).first()
+        if existing:
+            raise HTTPException(400, "Username already taken by another user")
+        user.username = data.username
     if data.full_name is not None:
         user.full_name = data.full_name
     if data.email is not None:
@@ -131,6 +138,7 @@ def update_user(user_id: int, data: UserUpdateIn, db: Session = Depends(get_db))
         user.role = data.role
     if data.is_active is not None:
         user.is_active = data.is_active
+    user.updated_at = datetime.utcnow()
     db.commit()
     return {"ok": True}
 
