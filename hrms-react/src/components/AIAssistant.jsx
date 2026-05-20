@@ -61,8 +61,7 @@ export default function AIAssistant() {
       {/* Chat panel — slides up from the FAB */}
       {open && (
         <div
-          className="fixed bottom-20 right-5 z-50 w-80 sm:w-96 flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-gray-200 bg-white"
-          style={{ maxHeight: 'calc(100vh - 120px)' }}
+          className="fixed bottom-[144px] right-4 lg:bottom-20 lg:right-5 z-50 w-80 sm:w-96 flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-gray-200 bg-white max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-120px)]"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 text-white"
@@ -165,7 +164,7 @@ export default function AIAssistant() {
       {/* Floating Action Button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-5 right-5 z-50 w-13 h-13 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+        className="fixed bottom-20 right-4 lg:bottom-5 lg:right-5 z-50 w-13 h-13 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
         style={{
           width: 52, height: 52,
           background: open

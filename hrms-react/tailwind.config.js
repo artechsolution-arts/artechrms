@@ -12,8 +12,13 @@ export default {
     },
     extend: {
       colors: {
-        brand: '#1B3A6B',
-        accent: '#2E6BE6',
+        brand:   '#0D1F4E',
+        accent:  '#1A6AB4',
+        teal:    '#3DC7B3',
+        success: '#2DB37A',
+        cloud:   '#F4F8FF',
+        mist:    '#E8EDF5',
+        steel:   '#A0AABF',
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],

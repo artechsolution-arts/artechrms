@@ -20,13 +20,18 @@ RUN npm run build
 # ─────────────────────────────────────────────
 FROM python:3.11-slim
 
-# System dependencies for psycopg2, Pillow, bcrypt
+# System dependencies for psycopg2, Pillow, bcrypt, cairosvg (PDF logo), fonts
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     gcc \
     libffi-dev \
     libjpeg-dev \
     zlib1g-dev \
+    libcairo2 \
+    libglib2.0-0 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -43,8 +48,9 @@ COPY backend/ ./backend/
 # vite builds to ../frontend relative to hrms-react/, which is the project root /frontend
 COPY --from=frontend-builder /frontend ./frontend/
 
-# Static uploads directory
-RUN mkdir -p static/uploads/jd static/uploads/ig_posts
+# Static uploads directory + logo for PDF generation
+RUN mkdir -p static/uploads/jd static/uploads/ig_posts static
+COPY hrms-react/public/logo.svg ./static/logo.svg
 
 # Environment defaults (override via docker-compose or -e flags)
 ENV DATABASE_URL=postgresql://postgres:postgres@db:5432/artechrms

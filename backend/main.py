@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,6 +44,10 @@ with engine.connect() as _conn:
         "ALTER TABLE job_openings ADD COLUMN IF NOT EXISTS social_platforms JSONB DEFAULT '[]'::jsonb",
         # Document requests table is created fresh by SQLAlchemy; no column patches needed
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(20)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_branch VARCHAR(100)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS aadhar_no VARCHAR(20)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pan_no VARCHAR(20)",
     ]:
         try:
             _conn.execute(text(_stmt))
@@ -145,7 +149,38 @@ FRONTEND = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
 ASSETS = os.path.join(FRONTEND, "assets")
 
 if os.path.isdir(ASSETS):
-    app.mount("/assets", StaticFiles(directory=ASSETS), name="assets")
+    # Hashed filenames are immutable — safe to cache for 1 year
+    from starlette.staticfiles import StaticFiles as _SF
+    from starlette.responses import Response as _SR
+
+    class _ImmutableStatic(_SF):
+        async def __call__(self, scope, receive, send):
+            async def send_with_cache(message):
+                if message["type"] == "http.response.start":
+                    headers = dict(message.get("headers", []))
+                    headers[b"cache-control"] = b"public, max-age=31536000, immutable"
+                    message = {**message, "headers": list(headers.items())}
+                await send(message)
+            await super().__call__(scope, receive, send_with_cache)
+
+    app.mount("/assets", _ImmutableStatic(directory=ASSETS), name="assets")
+
+
+@app.get("/files/{path:path}")
+def serve_file(path: str):
+    """Proxy MinIO files through the app server so they work from any machine."""
+    from backend.storage import _get_client, MINIO_BUCKET, _CONTENT_TYPES
+    ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+    content_type = _CONTENT_TYPES.get(ext, "application/octet-stream")
+    try:
+        obj = _get_client().get_object(MINIO_BUCKET, path)
+        data = obj.read()
+        obj.close()
+        obj.release_conn()
+        return Response(content=data, media_type=content_type,
+                        headers={"Cache-Control": "max-age=3600"})
+    except Exception:
+        raise HTTPException(404, "File not found")
 
 
 @app.get("/favicon.svg")
@@ -154,9 +189,12 @@ def favicon():
     return FileResponse(f) if os.path.exists(f) else FileResponse(os.path.join(FRONTEND, "favicon.ico"))
 
 
+_NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+
+
 @app.get("/")
 def serve_app():
-    return FileResponse(os.path.join(FRONTEND, "index.html"))
+    return FileResponse(os.path.join(FRONTEND, "index.html"), headers=_NO_CACHE)
 
 
 @app.get("/{path:path}")
@@ -164,4 +202,4 @@ def catch_all(path: str):
     full = os.path.join(FRONTEND, path)
     if os.path.isfile(full):
         return FileResponse(full)
-    return FileResponse(os.path.join(FRONTEND, "index.html"))
+    return FileResponse(os.path.join(FRONTEND, "index.html"), headers=_NO_CACHE)

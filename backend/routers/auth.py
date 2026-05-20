@@ -19,10 +19,12 @@ class UserCreate(BaseModel):
 
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == form_data.username).first()
+    login_input = form_data.username.strip()
+    password_input = form_data.password.strip()
+    user = db.query(User).filter(User.username == login_input).first()
     if not user:
-        user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+        user = db.query(User).filter(User.email.ilike(login_input)).first()
+    if not user or not verify_password(password_input, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",

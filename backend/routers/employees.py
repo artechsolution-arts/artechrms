@@ -1,6 +1,6 @@
-import os
 import time
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from backend import storage
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
@@ -36,6 +36,10 @@ class EmployeeIn(BaseModel):
     employment_type: str = "Full-time"
     bank_name: Optional[str] = None
     bank_account_no: Optional[str] = None
+    bank_ifsc: Optional[str] = None
+    bank_branch: Optional[str] = None
+    aadhar_no: Optional[str] = None
+    pan_no: Optional[str] = None
     basic_salary: Optional[float] = None
     hra_percent: float = 40.0
     special_allowance: float = 0.0
@@ -174,6 +178,10 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
         "employment_type": emp.employment_type,
         "bank_name": emp.bank_name,
         "bank_account_no": emp.bank_account_no,
+        "bank_ifsc": emp.bank_ifsc,
+        "bank_branch": emp.bank_branch,
+        "aadhar_no": emp.aadhar_no,
+        "pan_no": emp.pan_no,
         "basic_salary": emp.basic_salary,
         "hra_percent": emp.hra_percent if emp.hra_percent is not None else 40.0,
         "special_allowance": emp.special_allowance or 0.0,
@@ -255,11 +263,8 @@ async def upload_employee_photo(emp_id: int, file: UploadFile = File(...), db: S
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
         raise HTTPException(400, "Only JPG, PNG, WebP or GIF allowed")
-    dest = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "uploads", "profiles")
-    os.makedirs(dest, exist_ok=True)
     fname = f"emp_{emp_id}_{int(time.time())}.{ext}"
-    with open(os.path.join(dest, fname), "wb") as f:
-        f.write(await file.read())
-    emp.profile_photo = f"/uploads/profiles/{fname}"
+    url = storage.upload_file(await file.read(), "profiles", fname)
+    emp.profile_photo = url
     db.commit()
-    return {"profile_photo": emp.profile_photo}
+    return {"profile_photo": url}

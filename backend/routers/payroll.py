@@ -1,10 +1,15 @@
+import calendar
+from datetime import date as dt_date
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from pydantic import BaseModel
 from backend.database import get_db
 from backend.models.payroll import SalaryComponent, SalaryStructure, SalarySlip, PayrollEntry
 from backend.models.employee import Employee
+from backend.models.leave import Attendance, LeaveApplication, LeaveType
 
 router = APIRouter(prefix="/api/payroll", tags=["Payroll"])
 
@@ -400,3 +405,112 @@ def create_entry(data: PayrollEntryIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(entry)
     return {"id": entry.id}
+
+
+# ── Payslip PDF Download ───────────────────────────────────────
+@router.get("/slips/{slip_id}/pdf")
+def download_slip_pdf(slip_id: int, db: Session = Depends(get_db)):
+    """Generate and return the payslip as a PDF file."""
+    from backend.payslip_pdf import generate_payslip_pdf
+
+    slip = db.query(SalarySlip).filter(SalarySlip.id == slip_id).first()
+    if not slip:
+        raise HTTPException(404, "Slip not found")
+    emp = slip.employee_rel
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+
+    # ── Attendance data for the slip month ────────────────────
+    days_in_month = calendar.monthrange(slip.year, slip.month)[1]
+    first_day = dt_date(slip.year, slip.month, 1)
+    last_day  = dt_date(slip.year, slip.month, days_in_month)
+
+    att_records = db.query(Attendance).filter(
+        Attendance.employee_id == emp.id,
+        Attendance.date >= first_day,
+        Attendance.date <= last_day,
+    ).all()
+    days_present = sum(1 for a in att_records if a.status in ('Present', 'WFH', 'Half Day'))
+    lop = sum(1 for a in att_records if a.status == 'Absent')
+
+    leave_apps = (
+        db.query(LeaveApplication)
+        .join(LeaveType, LeaveApplication.leave_type_id == LeaveType.id)
+        .filter(
+            LeaveApplication.employee_id == emp.id,
+            LeaveApplication.status == 'Approved',
+            LeaveApplication.from_date <= last_day,
+            LeaveApplication.to_date >= first_day,
+        ).all()
+    )
+    cl = sl = el = 0
+    for la in leave_apps:
+        lt = (la.leave_type_rel.name or '').lower()
+        d = float(la.total_days or 0)
+        if 'casual' in lt:
+            cl += d
+        elif 'sick' in lt or 'medical' in lt:
+            sl += d
+        elif 'earned' in lt or 'annual' in lt or 'privilege' in lt:
+            el += d
+
+    # ── Map earnings / deductions from stored JSON ─────────────
+    earn = {'basic': 0.0, 'hra': 0.0, 'ca': 0.0, 'others': 0.0}
+    for e in (slip.earnings or []):
+        if e.get('employer_side'):
+            continue
+        comp = (e.get('component') or '').lower()
+        amt  = float(e.get('amount', 0))
+        if 'basic' in comp:
+            earn['basic'] += amt
+        elif 'hra' in comp or 'house rent' in comp:
+            earn['hra'] += amt
+        elif 'special' in comp or 'conveyance' in comp:
+            earn['ca'] += amt
+        else:
+            earn['others'] += amt
+
+    ded = {'pf': 0.0, 'esi': 0.0, 'pt': 0.0, 'tds': 0.0}
+    for d in (slip.deductions or []):
+        if d.get('employer_side'):
+            continue
+        comp = (d.get('component') or '').lower()
+        amt  = float(d.get('amount', 0))
+        if 'provident' in comp or ('pf' in comp and 'employer' not in comp):
+            ded['pf'] += amt
+        elif 'esi' in comp and 'employer' not in comp:
+            ded['esi'] += amt
+        elif 'professional' in comp:
+            ded['pt'] += amt
+        elif 'tds' in comp:
+            ded['tds'] += amt
+
+    slip_data = {
+        'month':          slip.month,
+        'year':           slip.year,
+        'employee_name':  emp.full_name or '',
+        'designation':    emp.designation_rel.name if emp.designation_rel else '',
+        'department':     emp.department_rel.name  if emp.department_rel  else '',
+        'date_of_joining': emp.date_of_joining,
+        'bank_account_no': emp.bank_account_no or '',
+        'pan':            'N/A',
+        'days_in_month':  days_in_month,
+        'days_present':   days_present,
+        'cl': int(cl), 'sl': int(sl), 'el': int(el), 'lop': lop,
+        **earn,
+        **ded,
+        'gross_pay':       slip.gross_pay        or 0,
+        'total_deduction': slip.total_deduction  or 0,
+        'net_pay':         slip.net_pay          or 0,
+    }
+
+    pdf_bytes = generate_payslip_pdf(slip_data)
+    month_names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    filename = f"Payslip_{month_names[slip.month]}_{slip.year}_{emp.full_name or emp.id}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )

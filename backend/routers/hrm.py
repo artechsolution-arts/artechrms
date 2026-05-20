@@ -1,7 +1,7 @@
-import os
 import time
 from datetime import date
 from typing import Optional
+from backend import storage
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from pydantic import BaseModel
@@ -109,11 +109,6 @@ def delete_emergency_contact(contact_id: int, db: Session = Depends(get_db)):
 # 2. EMPLOYEE DOCUMENTS
 # ===========================================================================
 
-DOCS_UPLOAD_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "static", "uploads", "documents",
-)
-
 ALLOWED_DOC_TYPES = {
     "Aadhaar", "PAN", "Passport", "Offer Letter",
     "Experience Letter", "Education Certificate", "Other",
@@ -158,16 +153,9 @@ async def upload_document(
             detail=f"document_type must be one of: {', '.join(sorted(ALLOWED_DOC_TYPES))}",
         )
 
-    os.makedirs(DOCS_UPLOAD_DIR, exist_ok=True)
     ext = (file.filename or "file").rsplit(".", 1)[-1].lower()
     fname = f"doc_{emp_id}_{int(time.time())}.{ext}"
-    dest_path = os.path.join(DOCS_UPLOAD_DIR, fname)
-
-    contents = await file.read()
-    with open(dest_path, "wb") as fh:
-        fh.write(contents)
-
-    file_url = f"/uploads/documents/{fname}"
+    file_url = storage.upload_file(await file.read(), "documents", fname)
     doc = EmployeeDocument(
         employee_id=emp_id,
         document_type=document_type,
@@ -185,17 +173,7 @@ def delete_document(doc_id: int, db: Session = Depends(get_db)):
     doc = db.query(EmployeeDocument).filter(EmployeeDocument.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    # Optionally remove the file from disk
-    try:
-        disk_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "static",
-            doc.file_url.lstrip("/"),
-        )
-        if os.path.isfile(disk_path):
-            os.remove(disk_path)
-    except Exception:
-        pass
+    storage.delete_file(doc.file_url)
     db.delete(doc)
     db.commit()
     return {"ok": True}
@@ -716,19 +694,15 @@ def list_document_requests(status: Optional[str] = None, db: Session = Depends(g
 
 
 @router.post("/document-requests/{req_id}/upload")
-async def upload_document(req_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_document_request(req_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
     req = db.query(DocumentRequest).filter(DocumentRequest.id == req_id).first()
     if not req:
         raise HTTPException(404, "Request not found")
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     if ext not in ("pdf", "doc", "docx", "jpg", "jpeg", "png"):
         raise HTTPException(400, "Allowed formats: PDF, DOC, DOCX, JPG, PNG")
-    dest = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "uploads", "documents")
-    os.makedirs(dest, exist_ok=True)
-    fname = f"doc_{req_id}_{int(time.time())}.{ext}"
-    with open(os.path.join(dest, fname), "wb") as f:
-        f.write(await file.read())
-    req.file_url = f"/uploads/documents/{fname}"
+    fname = f"req_{req_id}_{int(time.time())}.{ext}"
+    req.file_url = storage.upload_file(await file.read(), "documents", fname)
     req.file_name = file.filename
     req.status = "Fulfilled"
     req.fulfilled_at = _dt.utcnow()

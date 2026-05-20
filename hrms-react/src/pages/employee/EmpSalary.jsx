@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import Badge from '../../components/Badge';
 import Modal from '../../components/Modal';
-import { Eye, Printer } from 'lucide-react';
+import { Eye, Printer, FileDown } from 'lucide-react';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_NAMES = [
@@ -143,6 +143,23 @@ export default function EmpSalary({ toast }) {
     catch (e) { toast(e.message, 'error'); }
   };
 
+  const downloadPdf = async (slipId, slipRef) => {
+    try {
+      const token = localStorage.getItem('artech_hrms_token');
+      const res = await fetch(`/api/payroll/slips/${slipId}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Payslip_${slipRef || slipId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
   const latest = slips[0];
 
   return (
@@ -213,9 +230,12 @@ export default function EmpSalary({ toast }) {
                     <td className="text-red-500">₹{Number(s.total_deduction).toLocaleString()}</td>
                     <td className="font-semibold text-green-700">₹{Number(s.net_pay).toLocaleString()}</td>
                     <td><Badge text={s.status} /></td>
-                    <td>
+                    <td className="flex gap-1">
                       <button onClick={() => openSlip(s.id)} className="btn btn-secondary btn-xs gap-1">
                         <Eye size={11} /> View
+                      </button>
+                      <button onClick={() => downloadPdf(s.id, s.slip_id)} className="btn btn-secondary btn-xs gap-1">
+                        <FileDown size={11} /> PDF
                       </button>
                     </td>
                   </tr>
@@ -234,9 +254,14 @@ export default function EmpSalary({ toast }) {
           hideSave
           wide
           extraActions={
-            <button onClick={() => window.print()} className="btn btn-secondary btn-sm gap-1.5">
-              <Printer size={13} /> Print
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => downloadPdf(viewSlip.id, viewSlip.slip_id)} className="btn btn-primary btn-sm gap-1.5">
+                <FileDown size={13} /> Download PDF
+              </button>
+              <button onClick={() => window.print()} className="btn btn-secondary btn-sm gap-1.5">
+                <Printer size={13} /> Print
+              </button>
+            </div>
           }
         >
           <SlipView slip={viewSlip} />

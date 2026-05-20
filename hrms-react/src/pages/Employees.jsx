@@ -90,14 +90,25 @@ export default function Employees({ toast }) {
       pf_applicable: true,
       esi_applicable: true,
       pt_state: 'Karnataka',
+      ec_name: '', ec_relationship: '', ec_phone: '', ec_id: null,
     });
     setModal({ mode: 'add' });
   };
 
   const openEdit = async (id) => {
     try {
-      const e = await api('GET', `/api/employees/${id}`);
-      setForm(e);
+      const [e, contacts] = await Promise.all([
+        api('GET', `/api/employees/${id}`),
+        api('GET', `/api/hrm/employees/${id}/emergency-contacts`).catch(() => []),
+      ]);
+      const primary = contacts[0] || {};
+      setForm({
+        ...e,
+        ec_name: primary.name || '',
+        ec_relationship: primary.relationship_type || '',
+        ec_phone: primary.phone || '',
+        ec_id: primary.id || null,
+      });
       setModal({ mode: 'edit', id });
     } catch (e) { toast(e.message, 'error'); }
   };
@@ -124,8 +135,17 @@ export default function Employees({ toast }) {
         pt_state: form.pt_state || 'Karnataka',
       };
 
+      const bankFields = {
+        bank_name: form.bank_name || null,
+        bank_account_no: form.bank_account_no || null,
+        bank_ifsc: form.bank_ifsc || null,
+        bank_branch: form.bank_branch || null,
+        aadhar_no: form.aadhar_no || null,
+        pan_no: form.pan_no || null,
+      };
+
       if (modal.mode === 'add') {
-        await api('POST', '/api/employees', {
+        const result = await api('POST', '/api/employees', {
           first_name: form.first_name, last_name: form.last_name || null,
           email: form.email, mobile: form.mobile || null,
           gender: form.gender || null, date_of_joining: form.date_of_joining,
@@ -135,8 +155,16 @@ export default function Employees({ toast }) {
           employment_type: form.employment_type,
           username: form.username,
           password: form.password,
-          ...salaryFields,
+          ...salaryFields, ...bankFields,
         });
+        if (form.ec_name?.trim()) {
+          await api('POST', `/api/hrm/employees/${result.id}/emergency-contacts`, {
+            name: form.ec_name.trim(),
+            relationship_type: form.ec_relationship || 'Other',
+            phone: form.ec_phone || '',
+            is_primary: true,
+          }).catch(() => {});
+        }
         toast('Employee added and login account created', 'success');
       } else {
         await api('PUT', `/api/employees/${modal.id}`, {
@@ -147,9 +175,25 @@ export default function Employees({ toast }) {
           department_id: form.department_id ? parseInt(form.department_id) : null,
           designation_id: form.designation_id ? parseInt(form.designation_id) : null,
           employment_type: form.employment_type,
-          bank_name: form.bank_name || null, bank_account_no: form.bank_account_no || null,
-          ...salaryFields,
+          ...salaryFields, ...bankFields,
         });
+        if (form.ec_name?.trim()) {
+          if (form.ec_id) {
+            await api('PUT', `/api/hrm/emergency-contacts/${form.ec_id}`, {
+              name: form.ec_name.trim(),
+              relationship_type: form.ec_relationship || 'Other',
+              phone: form.ec_phone || '',
+              is_primary: true,
+            }).catch(() => {});
+          } else {
+            await api('POST', `/api/hrm/employees/${modal.id}/emergency-contacts`, {
+              name: form.ec_name.trim(),
+              relationship_type: form.ec_relationship || 'Other',
+              phone: form.ec_phone || '',
+              is_primary: true,
+            }).catch(() => {});
+          }
+        }
         toast('Employee saved', 'success');
       }
       setModal(null);
@@ -467,18 +511,50 @@ export default function Employees({ toast }) {
           )}
         </FormSection>
 
-        {modal?.mode === 'edit' && (
-          <FormSection title="Bank Details">
-            <FormGrid>
-              <Field label="Bank Name">
-                <input className="form-input" value={form.bank_name || ''} onChange={e => f({ bank_name: e.target.value })} />
-              </Field>
-              <Field label="Account Number">
-                <input className="form-input" value={form.bank_account_no || ''} onChange={e => f({ bank_account_no: e.target.value })} />
-              </Field>
-            </FormGrid>
-          </FormSection>
-        )}
+        <FormSection title="Bank Details">
+          <FormGrid>
+            <Field label="Bank Name">
+              <input className="form-input" value={form.bank_name || ''} onChange={e => f({ bank_name: e.target.value })} placeholder="e.g. HDFC Bank" />
+            </Field>
+            <Field label="Account Number">
+              <input className="form-input" value={form.bank_account_no || ''} onChange={e => f({ bank_account_no: e.target.value })} placeholder="12-digit account number" />
+            </Field>
+            <Field label="IFSC Code">
+              <input className="form-input uppercase" value={form.bank_ifsc || ''} onChange={e => f({ bank_ifsc: e.target.value.toUpperCase() })} placeholder="e.g. HDFC0001234" maxLength={11} />
+            </Field>
+            <Field label="Branch Name">
+              <input className="form-input" value={form.bank_branch || ''} onChange={e => f({ bank_branch: e.target.value })} placeholder="e.g. Begumpet, Hyderabad" />
+            </Field>
+          </FormGrid>
+        </FormSection>
+
+        <FormSection title="Identity Details">
+          <FormGrid>
+            <Field label="Aadhaar Number">
+              <input className="form-input" value={form.aadhar_no || ''} onChange={e => f({ aadhar_no: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="12-digit Aadhaar" maxLength={12} />
+            </Field>
+            <Field label="PAN Number">
+              <input className="form-input uppercase" value={form.pan_no || ''} onChange={e => f({ pan_no: e.target.value.toUpperCase().slice(0, 10) })} placeholder="e.g. ABCDE1234F" maxLength={10} />
+            </Field>
+          </FormGrid>
+        </FormSection>
+
+        <FormSection title="Emergency Contact">
+          <FormGrid>
+            <Field label="Contact Name">
+              <input className="form-input" value={form.ec_name || ''} onChange={e => f({ ec_name: e.target.value })} placeholder="Full name" />
+            </Field>
+            <Field label="Relationship">
+              <select className="form-select" value={form.ec_relationship || ''} onChange={e => f({ ec_relationship: e.target.value })}>
+                <option value="">Select</option>
+                {['Spouse', 'Parent', 'Sibling', 'Child', 'Friend', 'Other'].map(r => <option key={r}>{r}</option>)}
+              </select>
+            </Field>
+            <Field label="Phone">
+              <input className="form-input" value={form.ec_phone || ''} onChange={e => f({ ec_phone: e.target.value })} placeholder="Mobile number" />
+            </Field>
+          </FormGrid>
+        </FormSection>
       </Modal>
     </>
   );

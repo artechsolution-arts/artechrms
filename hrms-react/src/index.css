@@ -4,14 +4,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Accent colour themes ──────────────────────────────────── */
+/* ── Brand palette ─────────────────────────────────────────────
+   ARTech Blue    #1A6AB4  primary CTAs, headings, key UI
+   Innovation Teal #3DC7B3  accents, icons, highlights
+   Deep Navy      #0D1F4E  dark backgrounds, high-contrast
+   Growth Green   #2DB37A  success, positive data
+   Cloud White    #F4F8FF  page & card backgrounds
+   Mist Gray      #E8EDF5  borders, dividers, input bg
+   Steel Gray     #A0AABF  secondary text, captions
+   ──────────────────────────────────────────────────────────── */
 :root {
-  --accent:      #2E6BE6;
-  --accent-dark: #1B3A6B;
-  --accent-50:   #eff6ff;
+  --accent:      #1A6AB4;
+  --accent-dark: #0D1F4E;
+  --accent-50:   #EBF4FF;
+  --teal:        #3DC7B3;
+  --success:     #2DB37A;
+  --cloud:       #F4F8FF;
+  --mist:        #E8EDF5;
+  --steel:       #A0AABF;
+  --navy:        #0D1F4E;
 }
+
+/* Theme overrides keep working but now reference brand colours */
+html[data-accent="teal"]   { --accent: #3DC7B3; --accent-dark: #0D1F4E; --accent-50: #EDFAF7; }
 html[data-accent="purple"] { --accent: #7C3AED; --accent-dark: #4C1D95; --accent-50: #f5f3ff; }
-html[data-accent="green"]  { --accent: #059669; --accent-dark: #065F46; --accent-50: #ecfdf5; }
+html[data-accent="green"]  { --accent: #2DB37A; --accent-dark: #065F46; --accent-50: #ecfdf5; }
 html[data-accent="rose"]   { --accent: #E11D48; --accent-dark: #9F1239; --accent-50: #fff1f2; }
 html[data-accent="indigo"] { --accent: #4F46E5; --accent-dark: #312E81; --accent-50: #eef2ff; }
 
@@ -20,11 +37,11 @@ html[data-accent="indigo"] { --accent: #4F46E5; --accent-dark: #312E81; --accent
   body {
     margin: 0;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #f8f9fa;
-    color: #1f272e;
+    background: #F4F8FF;
+    color: #0D1F4E;
     -webkit-font-smoothing: antialiased;
   }
-  html.dark body { background: #0f172a; color: #e2e8f0; }
+  html.dark body { background: #0a1628; color: #e2e8f0; }
   #root { height: 100vh; display: flex; flex-direction: column; }
 }
 
@@ -37,56 +54,86 @@ html[data-accent="indigo"] { --accent: #4F46E5; --accent-dark: #312E81; --accent
     border-color: var(--accent-dark);
     @apply text-white;
   }
-  .btn-primary:hover { filter: brightness(0.9); }
-  .btn-primary:active { filter: brightness(0.8); }
+  .btn-primary:hover { filter: brightness(0.92); }
+  .btn-primary:active { filter: brightness(0.82); }
   .btn-secondary {
-    @apply bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100;
+    background: #ffffff;
+    color: #0D1F4E;
+    border-color: #E8EDF5;
   }
+  .btn-secondary:hover { background: #F4F8FF; }
+  .btn-secondary:active { background: #E8EDF5; }
   .btn-danger {
     @apply bg-red-500 text-white border-red-600 hover:bg-red-600 active:bg-red-700;
   }
   .btn-success {
-    @apply bg-green-500 text-white border-green-600 hover:bg-green-600;
+    background-color: #2DB37A;
+    border-color: #1e8c5e;
+    @apply text-white;
   }
+  .btn-success:hover { filter: brightness(0.92); }
   .btn-sm { @apply px-2.5 py-1 text-xs; }
   .btn-xs { @apply px-2 py-0.5 text-xs; }
 
-  .form-label { @apply block text-xs font-medium text-gray-600 mb-1; }
+  .form-label { @apply block text-xs font-medium mb-1; color: #0D1F4E; }
   .form-input {
-    @apply w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-colors;
+    @apply w-full px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:border-transparent transition-colors;
+    border: 1px solid #E8EDF5;
+    background: #ffffff;
+    color: #0D1F4E;
     --tw-ring-color: var(--accent);
   }
   .form-select {
-    @apply w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-colors;
+    @apply w-full px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:border-transparent transition-colors;
+    border: 1px solid #E8EDF5;
+    background: #ffffff;
+    color: #0D1F4E;
     --tw-ring-color: var(--accent);
   }
   .form-textarea {
-    @apply w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-colors resize-y;
+    @apply w-full px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:border-transparent transition-colors resize-y;
+    border: 1px solid #E8EDF5;
+    background: #ffffff;
+    color: #0D1F4E;
     --tw-ring-color: var(--accent);
   }
 
-  .card { @apply bg-white rounded-lg border border-gray-200 shadow-sm; }
-  .card-head { @apply flex items-center justify-between px-5 py-3.5 border-b border-gray-100; }
-  .card-title { @apply text-sm font-semibold text-gray-800; }
+  .card {
+    background: #ffffff;
+    border: 1px solid #E8EDF5;
+    @apply rounded-lg shadow-sm;
+  }
+  .card-head {
+    @apply flex items-center justify-between px-5 py-3.5;
+    border-bottom: 1px solid #E8EDF5;
+  }
+  .card-title { @apply text-sm font-semibold; color: #0D1F4E; }
 
   .table-wrap { @apply overflow-x-auto; }
   .data-table { @apply w-full text-sm border-collapse; }
   .data-table thead th {
-    @apply px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200;
+    @apply px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide;
+    background: #F4F8FF;
+    border-bottom: 1px solid #E8EDF5;
+    color: #A0AABF;
   }
-  .data-table tbody tr { @apply border-b border-gray-100 transition-colors; }
+  .data-table tbody tr { border-bottom: 1px solid #E8EDF5; @apply transition-colors; }
   .data-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
-  .data-table tbody td { @apply px-4 py-2.5 text-gray-700; }
+  .data-table tbody td { @apply px-4 py-2.5; color: #0D1F4E; }
 
-  .page-head { @apply flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200; }
-  .page-title { @apply text-lg font-semibold text-gray-900 m-0; }
+  .page-head {
+    @apply flex items-center justify-between px-6 py-4;
+    background: #ffffff;
+    border-bottom: 1px solid #E8EDF5;
+  }
+  .page-title { @apply text-lg font-semibold m-0; color: #0D1F4E; }
   .page-content { @apply flex-1 p-6 overflow-auto; }
 
   .empty-state { @apply flex flex-col items-center justify-center py-16 text-center; }
   .empty-state-icon { @apply text-5xl mb-3 opacity-40; }
 }
 
-/* ── Dark mode overrides for custom classes ────────────────── */
+/* ── Dark mode overrides ───────────────────────────────────── */
 html.dark .card            { background-color: #1e293b; border-color: #334155; }
 html.dark .card-head       { border-color: #334155; }
 html.dark .card-title      { color: #e2e8f0; }
@@ -103,8 +150,7 @@ html.dark .form-label      { color: #94a3b8; }
 html.dark .btn-secondary   { background-color: #1e293b; color: #e2e8f0; border-color: #475569; }
 html.dark .btn-secondary:hover { background-color: #334155 !important; }
 
-/* ── Cross-browser responsive helpers (traditional min/max-width syntax) ──── */
-/* Used instead of Tailwind lg: classes to ensure Safari/WebKit compatibility  */
+/* ── Responsive helpers ─────────────────────────────────────── */
 .sidebar-desktop { display: flex; }
 @media screen and (max-width: 1023px) {
   .sidebar-desktop { display: none !important; }
@@ -114,7 +160,7 @@ html.dark .btn-secondary:hover { background-color: #334155 !important; }
   .mobile-only { display: none !important; }
 }
 
-/* ── Dark mode: Tailwind gray text utilities ───────────────── */
+/* ── Dark mode: Tailwind text utilities ────────────────────── */
 html.dark .text-gray-900 { color: #f1f5f9; }
 html.dark .text-gray-800 { color: #e2e8f0; }
 html.dark .text-gray-700 { color: #cbd5e1; }

@@ -1,7 +1,7 @@
 """Employee Self-Service Portal — endpoints return data scoped to the logged-in employee."""
-import os
 import time
 from fastapi import APIRouter, Request, HTTPException, UploadFile, File
+from backend import storage
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from pydantic import BaseModel
@@ -311,14 +311,11 @@ async def upload_portal_photo(request: Request, file: UploadFile = File(...), db
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
         raise HTTPException(400, "Only JPG, PNG, WebP or GIF allowed")
-    dest = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "uploads", "profiles")
-    os.makedirs(dest, exist_ok=True)
     fname = f"emp_{emp.id}_{int(time.time())}.{ext}"
-    with open(os.path.join(dest, fname), "wb") as f:
-        f.write(await file.read())
-    emp.profile_photo = f"/uploads/profiles/{fname}"
+    url = storage.upload_file(await file.read(), "profiles", fname)
+    emp.profile_photo = url
     db.commit()
-    return {"profile_photo": emp.profile_photo}
+    return {"profile_photo": url}
 
 
 # ── Document Requests ──────────────────────────────────────────
