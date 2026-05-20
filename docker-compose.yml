@@ -1,21 +1,5 @@
 services:
 
-  db:
-    image: postgres:16-alpine
-    container_name: artechrms_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "Joseph@29"
-      POSTGRES_DB: artechrms
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d artechrms"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   minio:
     image: minio/minio:latest
     container_name: artechrms_minio
@@ -42,28 +26,23 @@ services:
     container_name: artechrms_app
     restart: unless-stopped
     depends_on:
-      db:
-        condition: service_healthy
       minio:
         condition: service_healthy
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://postgres:Joseph%4029@db:5432/artechrms
+      # Points to your local PostgreSQL 17 on the Mac host
+      DATABASE_URL: postgresql://postgres:Joseph%4029@host.docker.internal:5432/artechrms
       SECRET_KEY: artech-hrms-super-secret-jwt-key-change-in-production
       ALLOWED_ORIGINS: "*"
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin123
       MINIO_BUCKET: hrms
-      # Set this to your server's IP when deploying on-prem, e.g. http://192.168.1.10:9000
       MINIO_PUBLIC_URL: http://localhost:9000
-      # Optional: set your Anthropic API key for the AI assistant
-      # ANTHROPIC_API_KEY: sk-ant-...
     volumes:
       - uploads_data:/app/static/uploads
 
 volumes:
-  db_data:
   minio_data:
   uploads_data:

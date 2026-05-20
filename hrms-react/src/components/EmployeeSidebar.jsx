@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import {
   LayoutDashboard, User, CalendarDays, Clock,
-  DollarSign, Star, X, LogOut, Megaphone, Receipt, Gift, Monitor, FileDown
+  DollarSign, Star, X, LogOut, Megaphone, Gift, Monitor, FileDown,
+  ClipboardList, CalendarCheck2
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -20,9 +21,10 @@ const EMP_NAV = [
   { key: 'emp-attendance',      label: 'My Attendance',       icon: Clock,           section: 'Self Service' },
   { key: 'emp-salary',          label: 'My Salary Slips',     icon: DollarSign,      section: 'Self Service' },
   { key: 'emp-appraisals',      label: 'My Appraisals',       icon: Star,            section: 'Self Service' },
-  { key: 'emp-expenses',        label: 'My Expenses',         icon: Receipt,         section: 'Self Service' },
   { key: 'emp-assets',          label: 'My Assets',           icon: Monitor,         section: 'Self Service' },
   { key: 'emp-documents',       label: 'My Documents',        icon: FileDown,        section: 'Self Service' },
+  { key: 'emp-status',          label: 'Status Sheet',        icon: ClipboardList,   section: 'Self Service' },
+  { key: 'emp-work-mode',       label: 'Work Mode',           icon: CalendarCheck2,  section: 'Self Service' },
   { key: 'emp-announcements',   label: 'Announcements',       icon: Megaphone,       section: 'Company' },
   { key: 'emp-holidays',        label: 'Holidays',            icon: Gift,            section: 'Company' },
 ];

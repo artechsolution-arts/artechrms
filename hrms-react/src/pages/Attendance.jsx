@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
+import DatePicker from '../components/DatePicker';
 import { Plus, RefreshCw, Clock } from 'lucide-react';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
 export default function Attendance({ toast }) {
   const [rows, setRows] = useState([]);
@@ -16,17 +18,18 @@ export default function Attendance({ toast }) {
 
   const today = new Date().toISOString().split('T')[0];
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try { setRows(await api('GET', '/api/leaves/attendance')); }
     catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
-  };
+  }, []);
 
   useEffect(() => {
-    api('GET', '/api/employees').then(e => setEmps(e)).catch(() => {});
+    api('GET', '/api/employees?all=true').then(e => setEmps(e)).catch(() => {});
     load();
-  }, []);
+  }, [load]);
+  useRefreshOnFocus(load);
 
   const f = v => setForm(prev => ({ ...prev, ...v }));
   const ef = v => setEditForm(prev => ({ ...prev, ...v }));
@@ -130,7 +133,7 @@ export default function Attendance({ toast }) {
               </select>
             </Field>
             <Field label="Date" required>
-              <input type="date" className="form-input" value={form.date || today} onChange={e => f({ date: e.target.value })} />
+              <DatePicker value={form.date || today} onChange={v => f({ date: v })} placeholder="Select date" />
             </Field>
             <Field label="Status">
               <select className="form-select" value={form.status || 'Present'} onChange={e => f({ status: e.target.value })}>

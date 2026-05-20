@@ -1,5 +1,6 @@
 import time
-from datetime import date
+from calendar import monthrange as _monthrange
+from datetime import date, timedelta
 from typing import Optional
 from backend import storage
 
@@ -708,3 +709,133 @@ async def upload_document_request(req_id: int, file: UploadFile = File(...), db:
     req.fulfilled_at = _dt.utcnow()
     db.commit()
     return {"file_url": req.file_url, "ok": True}
+
+
+# ── Status Sheets (HR read-only view) ─────────────────────────
+
+from backend.models.status_entry import StatusEntry as _StatusEntry
+
+
+@router.get("/status")
+def hr_get_status(employee_id: int, month: str, db: Session = Depends(get_db)):
+    try:
+        year, mon = map(int, month.split("-"))
+    except Exception:
+        raise HTTPException(400, "Use YYYY-MM format")
+
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+
+    start = date(year, mon, 1)
+    end = date(year, mon, _monthrange(year, mon)[1])
+
+    entries = (
+        db.query(_StatusEntry)
+        .filter(
+            _StatusEntry.employee_id == employee_id,
+            _StatusEntry.entry_date >= start,
+            _StatusEntry.entry_date <= end,
+        )
+        .order_by(_StatusEntry.entry_date.asc())
+        .all()
+    )
+
+    return {
+        "employee_name": emp.full_name,
+        "employee_code": emp.employee_id,
+        "entries": [
+            {
+                "id": e.id,
+                "task_id": e.task_id,
+                "entry_date": str(e.entry_date),
+                "task_name": e.task_name,
+                "due_date": str(e.due_date) if e.due_date else None,
+                "status": e.status,
+                "percent_complete": e.percent_complete or 0,
+            }
+            for e in entries
+        ],
+    }
+
+
+# ── Work Mode Sheet (HR view + approve/reject) ─────────────────
+
+from datetime import datetime as _wm_dt
+from backend.models.work_mode_entry import WorkModeEntry as _WMEntry
+from pydantic import BaseModel as _BaseModel
+from typing import Optional as _Optional
+
+
+class _WMAction(_BaseModel):
+    remarks: _Optional[str] = None
+
+
+def _wm_hr_dict(e) -> dict:
+    return {
+        "id":            e.id,
+        "employee_id":   e.employee.id if e.employee else None,
+        "employee_name": e.employee.full_name if e.employee else "—",
+        "employee_code": e.employee.employee_id if e.employee else "—",
+        "entry_date":    str(e.entry_date),
+        "work_mode":     e.work_mode,
+        "reason":        e.reason,
+        "duration":      e.duration,
+        "status":        e.status,
+        "hr_remarks":    e.hr_remarks,
+        "created_at":    str(e.created_at)[:10],
+    }
+
+
+@router.get("/work-mode")
+def hr_list_work_mode(
+    month: str,
+    employee_id: _Optional[int] = None,
+    status: _Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    try:
+        year, mon = map(int, month.split("-"))
+    except Exception:
+        raise HTTPException(400, "Use YYYY-MM format")
+    from calendar import monthrange as _mr
+    start = date(year, mon, 1)
+    end   = date(year, mon, _mr(year, mon)[1])
+
+    q = db.query(_WMEntry).filter(
+        _WMEntry.entry_date >= start,
+        _WMEntry.entry_date <= end,
+    )
+    if employee_id:
+        q = q.filter(_WMEntry.employee_id == employee_id)
+    if status:
+        q = q.filter(_WMEntry.status == status)
+
+    rows = q.order_by(_WMEntry.entry_date.asc()).all()
+    return [_wm_hr_dict(r) for r in rows]
+
+
+@router.put("/work-mode/{entry_id}/approve")
+def hr_approve_work_mode(entry_id: int, data: _WMAction = _WMAction(), db: Session = Depends(get_db)):
+    entry = db.query(_WMEntry).filter(_WMEntry.id == entry_id).first()
+    if not entry:
+        raise HTTPException(404, "Entry not found")
+    entry.status = "Approved"
+    if data.remarks:
+        entry.hr_remarks = data.remarks
+    entry.updated_at = _wm_dt.utcnow()
+    db.commit()
+    return {"ok": True, "status": "Approved"}
+
+
+@router.put("/work-mode/{entry_id}/reject")
+def hr_reject_work_mode(entry_id: int, data: _WMAction = _WMAction(), db: Session = Depends(get_db)):
+    entry = db.query(_WMEntry).filter(_WMEntry.id == entry_id).first()
+    if not entry:
+        raise HTTPException(404, "Entry not found")
+    entry.status = "Rejected"
+    if data.remarks:
+        entry.hr_remarks = data.remarks
+    entry.updated_at = _wm_dt.utcnow()
+    db.commit()
+    return {"ok": True, "status": "Rejected"}

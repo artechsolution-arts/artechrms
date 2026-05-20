@@ -143,7 +143,7 @@ export default function SalarySlips({ toast }) {
   const load = async () => {
     setLoading(true);
     try {
-      const [s, e] = await Promise.all([api('GET', '/api/payroll/slips'), api('GET', '/api/employees')]);
+      const [s, e] = await Promise.all([api('GET', '/api/payroll/slips'), api('GET', '/api/employees?all=true')]);
       setSlips(s); setEmps(e);
     } catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }

@@ -53,7 +53,7 @@ class EmployeeIn(BaseModel):
 class EmployeeCreateIn(EmployeeIn):
     username: str
     email: str  # required when creating
-    password: str
+    password: Optional[str] = None  # optional when linking an existing account
 
 
 # ── Departments ────────────────────────────────────────────────
@@ -133,6 +133,10 @@ def list_employees(
     search: Optional[str] = None,
     department_id: Optional[int] = None,
     status: Optional[str] = None,
+    joined_month: Optional[str] = None,   # YYYY-MM  e.g. 2026-01
+    page: int = 1,
+    page_size: int = 50,
+    all: bool = False,          # pass ?all=true for dropdowns that need every employee
     db: Session = Depends(get_db),
 ):
     q = db.query(Employee)
@@ -148,9 +152,29 @@ def list_employees(
         q = q.filter(Employee.department_id == department_id)
     if status:
         q = q.filter(Employee.status == status)
-    employees = q.all()
+    if joined_month:
+        try:
+            from datetime import date as _date
+            year, month = map(int, joined_month.split("-"))
+            import calendar
+            last_day = calendar.monthrange(year, month)[1]
+            q = q.filter(
+                Employee.date_of_joining >= _date(year, month, 1),
+                Employee.date_of_joining <= _date(year, month, last_day),
+            )
+        except Exception:
+            pass
+
+    total = q.count()
+
+    if not all:
+        page_size = min(page_size, 200)   # hard cap
+        q = q.order_by(Employee.id).offset((page - 1) * page_size).limit(page_size)
+    else:
+        q = q.order_by(Employee.id)
+
     result = []
-    for e in employees:
+    for e in q.all():
         result.append({
             "id": e.id,
             "employee_id": e.employee_id,
@@ -172,7 +196,10 @@ def list_employees(
             "esi_applicable": bool(e.esi_applicable if e.esi_applicable is not None else 1),
             "pt_state": e.pt_state or "Karnataka",
         })
-    return result
+
+    if all:
+        return result
+    return {"data": result, "total": total, "page": page, "page_size": page_size, "total_pages": max(1, -(-total // page_size))}
 
 
 @router.get("/{emp_id}")
@@ -220,10 +247,18 @@ def create_employee(data: EmployeeCreateIn, db: Session = Depends(get_db)):
     from backend.models.auth import User
     from backend.auth_utils import get_password_hash
 
-    if db.query(User).filter(User.username == data.username).first():
-        raise HTTPException(400, "Username already taken")
-    if db.query(User).filter(User.email == data.email).first():
-        raise HTTPException(400, "Email already registered")
+    # Block duplicate employee records (same email)
+    if db.query(Employee).filter(Employee.email == data.email).first():
+        raise HTTPException(400, "An employee with this email already exists")
+
+    # Look for an existing user account with matching username or email
+    existing_user = db.query(User).filter(
+        (User.username == data.username) | (User.email == data.email)
+    ).first()
+
+    # If username is taken by a *different* email, reject it
+    if existing_user and existing_user.email != data.email:
+        raise HTTPException(400, "Username already taken by a different account")
 
     max_id = db.query(func.max(Employee.id)).scalar() or 0
     emp_id = f"EMP-{max_id + 1:04d}"
@@ -235,15 +270,23 @@ def create_employee(data: EmployeeCreateIn, db: Session = Depends(get_db)):
     emp = Employee(**dump, full_name=full, employee_id=emp_id)
     db.add(emp)
 
-    user = User(
-        username=data.username,
-        email=data.email,
-        full_name=full,
-        hashed_password=get_password_hash(data.password),
-        role="Employee",
-        is_active=True,
-    )
-    db.add(user)
+    if existing_user:
+        # Link employee to the existing login account — keep their role intact
+        existing_user.full_name = full
+        emp.user_id = existing_user.id
+    else:
+        if not data.password:
+            raise HTTPException(400, "Password is required for new accounts")
+        user = User(
+            username=data.username,
+            email=data.email,
+            full_name=full,
+            hashed_password=get_password_hash(data.password),
+            role="Employee",
+            is_active=True,
+        )
+        db.add(user)
+
     db.commit()
     db.refresh(emp)
     return {"id": emp.id, "employee_id": emp.employee_id, "full_name": emp.full_name}
@@ -268,9 +311,20 @@ def update_employee(emp_id: int, data: EmployeeIn, db: Session = Depends(get_db)
 
 @router.delete("/{emp_id}")
 def delete_employee(emp_id: int, db: Session = Depends(get_db)):
+    from sqlalchemy import text
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(404, "Employee not found")
+    # Delete all related records before removing the employee
+    tables = [
+        "attendance", "leave_applications", "leave_balances",
+        "salary_slips", "expense_claims", "appraisals",
+        "employee_assets", "employee_documents", "emergency_contacts",
+        "employee_history", "document_requests",
+        "status_entries", "work_mode_entries",
+    ]
+    for tbl in tables:
+        db.execute(text(f"DELETE FROM {tbl} WHERE employee_id = :eid"), {"eid": emp.id})
     db.delete(emp)
     db.commit()
     return {"ok": True}

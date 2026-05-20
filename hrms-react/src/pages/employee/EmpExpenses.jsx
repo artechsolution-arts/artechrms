@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
+import DatePicker from '../../components/DatePicker';
 import { Plus, Receipt } from 'lucide-react';
 
 const STATUS_COLOR = {
@@ -122,7 +123,7 @@ export default function EmpExpenses({ toast }) {
               <input type="number" min="0" step="0.01" className="form-input" value={form.amount || ''} onChange={e => f({ amount: e.target.value })} placeholder="0.00"/>
             </Field>
             <Field label="Date" required>
-              <input type="date" className="form-input" value={form.claim_date || ''} onChange={e => f({ claim_date: e.target.value })}/>
+              <DatePicker value={form.claim_date || ''} onChange={v => f({ claim_date: v })} placeholder="Select claim date" />
             </Field>
             <Field label="Description">
               <input className="form-input" value={form.description || ''} onChange={e => f({ description: e.target.value })} placeholder="Brief description"/>

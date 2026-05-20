@@ -15,7 +15,7 @@ export default function Appraisals({ toast }) {
   const load = async () => {
     setLoading(true);
     try {
-      const [a, e] = await Promise.all([api('GET', '/api/appraisals'), api('GET', '/api/employees')]);
+      const [a, e] = await Promise.all([api('GET', '/api/appraisals'), api('GET', '/api/employees?all=true')]);
       setRows(a); setEmps(e);
     } catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
-export default function Modal({ open, title, children, onClose, onSave, saveLabel = 'Save', hideSave = false, wide = false, extraActions = null }) {
+export default function Modal({ open, title, children, onClose, onSave, saveLabel = 'Save', hideSave = false, wide = false, extraActions = null, danger = false }) {
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose(); };
     if (open) document.addEventListener('keydown', handler);
@@ -32,7 +32,7 @@ export default function Modal({ open, title, children, onClose, onSave, saveLabe
           <div className="flex gap-2">
             <button onClick={onClose} className="btn btn-secondary">Cancel</button>
             {!hideSave && (
-              <button onClick={onSave} className="btn btn-primary">{saveLabel}</button>
+              <button onClick={onSave} className={danger ? 'btn btn-danger' : 'btn btn-primary'}>{saveLabel}</button>
             )}
           </div>
         </div>

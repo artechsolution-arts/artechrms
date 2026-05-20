@@ -16,7 +16,7 @@ export default function LeaveBalances({ toast }) {
     try {
       const [bal, emps, lts] = await Promise.all([
         api('GET', `/api/hrm/leave-balances?year=${year}${filterEmp ? `&employee_id=${filterEmp}` : ''}`),
-        api('GET', '/api/employees'),
+        api('GET', '/api/employees?all=true'),
         api('GET', '/api/leaves/types'),
       ]);
       setRows(bal);

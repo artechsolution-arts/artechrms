@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
+import DatePicker from '../components/DatePicker';
 import { Plus, Monitor, Undo2, Trash2 } from 'lucide-react';
 
 const STATUS_COLOR = {
@@ -25,7 +26,7 @@ export default function Assets({ toast }) {
     try {
       const [assets, emps] = await Promise.all([
         api('GET', `/api/hrm/assets${filterStatus ? `?status=${filterStatus}` : ''}`),
-        api('GET', '/api/employees'),
+        api('GET', '/api/employees?all=true'),
       ]);
       setRows(assets);
       setEmps(emps);
@@ -157,7 +158,7 @@ export default function Assets({ toast }) {
               <input className="form-input" value={form.serial_number || ''} onChange={e => f({ serial_number: e.target.value })} placeholder="SN-XXXXX"/>
             </Field>
             <Field label="Allocated Date" required>
-              <input type="date" className="form-input" value={form.allocated_date || ''} onChange={e => f({ allocated_date: e.target.value })}/>
+              <DatePicker value={form.allocated_date || ''} onChange={v => f({ allocated_date: v })} placeholder="Select date" />
             </Field>
             <Field label="Condition">
               <select className="form-select" value={form.condition} onChange={e => f({ condition: e.target.value })}>
@@ -179,8 +180,7 @@ export default function Assets({ toast }) {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Return Date</label>
-                <input type="date" className="form-input w-full" value={returnForm.returned_date}
-                  onChange={e => setReturnForm(p => ({ ...p, returned_date: e.target.value }))}/>
+                <DatePicker value={returnForm.returned_date} onChange={v => setReturnForm(p => ({ ...p, returned_date: v }))} placeholder="Select return date" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Condition</label>

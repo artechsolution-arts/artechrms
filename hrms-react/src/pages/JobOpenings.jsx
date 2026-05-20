@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, apiForm } from '../api';
 import Badge from '../components/Badge';
+import DatePicker from '../components/DatePicker';
 import { Plus, RefreshCw, Trash2, XCircle, Paperclip, Share2, Eye, Download, X } from 'lucide-react';
 
 // ── Inline brand SVG icons ─────────────────────────────────────
@@ -389,7 +390,7 @@ function CreateModal({ open, onClose, onSave, toast }) {
                 </div>
                 <div>
                   <label className="form-label">Closes On</label>
-                  <input type="date" className="form-input" value={form.closes_on || ''} onChange={e => f({ closes_on: e.target.value })} />
+                  <DatePicker value={form.closes_on || ''} onChange={v => f({ closes_on: v })} placeholder="Select closing date" />
                 </div>
               </div>
               <div>

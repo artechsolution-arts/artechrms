@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import Modal, { Field } from '../components/Modal';
 import { Plus, Trash2, Pencil, Building2 } from 'lucide-react';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
 export default function Departments({ toast }) {
   const [rows, setRows] = useState([]);
@@ -9,14 +10,15 @@ export default function Departments({ toast }) {
   const [modal, setModal] = useState(null); // null | { mode: 'add' } | { mode: 'edit', id, name }
   const [name, setName] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try { setRows(await api('GET', '/api/employees/departments')); }
     catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
+  useRefreshOnFocus(load);
 
   const openAdd = () => { setName(''); setModal({ mode: 'add' }); };
   const openEdit = d => { setName(d.name); setModal({ mode: 'edit', id: d.id }); };

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import ToastContainer from './components/Toast';
@@ -22,12 +22,21 @@ import Holidays from './pages/Holidays';
 import Announcements from './pages/Announcements';
 import SalarySlips from './pages/SalarySlips';
 import PayrollEntry from './pages/PayrollEntry';
-import SalaryComponents from './pages/SalaryComponents';
 import Assets from './pages/Assets';
 import JobOpenings from './pages/JobOpenings';
 import Applicants from './pages/Applicants';
 import Appraisals from './pages/Appraisals';
 import DocumentRequests from './pages/DocumentRequests';
+import EmpProfile      from './pages/employee/EmpProfile';
+import EmpLeaves       from './pages/employee/EmpLeaves';
+import EmpSalary       from './pages/employee/EmpSalary';
+import EmpAttendance   from './pages/employee/EmpAttendance';
+import EmpDocuments    from './pages/employee/EmpDocuments';
+import EmpStatus       from './pages/employee/EmpStatus';
+import EmpWorkMode     from './pages/employee/EmpWorkMode';
+import HRStatusSheet   from './pages/HRStatusSheet';
+import HRWorkMode      from './pages/HRWorkMode';
+import PortalGate      from './components/PortalGate';
 
 const PAGES = {
   'dashboard':          Dashboard,
@@ -42,12 +51,20 @@ const PAGES = {
   'announcements':      Announcements,
   'salary-slips':       SalarySlips,
   'payroll-entry':      PayrollEntry,
-  'salary-components':  SalaryComponents,
   'assets':             Assets,
   'job-openings':       JobOpenings,
   'applicants':         Applicants,
   'appraisals':         Appraisals,
   'document-requests':  DocumentRequests,
+  'status-sheets':      HRStatusSheet,
+  'work-mode-sheet':    HRWorkMode,
+  'my-profile':         EmpProfile,
+  'my-leaves':          EmpLeaves,
+  'my-salary':          EmpSalary,
+  'my-attendance':      EmpAttendance,
+  'my-documents':       EmpDocuments,
+  'my-status':          EmpStatus,
+  'my-work-mode':       EmpWorkMode,
 };
 
 export default function App() {
@@ -79,6 +96,7 @@ export default function App() {
   }
 
   const PageComponent = PAGES[page] || Dashboard;
+  const isPortalPage = page.startsWith('my-');
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
@@ -101,7 +119,13 @@ export default function App() {
         />
 
         <main className="flex-1 overflow-auto flex flex-col pb-16 lg:pb-0">
-          <PageComponent toast={toast} onNavigate={navigate} />
+          {isPortalPage ? (
+            <PortalGate onNavigate={navigate}>
+              <PageComponent toast={toast} onNavigate={navigate} />
+            </PortalGate>
+          ) : (
+            <PageComponent toast={toast} onNavigate={navigate} />
+          )}
         </main>
       </div>
 

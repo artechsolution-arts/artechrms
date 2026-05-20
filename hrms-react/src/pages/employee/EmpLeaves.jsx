@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import Badge from '../../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
+import DatePicker from '../../components/DatePicker';
 import { Plus, Trash2 } from 'lucide-react';
 
 export default function EmpLeaves({ toast }) {
@@ -133,10 +134,10 @@ export default function EmpLeaves({ toast }) {
               </select>
             </Field>
             <Field label="From Date" required>
-              <input type="date" className="form-input" value={form.from_date || ''} onChange={e => f({ from_date: e.target.value })} />
+              <DatePicker value={form.from_date || ''} onChange={v => f({ from_date: v })} placeholder="Select from date" />
             </Field>
             <Field label="To Date" required>
-              <input type="date" className="form-input" value={form.to_date || ''} onChange={e => f({ to_date: e.target.value })} />
+              <DatePicker value={form.to_date || ''} onChange={v => f({ to_date: v })} placeholder="Select to date" min={form.from_date} />
             </Field>
             <Field label="Reason" full>
               <textarea className="form-textarea" rows={3} value={form.reason || ''} onChange={e => f({ reason: e.target.value })} placeholder="Brief reason for leave…" />

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
+import DatePicker from '../components/DatePicker';
 import { Plus, Receipt, CheckCircle, XCircle, Trash2, ChevronDown } from 'lucide-react';
 
 const STATUS_COLOR = {
@@ -27,7 +28,7 @@ export default function Expenses({ toast }) {
     try {
       const [exp, emps] = await Promise.all([
         api('GET', `/api/hrm/expenses${filterStatus ? `?status=${filterStatus}` : ''}`),
-        api('GET', '/api/employees'),
+        api('GET', '/api/employees?all=true'),
       ]);
       setRows(exp);
       setEmployees(emps);
@@ -178,7 +179,7 @@ export default function Expenses({ toast }) {
               <input type="number" min="0" step="0.01" className="form-input" value={form.amount || ''} onChange={e => f({ amount: e.target.value })} placeholder="0.00"/>
             </Field>
             <Field label="Date" required>
-              <input type="date" className="form-input" value={form.claim_date || ''} onChange={e => f({ claim_date: e.target.value })}/>
+              <DatePicker value={form.claim_date || ''} onChange={v => f({ claim_date: v })} placeholder="Select claim date" />
             </Field>
             <Field label="Description">
               <input className="form-input" value={form.description || ''} onChange={e => f({ description: e.target.value })} placeholder="Brief description"/>

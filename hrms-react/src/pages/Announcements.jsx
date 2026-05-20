@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
+import DatePicker from '../components/DatePicker';
 import { Plus, Megaphone, Trash2 } from 'lucide-react';
 
 const PRIORITY_COLOR = { High: 'bg-red-50 border-l-4 border-red-400', Medium: 'bg-amber-50 border-l-4 border-amber-400', Low: 'bg-blue-50 border-l-4 border-blue-300' };
@@ -88,7 +89,7 @@ export default function Announcements({ toast }) {
               </select>
             </Field>
             <Field label="Expires On (optional)">
-              <input type="date" className="form-input" value={form.expires_on||''} onChange={e => f({expires_on:e.target.value})}/>
+              <DatePicker value={form.expires_on || ''} onChange={v => f({ expires_on: v })} placeholder="Select expiry date" />
             </Field>
             <Field label="Posted By">
               <input className="form-input" value={form.created_by||''} onChange={e => f({created_by:e.target.value})} placeholder="e.g. HR Team"/>

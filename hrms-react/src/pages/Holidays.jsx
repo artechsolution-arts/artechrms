@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
+import DatePicker from '../components/DatePicker';
 import { Plus, CalendarDays, Trash2 } from 'lucide-react';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -95,7 +96,7 @@ export default function Holidays({ toast }) {
               <input className="form-input" value={form.name||''} onChange={e => f({name:e.target.value})} placeholder="e.g. Republic Day"/>
             </Field>
             <Field label="Date" required>
-              <input type="date" className="form-input" value={form.date||''} onChange={e => f({date:e.target.value})}/>
+              <DatePicker value={form.date || ''} onChange={v => f({ date: v })} placeholder="Select holiday date" />
             </Field>
             <Field label="Type">
               <select className="form-select" value={form.holiday_type||'Public'} onChange={e => f({holiday_type:e.target.value})}>

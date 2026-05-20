@@ -1,39 +1,79 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import Badge from '../../components/Badge';
-import { CalendarDays, Clock, TrendingUp } from 'lucide-react';
+import { CalendarDays, Clock, ClipboardList, Megaphone, Gift, CalendarCheck2, ChevronRight } from 'lucide-react';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const STATUS_COLOR = {
-  Present:  'bg-green-500',
-  Absent:   'bg-red-400',
+  Present:    'bg-green-500',
+  Absent:     'bg-red-400',
   'Half Day': 'bg-yellow-400',
   'On Leave': 'bg-blue-400',
-  WFH:      'bg-purple-400',
+  WFH:        'bg-purple-400',
 };
+
+const WM_COLOR = {
+  WFH:    'bg-purple-100 text-purple-700',
+  WFO:    'bg-blue-100 text-blue-700',
+  Hybrid: 'bg-teal-100 text-teal-700',
+  Leave:  'bg-amber-100 text-amber-700',
+};
+
+const PRIORITY_COLOR = {
+  High:   'bg-red-100 text-red-700 border-red-200',
+  Medium: 'bg-amber-100 text-amber-700 border-amber-200',
+  Low:    'bg-gray-100 text-gray-600 border-gray-200',
+};
+
+function SectionCard({ title, icon: Icon, action, onNavigate, children }) {
+  return (
+    <div className="card">
+      <div className="card-head">
+        <div className="flex items-center gap-2">
+          <Icon size={15} className="text-gray-400" />
+          <span className="card-title">{title}</span>
+        </div>
+        {action && (
+          <button onClick={() => onNavigate(action)} className="text-xs flex items-center gap-0.5 hover:underline" style={{ color: 'var(--accent)' }}>
+            View all <ChevronRight size={12} />
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function EmpDashboard({ toast, onNavigate }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [announcements, setAnnouncements] = useState([]);
+  const [holidays, setHolidays] = useState([]);
+  const [workMode, setWorkMode] = useState([]);
+
+  const curMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const curYear  = new Date().getFullYear();
 
   useEffect(() => {
-    api('GET', '/api/portal/dashboard')
-      .then(setData)
-      .catch(e => toast(e.message, 'error'))
-      .finally(() => setLoading(false));
+    const dashP = api('GET', '/api/portal/dashboard').then(setData).catch(e => toast(e.message, 'error'));
+    const annP  = api('GET', '/api/hrm/announcements?active_only=true').then(d => setAnnouncements(d.slice(0, 5))).catch(() => {});
+    const holP  = api('GET', `/api/hrm/holidays?year=${curYear}`).then(d => {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const upcoming = d.filter(h => new Date(h.date) >= today).slice(0, 5);
+      setHolidays(upcoming);
+    }).catch(() => {});
+    const wmP   = api('GET', `/api/portal/work-mode?month=${curMonth}`).then(d => setWorkMode(d.slice(0, 10))).catch(() => {});
+    Promise.all([dashP, annP, holP, wmP]).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">Loading…</div>;
   if (!data) return null;
 
   const { employee: emp, stats, recent_attendance } = data;
-  const attendanceRate = stats.attendance_this_month
-    ? Math.round(stats.present_this_month / stats.attendance_this_month * 100)
-    : 0;
 
   return (
-    <div className="flex-1 p-6 overflow-auto space-y-6">
+    <div className="flex-1 p-6 overflow-auto space-y-5">
       {/* Greeting banner */}
       <div className="bg-gradient-to-r from-[#1B3A6B] to-[#2E6BE6] rounded-2xl p-6 text-white flex items-center justify-between">
         <div>
@@ -49,13 +89,13 @@ export default function EmpDashboard({ toast, onNavigate }) {
         </div>
       </div>
 
-      {/* Stat cards */}
+      {/* Stat cards — replaced Attendance Rate with Status Sheet */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Pending Leaves',    value: stats.pending_leaves,    icon: CalendarDays, color: 'text-amber-500',  bg: 'bg-amber-50',  action: 'emp-leaves' },
-          { label: 'Approved Leaves',   value: stats.approved_leaves,   icon: CalendarDays, color: 'text-green-600', bg: 'bg-green-50',  action: null },
-          { label: 'Days Present',      value: stats.present_this_month, icon: Clock,        color: 'text-blue-600',  bg: 'bg-blue-50',   action: 'emp-attendance' },
-          { label: 'Attendance Rate',    value: `${attendanceRate}%`, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50', action: 'emp-attendance' },
+          { label: 'Pending Leaves',  value: stats.pending_leaves,     icon: CalendarDays,  color: 'text-amber-500',  bg: 'bg-amber-50',   action: 'emp-leaves' },
+          { label: 'Approved Leaves', value: stats.approved_leaves,    icon: CalendarDays,  color: 'text-green-600', bg: 'bg-green-50',   action: null },
+          { label: 'Days Present',    value: stats.present_this_month, icon: Clock,         color: 'text-blue-600',  bg: 'bg-blue-50',    action: 'emp-attendance' },
+          { label: 'Status Sheet',    value: '→',                      icon: ClipboardList, color: 'text-indigo-600',bg: 'bg-indigo-50',  action: 'emp-status' },
         ].map(({ label, value, icon: Icon, color, bg, action }) => (
           <button
             key={label}
@@ -71,12 +111,8 @@ export default function EmpDashboard({ toast, onNavigate }) {
         ))}
       </div>
 
-      {/* Recent attendance */}
-      <div className="card">
-        <div className="card-head">
-          <span className="card-title">Last 7 Days Attendance</span>
-          <button onClick={() => onNavigate('emp-attendance')} className="text-xs text-blue-600 hover:underline">View all</button>
-        </div>
+      {/* Last 7 days attendance */}
+      <SectionCard title="Last 7 Days Attendance" icon={Clock} action="emp-attendance" onNavigate={onNavigate}>
         {recent_attendance.length === 0 ? (
           <div className="p-6 text-center text-sm text-gray-400">No attendance records yet</div>
         ) : (
@@ -94,7 +130,74 @@ export default function EmpDashboard({ toast, onNavigate }) {
             ))}
           </div>
         )}
+      </SectionCard>
+
+      {/* Announcements + Holidays side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <SectionCard title="Announcements" icon={Megaphone} action="emp-announcements" onNavigate={onNavigate}>
+          {announcements.length === 0 ? (
+            <div className="p-5 text-center text-sm text-gray-400">No announcements</div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {announcements.map(a => (
+                <div key={a.id} className="px-5 py-3 flex items-start gap-3">
+                  <span className={`mt-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${PRIORITY_COLOR[a.priority] || PRIORITY_COLOR.Low}`}>
+                    {a.priority}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-tight">{a.title}</p>
+                    {a.content && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{a.content}</p>}
+                    <p className="text-[11px] text-gray-400 mt-1">{a.created_at?.slice(0,10)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Upcoming Holidays" icon={Gift} action="emp-holidays" onNavigate={onNavigate}>
+          {holidays.length === 0 ? (
+            <div className="p-5 text-center text-sm text-gray-400">No upcoming holidays this year</div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {holidays.map(h => (
+                <div key={h.id} className="px-5 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{h.name}</p>
+                    <p className="text-xs text-gray-400">{h.holiday_type}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-4">
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      {new Date(h.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                      {new Date(h.date).toLocaleDateString('en-IN', { weekday: 'short' })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
       </div>
+
+      {/* Work Mode Sheet */}
+      <SectionCard title="Work Mode — This Month" icon={CalendarCheck2} action="emp-work-mode" onNavigate={onNavigate}>
+        {workMode.length === 0 ? (
+          <div className="p-5 text-center text-sm text-gray-400">No work mode entries this month</div>
+        ) : (
+          <div className="p-4 flex flex-wrap gap-2">
+            {workMode.map(w => (
+              <div key={w.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800">
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${WM_COLOR[w.work_mode] || 'bg-gray-100 text-gray-600'}`}>{w.work_mode}</span>
+                <span className="text-xs text-gray-500">
+                  {new Date(w.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       {/* Latest salary slip */}
       {stats.latest_net_pay && (

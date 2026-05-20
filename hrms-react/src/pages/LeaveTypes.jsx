@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import Modal, { FormGrid, Field } from '../components/Modal';
 import { Plus, Trash2, Pencil, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
 export default function LeaveTypes({ toast }) {
   const [rows, setRows] = useState([]);
@@ -10,14 +11,15 @@ export default function LeaveTypes({ toast }) {
   const [form, setForm] = useState({});
   const f = v => setForm(prev => ({ ...prev, ...v }));
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try { setRows(await api('GET', '/api/leaves/types')); }
     catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
+  useRefreshOnFocus(load);
 
   const openAdd = () => {
     setForm({ is_paid: true, is_carry_forward: false, max_leaves: 12 });
@@ -74,9 +76,9 @@ export default function LeaveTypes({ toast }) {
               <thead>
                 <tr>
                   <th>Leave Type</th>
-                  <th>Max Days / Year</th>
+                  <th className="hidden sm:table-cell">Max Days / Year</th>
                   <th>Paid</th>
-                  <th>Carry Forward</th>
+                  <th className="hidden sm:table-cell">Carry Forward</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -84,7 +86,7 @@ export default function LeaveTypes({ toast }) {
                 {loading ? (
                   <tr><td colSpan={5} className="text-center py-10 text-gray-400">Loading...</td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={5}>
+                  <tr><td colSpan={3}>
                     <div className="empty-state">
                       <div className="empty-state-icon">📋</div>
                       <p className="text-sm text-gray-500">No leave types configured</p>
@@ -94,13 +96,13 @@ export default function LeaveTypes({ toast }) {
                 ) : rows.map(lt => (
                   <tr key={lt.id}>
                     <td className="font-semibold text-gray-900">{lt.name}</td>
-                    <td className="text-gray-600">{lt.max_leaves} days</td>
+                    <td className="hidden sm:table-cell text-gray-600">{lt.max_leaves} days</td>
                     <td>
                       {lt.is_paid
-                        ? <span className="inline-flex items-center gap-1 text-green-700 text-xs font-medium"><CheckCircle size={12} /> Paid</span>
-                        : <span className="inline-flex items-center gap-1 text-gray-400 text-xs font-medium"><XCircle size={12} /> Unpaid</span>}
+                        ? <span className="inline-flex items-center gap-1 text-green-700 text-xs font-medium"><CheckCircle size={12} /><span className="hidden sm:inline">Paid</span></span>
+                        : <span className="inline-flex items-center gap-1 text-gray-400 text-xs font-medium"><XCircle size={12} /><span className="hidden sm:inline">Unpaid</span></span>}
                     </td>
-                    <td>
+                    <td className="hidden sm:table-cell">
                       {lt.is_carry_forward
                         ? <span className="inline-flex items-center gap-1 text-blue-600 text-xs font-medium"><CheckCircle size={12} /> Yes</span>
                         : <span className="text-xs text-gray-400">No</span>}

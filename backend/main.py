@@ -17,6 +17,7 @@ from backend.routers import portal as portal_router
 from backend.routers import hrm as hrm_router
 from backend.routers import social as social_router
 from backend.routers import admin_panel as admin_router
+from backend.routers import notifications as notifications_router
 from backend.auth_utils import decode_token
 from backend.database import SessionLocal
 from backend.models.auth import User
@@ -138,6 +139,7 @@ app.include_router(ai.router)
 app.include_router(hrm_router.router)
 app.include_router(social_router.router)
 app.include_router(admin_router.router)
+app.include_router(notifications_router.router)
 
 # Serve uploaded profile photos
 UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")

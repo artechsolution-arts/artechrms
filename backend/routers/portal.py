@@ -5,7 +5,7 @@ from backend import storage
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, timedelta, datetime as _datetime
 from typing import Optional
 from backend.database import get_db
 from backend.models.employee import Employee
@@ -374,3 +374,192 @@ def create_doc_request(data: DocRequestIn, request: Request, db: Session = Depen
     db.commit()
     db.refresh(req)
     return {"id": req.id, "ok": True}
+
+
+# ── Daily Status Sheet ─────────────────────────────────────────
+
+from calendar import monthrange as _monthrange
+from backend.models.status_entry import StatusEntry
+
+
+def _status_dict(e: "StatusEntry", employee_name: str = "") -> dict:
+    return {
+        "id": e.id,
+        "task_id": e.task_id,
+        "entry_date": str(e.entry_date),
+        "task_name": e.task_name,
+        "due_date": str(e.due_date) if e.due_date else None,
+        "status": e.status,
+        "percent_complete": e.percent_complete or 0,
+        "employee_name": employee_name,
+    }
+
+
+class StatusEntryUpdate(BaseModel):
+    task_name: Optional[str] = None
+    due_date: Optional[date] = None
+    status: Optional[str] = None
+    percent_complete: Optional[int] = None
+
+
+@router.get("/status")
+def portal_get_status(month: str, request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    try:
+        year, mon = map(int, month.split("-"))
+    except Exception:
+        raise HTTPException(400, "Use YYYY-MM format")
+
+    today = date.today()
+    start = date(year, mon, 1)
+    end = date(year, mon, _monthrange(year, mon)[1])
+
+    existing = {
+        e.entry_date: e
+        for e in db.query(StatusEntry).filter(
+            StatusEntry.employee_id == emp.id,
+            StatusEntry.entry_date >= start,
+            StatusEntry.entry_date <= end,
+        ).all()
+    }
+
+    # Auto-generate empty weekday rows for the full month (Mon-Fri only)
+    is_past_or_current = (year < today.year) or (year == today.year and mon <= today.month)
+    if is_past_or_current:
+        limit_date = end
+        task_counter = db.query(StatusEntry).filter(StatusEntry.employee_id == emp.id).count()
+        d = start
+        while d <= min(limit_date, end):
+            if d.weekday() < 5 and d not in existing:
+                task_counter += 1
+                entry = StatusEntry(
+                    employee_id=emp.id,
+                    task_id=f"TSK{task_counter:03d}",
+                    entry_date=d,
+                    status="In Progress",
+                    percent_complete=0,
+                )
+                db.add(entry)
+                db.flush()
+                existing[d] = entry
+            d += timedelta(days=1)
+        db.commit()
+
+    entries = sorted(existing.values(), key=lambda e: e.entry_date)
+    return [_status_dict(e, emp.full_name) for e in entries]
+
+
+@router.put("/status/{entry_id}")
+def portal_update_status_entry(
+    entry_id: int, data: StatusEntryUpdate, request: Request, db: Session = Depends(get_db)
+):
+    emp = _get_employee(request, db)
+    entry = db.query(StatusEntry).filter(
+        StatusEntry.id == entry_id,
+        StatusEntry.employee_id == emp.id,
+    ).first()
+    if not entry:
+        raise HTTPException(404, "Entry not found")
+
+    today = date.today()
+    if entry.entry_date.year != today.year or entry.entry_date.month != today.month:
+        raise HTTPException(403, "Only current month entries can be edited")
+
+    if data.task_name is not None:
+        entry.task_name = data.task_name
+    if data.due_date is not None:
+        entry.due_date = data.due_date
+    if data.status is not None:
+        entry.status = data.status
+    if data.percent_complete is not None:
+        entry.percent_complete = max(0, min(100, data.percent_complete))
+
+    entry.updated_at = _datetime.utcnow()
+    db.commit()
+    db.refresh(entry)
+    return _status_dict(entry, emp.full_name)
+
+
+# ── Work Mode Sheet ────────────────────────────────────────────
+
+from backend.models.work_mode_entry import WorkModeEntry
+
+WORK_MODES = ["WFH", "PLANNED LEAVE", "SICK LEAVE", "CASUAL LEAVE", "HALF DAY LEAVE", "OTHER"]
+DURATIONS  = ["FULL-DAY", "HALF-DAY (Morning)", "HALF-DAY (Afternoon)"]
+
+
+def _wm_dict(e: "WorkModeEntry") -> dict:
+    return {
+        "id":         e.id,
+        "entry_date": str(e.entry_date),
+        "work_mode":  e.work_mode,
+        "reason":     e.reason,
+        "duration":   e.duration,
+        "status":     e.status,
+        "hr_remarks": e.hr_remarks,
+        "created_at": str(e.created_at)[:10],
+    }
+
+
+class WorkModeIn(BaseModel):
+    entry_date: date
+    work_mode:  str
+    reason:     Optional[str] = None
+    duration:   str = "FULL-DAY"
+
+
+@router.get("/work-mode")
+def portal_list_work_mode(month: str, request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    try:
+        year, mon = map(int, month.split("-"))
+    except Exception:
+        raise HTTPException(400, "Use YYYY-MM format")
+    from calendar import monthrange as _mr
+    start = date(year, mon, 1)
+    end   = date(year, mon, _mr(year, mon)[1])
+    rows = (
+        db.query(WorkModeEntry)
+        .filter(WorkModeEntry.employee_id == emp.id,
+                WorkModeEntry.entry_date >= start,
+                WorkModeEntry.entry_date <= end)
+        .order_by(WorkModeEntry.entry_date.asc())
+        .all()
+    )
+    return [_wm_dict(r) for r in rows]
+
+
+@router.post("/work-mode", status_code=201)
+def portal_create_work_mode(data: WorkModeIn, request: Request, db: Session = Depends(get_db)):
+    if data.work_mode not in WORK_MODES:
+        raise HTTPException(400, "Invalid work mode type")
+    if data.duration not in DURATIONS:
+        raise HTTPException(400, "Invalid duration")
+    emp = _get_employee(request, db)
+    entry = WorkModeEntry(
+        employee_id=emp.id,
+        entry_date=data.entry_date,
+        work_mode=data.work_mode,
+        reason=data.reason,
+        duration=data.duration,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return _wm_dict(entry)
+
+
+@router.delete("/work-mode/{entry_id}")
+def portal_delete_work_mode(entry_id: int, request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    entry = db.query(WorkModeEntry).filter(
+        WorkModeEntry.id == entry_id,
+        WorkModeEntry.employee_id == emp.id,
+    ).first()
+    if not entry:
+        raise HTTPException(404, "Entry not found")
+    if entry.status != "Pending":
+        raise HTTPException(400, "Only pending entries can be cancelled")
+    db.delete(entry)
+    db.commit()
+    return {"ok": True}

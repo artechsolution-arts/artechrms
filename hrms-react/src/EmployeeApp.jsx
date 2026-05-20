@@ -13,11 +13,12 @@ import EmpLeaves          from './pages/employee/EmpLeaves';
 import EmpAttendance      from './pages/employee/EmpAttendance';
 import EmpSalary          from './pages/employee/EmpSalary';
 import EmpAppraisals      from './pages/employee/EmpAppraisals';
-import EmpExpenses        from './pages/employee/EmpExpenses';
 import EmpAnnouncements   from './pages/employee/EmpAnnouncements';
 import EmpHolidays        from './pages/employee/EmpHolidays';
 import EmpAssets          from './pages/employee/EmpAssets';
 import EmpDocuments       from './pages/employee/EmpDocuments';
+import EmpStatus          from './pages/employee/EmpStatus';
+import EmpWorkMode        from './pages/employee/EmpWorkMode';
 
 const EMP_PAGES = {
   'emp-dashboard':      EmpDashboard,
@@ -26,11 +27,12 @@ const EMP_PAGES = {
   'emp-attendance':     EmpAttendance,
   'emp-salary':         EmpSalary,
   'emp-appraisals':     EmpAppraisals,
-  'emp-expenses':       EmpExpenses,
   'emp-assets':         EmpAssets,
   'emp-announcements':  EmpAnnouncements,
   'emp-holidays':       EmpHolidays,
   'emp-documents':      EmpDocuments,
+  'emp-status':         EmpStatus,
+  'emp-work-mode':      EmpWorkMode,
 };
 
 export default function EmployeeApp({ user, logout }) {

@@ -126,15 +126,70 @@ export default function Dashboard({ onNavigate, toast }) {
     }],
   };
 
-  const chartOpts = (axis = true) => ({
+  const hoverCursor = (event, elements) => {
+    if (event.native?.target) event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+  };
+
+  const baseOpts = (axis = true) => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+    onHover: hoverCursor,
     scales: axis ? {
       x: { grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, font: CHART_FONT } },
       y: { grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, font: CHART_FONT, stepSize: 1 }, beginAtZero: true },
     } : {},
   });
+
+  const hiresOpts = {
+    ...baseOpts(true),
+    onClick: (_, elements) => {
+      if (!elements.length) return;
+      const label = hiresChartData.labels[elements[0].index]; // e.g. "Jan 2026"
+      try {
+        const [mon, yr] = label.split(' ');
+        const monthIdx = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(mon);
+        if (monthIdx !== -1) {
+          const ym = `${yr}-${String(monthIdx + 1).padStart(2, '0')}`;
+          sessionStorage.setItem('nav-filter', JSON.stringify({ joinedMonth: ym, joinedLabel: label }));
+        }
+      } catch {}
+      onNavigate('employees');
+    },
+  };
+
+  const leavesOpts = {
+    ...baseOpts(false),
+    cutout: '60%',
+    onClick: (_, elements) => {
+      if (!elements.length) return;
+      const status = ['Pending', 'Approved', 'Rejected'][elements[0].index];
+      sessionStorage.setItem('nav-filter', JSON.stringify({ leaveStatus: status }));
+      onNavigate('leaves');
+    },
+    plugins: {
+      legend: { position: 'bottom', labels: { font: CHART_FONT, color: TICK_COLOR, padding: 16, boxWidth: 12 } },
+      tooltip: { mode: 'index' },
+    },
+  };
+
+  const deptsOpts = {
+    ...baseOpts(true),
+    onClick: (_, elements) => {
+      if (!elements.length) return;
+      const deptName = deptsChartData.labels[elements[0].index];
+      sessionStorage.setItem('nav-filter', JSON.stringify({ deptName }));
+      onNavigate('employees');
+    },
+  };
+
+  const attOpts = {
+    ...baseOpts(true),
+    onClick: (_, elements) => {
+      if (!elements.length) return;
+      onNavigate('attendance');
+    },
+  };
 
   const insightColors = { warning: 'bg-amber-50 border-amber-200 text-amber-800', info: 'bg-blue-50 border-blue-200 text-blue-800', success: 'bg-green-50 border-green-200 text-green-800' };
 
@@ -185,7 +240,7 @@ export default function Dashboard({ onNavigate, toast }) {
           </div>
         </div>
         <div className="p-4" style={{ height: 220 }}>
-          {hasHires ? <Line data={hiresChartData} options={chartOpts()} /> : <NoData />}
+          {hasHires ? <Line data={hiresChartData} options={hiresOpts} /> : <NoData />}
         </div>
       </div>
 
@@ -196,9 +251,7 @@ export default function Dashboard({ onNavigate, toast }) {
             <div className="card-title">Leave Status</div>
           </div>
           <div className="p-4" style={{ height: 220 }}>
-            {hasLeaves
-              ? <Doughnut data={leavesChartData} options={{ ...chartOpts(false), cutout: '60%', plugins: { legend: { position: 'bottom', labels: { font: CHART_FONT, color: TICK_COLOR, padding: 16, boxWidth: 12 } }, tooltip: { mode: 'index' } } }} />
-              : <NoData />}
+            {hasLeaves ? <Doughnut data={leavesChartData} options={leavesOpts} /> : <NoData />}
           </div>
         </div>
         <div className="card">
@@ -206,7 +259,7 @@ export default function Dashboard({ onNavigate, toast }) {
             <div className="card-title">Department Breakdown</div>
           </div>
           <div className="p-4" style={{ height: 220 }}>
-            {hasDepts ? <Bar data={deptsChartData} options={chartOpts()} /> : <NoData />}
+            {hasDepts ? <Bar data={deptsChartData} options={deptsOpts} /> : <NoData />}
           </div>
         </div>
       </div>
@@ -217,7 +270,7 @@ export default function Dashboard({ onNavigate, toast }) {
           <div className="card-title">Attendance This Month</div>
         </div>
         <div className="p-4" style={{ height: 220 }}>
-          {hasAtt ? <Bar data={attChartData} options={chartOpts()} /> : <NoData />}
+          {hasAtt ? <Bar data={attChartData} options={attOpts} /> : <NoData />}
         </div>
       </div>
 

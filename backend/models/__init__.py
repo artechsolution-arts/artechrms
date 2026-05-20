@@ -7,6 +7,8 @@ from .recruitment import JobOpening, JobApplicant
 from .appraisal import Appraisal
 from .auth import User
 from .document_request import DocumentRequest  # noqa: F401
+from .status_entry import StatusEntry  # noqa: F401
+from .work_mode_entry import WorkModeEntry  # noqa: F401
 from .hrm import (  # noqa: F401
     EmergencyContact,
     EmployeeDocument,

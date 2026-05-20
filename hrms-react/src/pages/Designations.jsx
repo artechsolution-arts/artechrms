@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import Modal, { Field } from '../components/Modal';
 import { Plus, Trash2, Pencil, Award } from 'lucide-react';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
 export default function Designations({ toast }) {
   const [rows, setRows] = useState([]);
@@ -9,14 +10,15 @@ export default function Designations({ toast }) {
   const [modal, setModal] = useState(null); // null | { mode: 'add' } | { mode: 'edit', id }
   const [form, setForm] = useState({});
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try { setRows(await api('GET', '/api/employees/designations')); }
     catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
+  useRefreshOnFocus(load);
 
   const openAdd = () => { setForm({}); setModal({ mode: 'add' }); };
   const openEdit = d => { setForm({ name: d.name, description: d.description || '' }); setModal({ mode: 'edit', id: d.id }); };
@@ -55,7 +57,7 @@ export default function Designations({ toast }) {
           <div className="table-wrap">
             <table className="data-table">
               <thead>
-                <tr><th>Designation</th><th>Description</th><th>Actions</th></tr>
+                <tr><th>Designation</th><th className="hidden sm:table-cell">Description</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {loading ? (
@@ -70,7 +72,7 @@ export default function Designations({ toast }) {
                 ) : rows.map(d => (
                   <tr key={d.id}>
                     <td className="font-semibold text-gray-900">{d.name}</td>
-                    <td className="text-gray-500">{d.description || '—'}</td>
+                    <td className="hidden sm:table-cell text-gray-500">{d.description || '—'}</td>
                     <td>
                       <div className="flex items-center gap-1">
                         <button onClick={() => openEdit(d)} className="btn btn-secondary btn-xs gap-1">

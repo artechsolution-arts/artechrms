@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Users, Building2, CalendarDays, Clock,
-  DollarSign, FileText, Settings, Briefcase, UserCheck,
+  DollarSign, FileText, Briefcase, UserCheck,
   Star, X, Award, ListChecks, LogOut, Megaphone, Gift,
-  Monitor, BookOpen, FileDown
+  Monitor, BookOpen, FileDown, UserCircle, Receipt, Wallet, ClipboardList, CalendarCheck2,
+  ChevronDown, ChevronRight
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -21,6 +22,7 @@ const NAV = [
   { key: 'departments',        label: 'Departments',        icon: Building2,       section: 'HR' },
   { key: 'designations',       label: 'Designations',       icon: Award,           section: 'HR' },
   { key: 'leaves',             label: 'Leave Applications', icon: CalendarDays,    section: 'HR' },
+  { key: 'work-mode-sheet',    label: 'Work Mode Sheet',    icon: CalendarCheck2,  section: 'HR' },
   { key: 'leave-types',        label: 'Leave Types',        icon: ListChecks,      section: 'HR' },
   { key: 'leave-balances',     label: 'Leave Balances',     icon: BookOpen,        section: 'HR' },
   { key: 'attendance',         label: 'Attendance',         icon: Clock,           section: 'HR' },
@@ -29,17 +31,66 @@ const NAV = [
   { key: 'assets',             label: 'Asset Management',   icon: Monitor,         section: 'HR' },
   { key: 'salary-slips',       label: 'Salary Slips',       icon: DollarSign,      section: 'Payroll' },
   { key: 'payroll-entry',      label: 'Payroll Entry',      icon: FileText,        section: 'Payroll' },
-  { key: 'salary-components',  label: 'Salary Components',  icon: Settings,        section: 'Payroll' },
   { key: 'job-openings',       label: 'Job Openings',       icon: Briefcase,       section: 'Recruitment' },
   { key: 'applicants',         label: 'Applicants',         icon: UserCheck,       section: 'Recruitment' },
   { key: 'appraisals',         label: 'Appraisals',         icon: Star,            section: 'Appraisals' },
-  { key: 'document-requests', label: 'Document Requests',  icon: FileDown,        section: 'Documents' },
+  { key: 'document-requests',  label: 'Document Requests',  icon: FileDown,        section: 'Documents' },
+  { key: 'status-sheets',      label: 'Status Sheets',      icon: ClipboardList,   section: 'Documents' },
+  { key: 'my-profile',         label: 'My Profile',         icon: UserCircle,      section: 'My Portal' },
+  { key: 'my-leaves',          label: 'My Leaves',          icon: CalendarDays,    section: 'My Portal' },
+  { key: 'my-salary',          label: 'My Salary Slips',    icon: Wallet,          section: 'My Portal' },
+  { key: 'my-attendance',      label: 'My Attendance',      icon: Clock,           section: 'My Portal' },
+  { key: 'my-documents',       label: 'My Documents',       icon: Receipt,         section: 'My Portal' },
+  { key: 'my-status',          label: 'Status Sheet',       icon: ClipboardList,   section: 'My Portal' },
+  { key: 'my-work-mode',       label: 'Work Mode',          icon: CalendarCheck2,  section: 'My Portal' },
 ];
+
+const ALL_SECTIONS = ['HR', 'Payroll', 'Recruitment', 'Appraisals', 'Documents', 'My Portal'];
+
+function loadCollapsed() {
+  try {
+    const raw = localStorage.getItem('sidebar-collapsed');
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
 
 export { NAV };
 
 export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout }) {
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [collapsed, setCollapsed] = useState(loadCollapsed);
+
+  // Auto-expand section containing active page
+  useEffect(() => {
+    const activeItem = NAV.find(n => n.key === current);
+    if (activeItem?.section && collapsed[activeItem.section]) {
+      const next = { ...collapsed };
+      delete next[activeItem.section];
+      setCollapsed(next);
+      localStorage.setItem('sidebar-collapsed', JSON.stringify(next));
+    }
+  }, [current]);
+
+  const toggleSection = (section) => {
+    const next = { ...collapsed, [section]: !collapsed[section] };
+    if (!next[section]) delete next[section];
+    setCollapsed(next);
+    localStorage.setItem('sidebar-collapsed', JSON.stringify(next));
+  };
+
+  // Build sections map
+  const sections = {};
+  NAV.forEach(item => {
+    if (!item.section) return;
+    if (!sections[item.section]) sections[item.section] = [];
+    sections[item.section].push(item);
+  });
+
+  const dashboardItem = NAV.find(n => n.key === 'dashboard');
+
+  const initials = user?.full_name
+    ? user.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : 'U';
 
   const grouped = [];
   let lastSection = null;
@@ -50,11 +101,6 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
     }
     grouped.push({ type: 'item', ...item });
   });
-
-  const initials = user?.full_name
-    ? user.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
-    : 'U';
-
   const drawerItems = [...grouped, { type: 'sep', label: 'Account' }, { type: 'item', key: '__logout__', label: 'Sign Out', icon: LogOut }];
 
   const handleMobileNav = key => {
@@ -62,9 +108,30 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
     onNavigate(key);
   };
 
+  const NavButton = ({ item }) => (
+    <button
+      key={item.key}
+      onClick={() => { onNavigate(item.key); if (window.innerWidth < 1024) onClose(); }}
+      className={`
+        w-full flex items-center gap-2.5 px-4 py-2 text-sm rounded-none transition-all duration-100 text-left
+        ${current === item.key
+          ? 'font-semibold border-r-2'
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white font-medium'}
+      `}
+      style={current === item.key ? {
+        backgroundColor: 'var(--accent-50)',
+        color: 'var(--accent)',
+        borderRightColor: 'var(--accent)',
+      } : {}}
+    >
+      <item.icon size={15} className="flex-shrink-0" />
+      <span className="truncate">{item.label}</span>
+    </button>
+  );
+
   return (
     <>
-      {/* Desktop sidebar only */}
+      {/* Desktop sidebar */}
       <aside className="sidebar-desktop flex-col fixed inset-y-0 left-0 z-40 w-[220px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-shrink-0">
         {/* App header */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 dark:border-gray-800">
@@ -80,32 +147,43 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-2">
-          {grouped.map((item, i) =>
-            item.type === 'sep' ? (
-              <div key={i} className="px-4 pt-4 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                {item.label}
+          {/* Dashboard (no section) */}
+          <NavButton item={dashboardItem} />
+
+          {ALL_SECTIONS.map(section => {
+            const items = sections[section] || [];
+            const isCollapsed = !!collapsed[section];
+            const hasActive = items.some(i => i.key === current);
+            const ChevronIcon = isCollapsed ? ChevronRight : ChevronDown;
+
+            return (
+              <div key={section}>
+                <button
+                  onClick={() => toggleSection(section)}
+                  className="w-full flex items-center justify-between px-4 pt-4 pb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600 dark:hover:text-gray-300 transition-colors group"
+                >
+                  <span>{section}</span>
+                  <ChevronIcon
+                    size={11}
+                    className={`transition-transform ${hasActive && isCollapsed ? 'text-[var(--accent)]' : ''}`}
+                  />
+                </button>
+
+                {!isCollapsed && (
+                  <div>
+                    {items.map(item => <NavButton key={item.key} item={item} />)}
+                  </div>
+                )}
+
+                {/* Show active item indicator even when collapsed */}
+                {isCollapsed && hasActive && (
+                  <div className="mx-3 mb-1 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2" style={{ backgroundColor: 'var(--accent-50)', color: 'var(--accent)' }}>
+                    {(() => { const a = items.find(i => i.key === current); return a ? <><a.icon size={13} /><span className="truncate">{a.label}</span></> : null; })()}
+                  </div>
+                )}
               </div>
-            ) : (
-              <button
-                key={item.key}
-                onClick={() => { onNavigate(item.key); if (window.innerWidth < 1024) onClose(); }}
-                className={`
-                  w-full flex items-center gap-2.5 px-4 py-2 text-sm rounded-none transition-all duration-100 text-left
-                  ${current === item.key
-                    ? 'font-semibold border-r-2'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white font-medium'}
-                `}
-                style={current === item.key ? {
-                  backgroundColor: 'var(--accent-50)',
-                  color: 'var(--accent)',
-                  borderRightColor: 'var(--accent)',
-                } : {}}
-              >
-                <item.icon size={15} className="flex-shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </button>
-            )
-          )}
+            );
+          })}
         </nav>
 
         {/* User footer */}

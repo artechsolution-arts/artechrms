@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
+import DatePicker from '../components/DatePicker';
 import { Plus, RefreshCw, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
 export default function Leaves({ toast }) {
   const [rows, setRows] = useState([]);
@@ -13,7 +15,7 @@ export default function Leaves({ toast }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({});
 
-  const load = async (st = statusFilter) => {
+  const load = useCallback(async (st = statusFilter) => {
     setLoading(true);
     try {
       let url = '/api/leaves?';
@@ -21,13 +23,23 @@ export default function Leaves({ toast }) {
       setRows(await api('GET', url));
     } catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
-    Promise.all([api('GET', '/api/leaves/types'), api('GET', '/api/employees')])
-      .then(([t, e]) => { setTypes(t); setEmps(e); load(); })
+    let initStatus = '';
+    try {
+      const pending = sessionStorage.getItem('nav-filter');
+      if (pending) {
+        sessionStorage.removeItem('nav-filter');
+        const f = JSON.parse(pending);
+        if (f.leaveStatus) { initStatus = f.leaveStatus; setStatusFilter(f.leaveStatus); }
+      }
+    } catch {}
+    Promise.all([api('GET', '/api/leaves/types'), api('GET', '/api/employees?all=true')])
+      .then(([t, e]) => { setTypes(t); setEmps(e); load(initStatus || statusFilter); })
       .catch(e => toast(e.message, 'error'));
   }, []);
+  useRefreshOnFocus(load);
 
   const f = v => setForm(prev => ({ ...prev, ...v }));
 
@@ -148,10 +160,10 @@ export default function Leaves({ toast }) {
               </select>
             </Field>
             <Field label="From Date" required>
-              <input type="date" className="form-input" value={form.from_date || ''} onChange={e => f({ from_date: e.target.value })} />
+              <DatePicker value={form.from_date || ''} onChange={v => f({ from_date: v })} placeholder="Select from date" />
             </Field>
             <Field label="To Date" required>
-              <input type="date" className="form-input" value={form.to_date || ''} onChange={e => f({ to_date: e.target.value })} />
+              <DatePicker value={form.to_date || ''} onChange={v => f({ to_date: v })} placeholder="Select to date" min={form.from_date} />
             </Field>
             <Field label="Reason" full>
               <textarea className="form-textarea" rows={3} value={form.reason || ''} onChange={e => f({ reason: e.target.value })} placeholder="Reason for leave..." />
