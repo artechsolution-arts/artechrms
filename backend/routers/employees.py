@@ -71,6 +71,16 @@ def create_department(data: DeptIn, db: Session = Depends(get_db)):
     return dept
 
 
+@router.put("/departments/{dept_id}")
+def update_department(dept_id: int, data: DeptIn, db: Session = Depends(get_db)):
+    dept = db.query(Department).filter(Department.id == dept_id).first()
+    if not dept:
+        raise HTTPException(404, "Department not found")
+    dept.name = data.name
+    db.commit()
+    return {"ok": True}
+
+
 @router.delete("/departments/{dept_id}")
 def delete_department(dept_id: int, db: Session = Depends(get_db)):
     dept = db.query(Department).filter(Department.id == dept_id).first()
@@ -94,6 +104,17 @@ def create_designation(data: DesigIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(desig)
     return desig
+
+
+@router.put("/designations/{desig_id}")
+def update_designation(desig_id: int, data: DesigIn, db: Session = Depends(get_db)):
+    desig = db.query(Designation).filter(Designation.id == desig_id).first()
+    if not desig:
+        raise HTTPException(404, "Designation not found")
+    desig.name = data.name
+    desig.description = data.description
+    db.commit()
+    return {"ok": True}
 
 
 @router.delete("/designations/{desig_id}")

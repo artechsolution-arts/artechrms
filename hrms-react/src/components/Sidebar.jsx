@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Building2, CalendarDays, Clock,
   DollarSign, FileText, Settings, Briefcase, UserCheck,
   Star, X, Award, ListChecks, LogOut, Megaphone, Gift,
-  Receipt, Monitor, BookOpen, FileDown
+  Monitor, BookOpen, FileDown
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -26,11 +26,10 @@ const NAV = [
   { key: 'attendance',         label: 'Attendance',         icon: Clock,           section: 'HR' },
   { key: 'holidays',           label: 'Holidays',           icon: Gift,            section: 'HR' },
   { key: 'announcements',      label: 'Announcements',      icon: Megaphone,       section: 'HR' },
+  { key: 'assets',             label: 'Asset Management',   icon: Monitor,         section: 'HR' },
   { key: 'salary-slips',       label: 'Salary Slips',       icon: DollarSign,      section: 'Payroll' },
   { key: 'payroll-entry',      label: 'Payroll Entry',      icon: FileText,        section: 'Payroll' },
   { key: 'salary-components',  label: 'Salary Components',  icon: Settings,        section: 'Payroll' },
-  { key: 'expenses',           label: 'Expense Claims',     icon: Receipt,         section: 'Finance' },
-  { key: 'assets',             label: 'Assets',             icon: Monitor,         section: 'Finance' },
   { key: 'job-openings',       label: 'Job Openings',       icon: Briefcase,       section: 'Recruitment' },
   { key: 'applicants',         label: 'Applicants',         icon: UserCheck,       section: 'Recruitment' },
   { key: 'appraisals',         label: 'Appraisals',         icon: Star,            section: 'Appraisals' },

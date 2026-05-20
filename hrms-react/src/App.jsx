@@ -23,7 +23,6 @@ import Announcements from './pages/Announcements';
 import SalarySlips from './pages/SalarySlips';
 import PayrollEntry from './pages/PayrollEntry';
 import SalaryComponents from './pages/SalaryComponents';
-import Expenses from './pages/Expenses';
 import Assets from './pages/Assets';
 import JobOpenings from './pages/JobOpenings';
 import Applicants from './pages/Applicants';
@@ -44,7 +43,6 @@ const PAGES = {
   'salary-slips':       SalarySlips,
   'payroll-entry':      PayrollEntry,
   'salary-components':  SalaryComponents,
-  'expenses':           Expenses,
   'assets':             Assets,
   'job-openings':       JobOpenings,
   'applicants':         Applicants,

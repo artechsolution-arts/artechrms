@@ -48,6 +48,17 @@ def create_leave_type(data: LeaveTypeIn, db: Session = Depends(get_db)):
     return lt
 
 
+@router.put("/types/{type_id}")
+def update_leave_type(type_id: int, data: LeaveTypeIn, db: Session = Depends(get_db)):
+    lt = db.query(LeaveType).filter(LeaveType.id == type_id).first()
+    if not lt:
+        raise HTTPException(404, "Leave type not found")
+    for k, v in data.model_dump().items():
+        setattr(lt, k, v)
+    db.commit()
+    return {"ok": True}
+
+
 @router.delete("/types/{type_id}")
 def delete_leave_type(type_id: int, db: Session = Depends(get_db)):
     lt = db.query(LeaveType).filter(LeaveType.id == type_id).first()

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Modal, { Field } from '../components/Modal';
-import { Plus, Trash2, Building2 } from 'lucide-react';
+import { Plus, Trash2, Pencil, Building2 } from 'lucide-react';
 
 export default function Departments({ toast }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(false);
+  const [modal, setModal] = useState(null); // null | { mode: 'add' } | { mode: 'edit', id, name }
   const [name, setName] = useState('');
 
   const load = async () => {
@@ -18,11 +18,20 @@ export default function Departments({ toast }) {
 
   useEffect(() => { load(); }, []);
 
+  const openAdd = () => { setName(''); setModal({ mode: 'add' }); };
+  const openEdit = d => { setName(d.name); setModal({ mode: 'edit', id: d.id }); };
+
   const save = async () => {
     if (!name.trim()) return toast('Department name is required', 'warning');
     try {
-      await api('POST', '/api/employees/departments', { name: name.trim() });
-      toast('Department added', 'success'); setModal(false); setName(''); load();
+      if (modal.mode === 'add') {
+        await api('POST', '/api/employees/departments', { name: name.trim() });
+        toast('Department added', 'success');
+      } else {
+        await api('PUT', `/api/employees/departments/${modal.id}`, { name: name.trim() });
+        toast('Department updated', 'success');
+      }
+      setModal(null); setName(''); load();
     } catch (e) { toast(e.message, 'error'); }
   };
 
@@ -36,7 +45,7 @@ export default function Departments({ toast }) {
     <>
       <div className="page-head">
         <h1 className="page-title">Departments</h1>
-        <button onClick={() => { setName(''); setModal(true); }} className="btn btn-primary btn-sm gap-1.5">
+        <button onClick={openAdd} className="btn btn-primary btn-sm gap-1.5">
           <Plus size={13} /> New Department
         </button>
       </div>
@@ -60,9 +69,14 @@ export default function Departments({ toast }) {
                   <tr key={d.id}>
                     <td className="font-semibold text-gray-900">{d.name}</td>
                     <td>
-                      <button onClick={() => del(d.id, d.name)} className="btn btn-danger btn-xs gap-1">
-                        <Trash2 size={11} /> Delete
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEdit(d)} className="btn btn-secondary btn-xs gap-1">
+                          <Pencil size={11} /> Edit
+                        </button>
+                        <button onClick={() => del(d.id, d.name)} className="btn btn-danger btn-xs gap-1">
+                          <Trash2 size={11} /> Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -72,7 +86,13 @@ export default function Departments({ toast }) {
         </div>
       </div>
 
-      <Modal open={modal} title="New Department" onClose={() => setModal(false)} onSave={save}>
+      <Modal
+        open={!!modal}
+        title={modal?.mode === 'edit' ? 'Edit Department' : 'New Department'}
+        onClose={() => setModal(null)}
+        onSave={save}
+        saveLabel={modal?.mode === 'edit' ? 'Save Changes' : 'Add Department'}
+      >
         <Field label="Department Name" required>
           <input
             className="form-input" value={name}

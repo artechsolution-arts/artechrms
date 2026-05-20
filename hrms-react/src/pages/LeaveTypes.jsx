@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Modal, { FormGrid, Field } from '../components/Modal';
-import { Plus, Trash2, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Trash2, Pencil, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 
 export default function LeaveTypes({ toast }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(false);
+  const [modal, setModal] = useState(null); // null | { mode: 'add' } | { mode: 'edit', id }
   const [form, setForm] = useState({});
   const f = v => setForm(prev => ({ ...prev, ...v }));
 
@@ -19,28 +19,40 @@ export default function LeaveTypes({ toast }) {
 
   useEffect(() => { load(); }, []);
 
+  const openAdd = () => {
+    setForm({ is_paid: true, is_carry_forward: false, max_leaves: 12 });
+    setModal({ mode: 'add' });
+  };
+
+  const openEdit = lt => {
+    setForm({ name: lt.name, max_leaves: lt.max_leaves, is_paid: lt.is_paid, is_carry_forward: lt.is_carry_forward });
+    setModal({ mode: 'edit', id: lt.id });
+  };
+
   const save = async () => {
     if (!form.name?.trim()) return toast('Leave type name is required', 'warning');
+    const payload = {
+      name: form.name,
+      max_leaves: parseFloat(form.max_leaves) || 0,
+      is_carry_forward: form.is_carry_forward === true,
+      is_paid: form.is_paid !== false,
+    };
     try {
-      await api('POST', '/api/leaves/types', {
-        name: form.name,
-        max_leaves: parseFloat(form.max_leaves) || 0,
-        is_carry_forward: form.is_carry_forward === true,
-        is_paid: form.is_paid !== false,
-      });
-      toast('Leave type created', 'success');
-      setModal(false);
-      load();
+      if (modal.mode === 'add') {
+        await api('POST', '/api/leaves/types', payload);
+        toast('Leave type created', 'success');
+      } else {
+        await api('PUT', `/api/leaves/types/${modal.id}`, payload);
+        toast('Leave type updated', 'success');
+      }
+      setModal(null); load();
     } catch (e) { toast(e.message, 'error'); }
   };
 
   const del = async (id, name) => {
     if (!confirm(`Delete leave type "${name}"?`)) return;
-    try {
-      await api('DELETE', `/api/leaves/types/${id}`);
-      toast('Deleted', 'success');
-      load();
-    } catch (e) { toast(e.message, 'error'); }
+    try { await api('DELETE', `/api/leaves/types/${id}`); toast('Deleted', 'success'); load(); }
+    catch (e) { toast(e.message, 'error'); }
   };
 
   return (
@@ -49,10 +61,7 @@ export default function LeaveTypes({ toast }) {
         <h1 className="page-title">Leave Types</h1>
         <div className="flex items-center gap-2">
           <button onClick={load} className="btn btn-secondary btn-sm gap-1.5"><RefreshCw size={13} /> Refresh</button>
-          <button
-            onClick={() => { setForm({ is_paid: true, is_carry_forward: false, max_leaves: 12 }); setModal(true); }}
-            className="btn btn-primary btn-sm gap-1.5"
-          >
+          <button onClick={openAdd} className="btn btn-primary btn-sm gap-1.5">
             <Plus size={13} /> New Leave Type
           </button>
         </div>
@@ -65,7 +74,7 @@ export default function LeaveTypes({ toast }) {
               <thead>
                 <tr>
                   <th>Leave Type</th>
-                  <th>Max Leaves / Year</th>
+                  <th>Max Days / Year</th>
                   <th>Paid</th>
                   <th>Carry Forward</th>
                   <th>Actions</th>
@@ -97,9 +106,14 @@ export default function LeaveTypes({ toast }) {
                         : <span className="text-xs text-gray-400">No</span>}
                     </td>
                     <td>
-                      <button onClick={() => del(lt.id, lt.name)} className="btn btn-danger btn-xs gap-1">
-                        <Trash2 size={11} /> Delete
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEdit(lt)} className="btn btn-secondary btn-xs gap-1">
+                          <Pencil size={11} /> Edit
+                        </button>
+                        <button onClick={() => del(lt.id, lt.name)} className="btn btn-danger btn-xs gap-1">
+                          <Trash2 size={11} /> Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -109,7 +123,13 @@ export default function LeaveTypes({ toast }) {
         </div>
       </div>
 
-      <Modal open={modal} title="New Leave Type" onClose={() => setModal(false)} onSave={save} saveLabel="Create">
+      <Modal
+        open={!!modal}
+        title={modal?.mode === 'edit' ? 'Edit Leave Type' : 'New Leave Type'}
+        onClose={() => setModal(null)}
+        onSave={save}
+        saveLabel={modal?.mode === 'edit' ? 'Save Changes' : 'Create'}
+      >
         <FormGrid>
           <Field label="Leave Type Name" required full>
             <input
@@ -120,7 +140,7 @@ export default function LeaveTypes({ toast }) {
               autoFocus
             />
           </Field>
-          <Field label="Max Leaves Per Year">
+          <Field label="Max Days Per Year">
             <input
               type="number"
               min={0}

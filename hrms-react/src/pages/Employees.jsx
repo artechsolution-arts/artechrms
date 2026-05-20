@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
-import { Plus, RefreshCw, Search, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, RefreshCw, Search, Pencil, Trash2, Eye, EyeOff, Monitor, Undo2, ChevronDown, ChevronUp } from 'lucide-react';
 
 function Avatar({ name }) {
   return (
@@ -13,6 +13,7 @@ function Avatar({ name }) {
 }
 
 const PT_STATES = ['Karnataka', 'Maharashtra', 'Tamil Nadu', 'Andhra Pradesh', 'Telangana', 'Other'];
+const ASSET_TYPES = ['Laptop', 'Desktop', 'Mobile', 'Tablet', 'Mouse & Keyboard', 'Monitor', 'Headset', 'Access Card', 'Sim Card', 'Bag', 'Chair', 'Other'];
 
 function calcLivePayroll(form) {
   const basic = parseFloat(form.basic_salary) || 0;
@@ -59,6 +60,9 @@ export default function Employees({ toast }) {
   const [form, setForm] = useState({});
   const [showPwd, setShowPwd] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [empAssets, setEmpAssets] = useState([]);
+  const [showAssetForm, setShowAssetForm] = useState(false);
+  const [assetForm, setAssetForm] = useState({ asset_name: '', asset_type: '', serial_number: '', condition: 'Good', allocated_date: new Date().toISOString().slice(0, 10), notes: '' });
 
   const load = async (s = search, d = deptFilter, st = statusFilter) => {
     setLoading(true);
@@ -92,14 +96,17 @@ export default function Employees({ toast }) {
       pt_state: 'Karnataka',
       ec_name: '', ec_relationship: '', ec_phone: '', ec_id: null,
     });
+    setEmpAssets([]);
+    setShowAssetForm(false);
     setModal({ mode: 'add' });
   };
 
   const openEdit = async (id) => {
     try {
-      const [e, contacts] = await Promise.all([
+      const [e, contacts, assets] = await Promise.all([
         api('GET', `/api/employees/${id}`),
         api('GET', `/api/hrm/employees/${id}/emergency-contacts`).catch(() => []),
+        api('GET', `/api/hrm/assets?employee_id=${id}`).catch(() => []),
       ]);
       const primary = contacts[0] || {};
       setForm({
@@ -109,7 +116,31 @@ export default function Employees({ toast }) {
         ec_phone: primary.phone || '',
         ec_id: primary.id || null,
       });
+      setEmpAssets(assets);
+      setShowAssetForm(false);
+      setAssetForm({ asset_name: '', asset_type: '', serial_number: '', condition: 'Good', allocated_date: new Date().toISOString().slice(0, 10), notes: '' });
       setModal({ mode: 'edit', id });
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const allocateAsset = async () => {
+    if (!assetForm.asset_name.trim() || !assetForm.asset_type) return toast('Asset name and type are required', 'warning');
+    try {
+      await api('POST', '/api/hrm/assets', { ...assetForm, employee_id: modal.id });
+      toast('Asset allocated', 'success');
+      const updated = await api('GET', `/api/hrm/assets?employee_id=${modal.id}`);
+      setEmpAssets(updated);
+      setAssetForm({ asset_name: '', asset_type: '', serial_number: '', condition: 'Good', allocated_date: new Date().toISOString().slice(0, 10), notes: '' });
+      setShowAssetForm(false);
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const returnAsset = async (assetId) => {
+    try {
+      await api('PUT', `/api/hrm/assets/${assetId}/return`, { condition: 'Good', returned_date: new Date().toISOString().slice(0, 10) });
+      toast('Asset returned', 'success');
+      const updated = await api('GET', `/api/hrm/assets?employee_id=${modal.id}`);
+      setEmpAssets(updated);
     } catch (e) { toast(e.message, 'error'); }
   };
 
@@ -555,6 +586,96 @@ export default function Employees({ toast }) {
             </Field>
           </FormGrid>
         </FormSection>
+
+        {modal?.mode === 'edit' && (
+          <FormSection title="Allocated Assets">
+            {empAssets.length === 0 ? (
+              <div className="flex items-center gap-2 py-3 px-1 text-sm text-gray-400">
+                <Monitor size={16} className="text-gray-300" />
+                No assets allocated yet
+              </div>
+            ) : (
+              <div className="rounded-lg border border-gray-200 overflow-hidden mb-3">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                      <th className="px-3 py-2 text-left">Asset</th>
+                      <th className="px-3 py-2 text-left">Type</th>
+                      <th className="px-3 py-2 text-left">Serial</th>
+                      <th className="px-3 py-2 text-left">Given On</th>
+                      <th className="px-3 py-2 text-left">Status</th>
+                      <th className="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {empAssets.map(a => (
+                      <tr key={a.id} className="border-t border-gray-100">
+                        <td className="px-3 py-2 font-medium text-gray-800">{a.asset_name}</td>
+                        <td className="px-3 py-2 text-gray-500">{a.asset_type}</td>
+                        <td className="px-3 py-2 text-gray-400 font-mono text-xs">{a.serial_number || '—'}</td>
+                        <td className="px-3 py-2 text-gray-500">{a.allocated_date}</td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${a.status === 'Allocated' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {a.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          {a.status === 'Allocated' && (
+                            <button onClick={() => returnAsset(a.id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-orange-600 transition-colors">
+                              <Undo2 size={11} /> Return
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowAssetForm(v => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors mb-3"
+            >
+              {showAssetForm ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              {showAssetForm ? 'Cancel' : '+ Allocate New Asset'}
+            </button>
+
+            {showAssetForm && (
+              <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3 space-y-3">
+                <FormGrid>
+                  <Field label="Asset Name" required>
+                    <input className="form-input" value={assetForm.asset_name} onChange={e => setAssetForm(p => ({ ...p, asset_name: e.target.value }))} placeholder="e.g. ThinkPad X1 Carbon" />
+                  </Field>
+                  <Field label="Type" required>
+                    <select className="form-select" value={assetForm.asset_type} onChange={e => setAssetForm(p => ({ ...p, asset_type: e.target.value }))}>
+                      <option value="">Select type</option>
+                      {ASSET_TYPES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Serial Number">
+                    <input className="form-input" value={assetForm.serial_number} onChange={e => setAssetForm(p => ({ ...p, serial_number: e.target.value }))} placeholder="SN-XXXXX" />
+                  </Field>
+                  <Field label="Condition">
+                    <select className="form-select" value={assetForm.condition} onChange={e => setAssetForm(p => ({ ...p, condition: e.target.value }))}>
+                      {['New', 'Good', 'Fair', 'Poor'].map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Given On">
+                    <input type="date" className="form-input" value={assetForm.allocated_date} onChange={e => setAssetForm(p => ({ ...p, allocated_date: e.target.value }))} />
+                  </Field>
+                  <Field label="Notes">
+                    <input className="form-input" value={assetForm.notes} onChange={e => setAssetForm(p => ({ ...p, notes: e.target.value }))} placeholder="Any notes…" />
+                  </Field>
+                </FormGrid>
+                <button type="button" onClick={allocateAsset} className="btn btn-primary btn-sm gap-1.5">
+                  <Monitor size={12} /> Allocate Asset
+                </button>
+              </div>
+            )}
+          </FormSection>
+        )}
       </Modal>
     </>
   );
