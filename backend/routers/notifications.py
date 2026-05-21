@@ -47,7 +47,7 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
         # Pending leave applications
         pending_leaves = db.query(LeaveApplication).filter(
             LeaveApplication.status == "Pending"
-        ).order_by(LeaveApplication.applied_on.desc()).limit(10).all()
+        ).order_by(LeaveApplication.created_at.desc()).limit(10).all()
 
         for leave in pending_leaves:
             emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
@@ -60,7 +60,7 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
                 "title": "Leave Request Pending",
                 "message": f"{emp_name} applied for {days} day{'s' if days > 1 else ''} leave",
                 "action": "leaves",
-                "time": str(leave.applied_on)[:10] if leave.applied_on else "",
+                "time": str(leave.created_at)[:10] if leave.created_at else "",
                 "priority": "high",
             })
 
@@ -105,7 +105,7 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
         # New job applicants (last 7 days)
         week_ago = date.today() - timedelta(days=7)
         new_applicants = db.query(JobApplicant).filter(
-            JobApplicant.applied_on >= week_ago
+            JobApplicant.created_at >= week_ago
         ).count()
 
         if new_applicants > 0:
@@ -128,7 +128,7 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
             recent_leaves = db.query(LeaveApplication).filter(
                 LeaveApplication.employee_id == emp.id,
                 LeaveApplication.status.in_(["Approved", "Rejected"]),
-            ).order_by(LeaveApplication.applied_on.desc()).limit(5).all()
+            ).order_by(LeaveApplication.created_at.desc()).limit(5).all()
 
             for leave in recent_leaves:
                 icon = "✅" if leave.status == "Approved" else "❌"
@@ -139,7 +139,7 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
                     "title": f"Leave {leave.status}",
                     "message": f"Your leave from {leave.from_date} to {leave.to_date} was {leave.status.lower()}",
                     "action": "emp-leaves",
-                    "time": str(leave.applied_on)[:10] if leave.applied_on else "",
+                    "time": str(leave.created_at)[:10] if leave.created_at else "",
                     "priority": "high" if leave.status == "Rejected" else "medium",
                 })
 

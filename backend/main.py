@@ -84,6 +84,7 @@ _EMPLOYEE_ALLOWED_PREFIXES = (
     "/api/hrm/assets",
     "/api/ai/",
     "/api/auth/",
+    "/api/notifications",
 )
 
 # SuperAdmin-only paths
