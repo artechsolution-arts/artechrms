@@ -19,6 +19,30 @@ from backend.models.auth import User
 router = APIRouter(prefix="/api/portal", tags=["Employee Portal"])
 
 
+def _get_user(request: Request, db: Session) -> User:
+    auth = request.headers.get("Authorization", "")
+    username = decode_token(auth[7:]) if auth.startswith("Bearer ") else None
+    if not username:
+        raise HTTPException(401, "Not authenticated")
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(401, "User not found")
+    return user
+
+
+# ── My permissions (readable by any authenticated user) ────────
+@router.get("/my-permissions")
+def get_my_permissions(request: Request, db: Session = Depends(get_db)):
+    from backend.models.permission import RolePermission, DEFAULT_PERMISSIONS, ALL_FEATURES
+    user = _get_user(request, db)
+    if user.role == "SuperAdmin":
+        return {"role": user.role, "allowed_features": ALL_FEATURES}
+    rp = db.query(RolePermission).filter(RolePermission.role == user.role).first()
+    if rp and rp.allowed_features is not None:
+        return {"role": user.role, "allowed_features": rp.allowed_features}
+    return {"role": user.role, "allowed_features": DEFAULT_PERMISSIONS.get(user.role, [])}
+
+
 def _get_employee(request: Request, db: Session) -> Employee:
     """Resolve the logged-in user → their employee record (matched by email)."""
     auth = request.headers.get("Authorization", "")

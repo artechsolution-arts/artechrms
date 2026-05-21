@@ -32,12 +32,17 @@ const EMP_NAV = [
 
 export { EMP_NAV };
 
-export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout }) {
+export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout, allowedFeatures }) {
   const [confirmLogout, setConfirmLogout] = useState(false);
+
+  // Filter by allowed features — dashboard always visible
+  const visibleNAV = allowedFeatures
+    ? EMP_NAV.filter(item => !item.key || item.key === 'emp-dashboard' || allowedFeatures.includes(item.key))
+    : EMP_NAV;
 
   const grouped = [];
   let lastSection = null;
-  EMP_NAV.forEach(item => {
+  visibleNAV.forEach(item => {
     if (item.section !== lastSection) {
       lastSection = item.section;
       if (item.section) grouped.push({ type: 'sep', label: item.section });

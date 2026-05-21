@@ -1,33 +1,100 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import { _permissionsCache } from '../../hooks/usePermissions';
 import { ShieldCheck, Save, RotateCcw } from 'lucide-react';
 
 const ROLE_META = {
-  CEO: { label: 'CEO',  color: 'bg-rose-100 text-rose-700', ring: 'ring-rose-400' },
-  HR:  { label: 'HR',   color: 'bg-blue-100 text-blue-700', ring: 'ring-blue-400' },
+  CEO:      { label: 'CEO',      color: 'bg-rose-100 text-rose-700',   ring: 'ring-rose-400' },
+  HR:       { label: 'HR',       color: 'bg-blue-100 text-blue-700',   ring: 'ring-blue-400' },
+  Employee: { label: 'Employee', color: 'bg-gray-100 text-gray-700',   ring: 'ring-gray-400' },
 };
 
-const FEATURE_LABELS = {
-  dashboard:         'Dashboard',
-  employees:         'Employees',
-  departments:       'Departments',
-  designations:      'Designations',
-  leaves:            'Leaves',
-  'leave-types':     'Leave Types',
-  'leave-balances':  'Leave Balances',
-  attendance:        'Attendance',
-  holidays:          'Holidays',
-  announcements:     'Announcements',
-  'salary-slips':    'Salary Slips',
-  'payroll-entry':   'Payroll Entry',
-  'salary-components': 'Salary Components',
-  expenses:          'Expenses',
-  assets:            'Assets',
-  'job-openings':    'Job Openings',
-  applicants:        'Applicants',
-  appraisals:        'Appraisals',
-  'document-requests': 'Document Requests',
-};
+// All features grouped by section for display
+const FEATURE_SECTIONS = [
+  {
+    section: 'HR Portal — Core',
+    features: [
+      { key: 'dashboard',        label: 'Dashboard' },
+      { key: 'employees',        label: 'Employees' },
+      { key: 'departments',      label: 'Departments' },
+      { key: 'designations',     label: 'Designations' },
+    ],
+  },
+  {
+    section: 'HR Portal — Leaves & Attendance',
+    features: [
+      { key: 'leaves',           label: 'Leave Applications' },
+      { key: 'work-mode-sheet',  label: 'Work Mode Sheet' },
+      { key: 'leave-types',      label: 'Leave Types' },
+      { key: 'leave-balances',   label: 'Leave Balances' },
+      { key: 'attendance',       label: 'Attendance' },
+      { key: 'holidays',         label: 'Holidays' },
+    ],
+  },
+  {
+    section: 'HR Portal — Company',
+    features: [
+      { key: 'announcements',    label: 'Announcements' },
+      { key: 'assets',           label: 'Asset Management' },
+      { key: 'edit-requests',    label: 'Edit Requests' },
+      { key: 'status-sheets',    label: 'Status Sheets' },
+      { key: 'document-requests', label: 'Document Requests' },
+    ],
+  },
+  {
+    section: 'HR Portal — Payroll',
+    features: [
+      { key: 'salary-slips',     label: 'Salary Slips' },
+      { key: 'payroll-entry',    label: 'Payroll Entry' },
+    ],
+  },
+  {
+    section: 'HR Portal — Recruitment & Appraisals',
+    features: [
+      { key: 'job-openings',     label: 'Job Openings' },
+      { key: 'applicants',       label: 'Applicants' },
+      { key: 'appraisals',       label: 'Appraisals' },
+    ],
+  },
+  {
+    section: 'HR Portal — My Portal',
+    features: [
+      { key: 'my-profile',       label: 'My Profile' },
+      { key: 'my-leaves',        label: 'My Leaves' },
+      { key: 'my-salary',        label: 'My Salary Slips' },
+      { key: 'my-attendance',    label: 'My Attendance' },
+      { key: 'my-documents',     label: 'My Documents' },
+      { key: 'my-status',        label: 'My Status Sheet' },
+      { key: 'my-work-mode',     label: 'My Work Mode' },
+    ],
+  },
+  {
+    section: 'Employee Portal — Self Service',
+    features: [
+      { key: 'emp-dashboard',    label: 'Dashboard' },
+      { key: 'emp-profile',      label: 'My Profile' },
+      { key: 'emp-leaves',       label: 'My Leaves' },
+      { key: 'emp-attendance',   label: 'My Attendance' },
+      { key: 'emp-salary',       label: 'My Salary Slips' },
+      { key: 'emp-appraisals',   label: 'My Appraisals' },
+      { key: 'emp-assets',       label: 'My Assets' },
+      { key: 'emp-documents',    label: 'My Documents' },
+      { key: 'emp-status',       label: 'Status Sheet' },
+      { key: 'emp-work-mode',    label: 'Work Mode' },
+      { key: 'emp-edit-requests', label: 'Edit Requests' },
+    ],
+  },
+  {
+    section: 'Employee Portal — Company',
+    features: [
+      { key: 'emp-announcements', label: 'Announcements' },
+      { key: 'emp-holidays',      label: 'Holidays' },
+    ],
+  },
+];
+
+// Flat list of all feature keys (used for "toggle all")
+const ALL_FEATURE_KEYS = FEATURE_SECTIONS.flatMap(s => s.features.map(f => f.key));
 
 function Toggle({ checked, onChange }) {
   return (
@@ -41,7 +108,6 @@ function Toggle({ checked, onChange }) {
 }
 
 export default function FeaturePermissions({ toast }) {
-  const [allFeatures, setAllFeatures] = useState([]);
   const [permissions, setPermissions] = useState({});
   const [original, setOriginal] = useState({});
   const [loading, setLoading] = useState(true);
@@ -50,9 +116,12 @@ export default function FeaturePermissions({ toast }) {
   useEffect(() => {
     api('GET', '/api/admin/permissions')
       .then(data => {
-        setAllFeatures(data.all_features || []);
-        setPermissions(data.permissions || {});
-        setOriginal(data.permissions || {});
+        // Normalize: ensure all roles have an array
+        const perms = data.permissions || {};
+        const roles = Object.keys(ROLE_META);
+        roles.forEach(role => { if (!perms[role]) perms[role] = []; });
+        setPermissions(perms);
+        setOriginal(JSON.parse(JSON.stringify(perms)));
       })
       .catch(e => toast(e.message, 'error'))
       .finally(() => setLoading(false));
@@ -68,10 +137,23 @@ export default function FeaturePermissions({ toast }) {
     });
   }
 
+  function toggleSection(role, sectionKeys, enable) {
+    setPermissions(prev => {
+      const current = prev[role] || [];
+      let next;
+      if (enable) {
+        next = [...new Set([...current, ...sectionKeys])];
+      } else {
+        next = current.filter(f => !sectionKeys.includes(f));
+      }
+      return { ...prev, [role]: next };
+    });
+  }
+
   function toggleAll(role, enable) {
     setPermissions(prev => ({
       ...prev,
-      [role]: enable ? [...allFeatures] : [],
+      [role]: enable ? [...ALL_FEATURE_KEYS] : [],
     }));
   }
 
@@ -82,7 +164,9 @@ export default function FeaturePermissions({ toast }) {
   async function save() {
     setSaving(true);
     try {
-      await api('PUT', '/api/admin/permissions', permissions);
+      await api('PUT', '/api/admin/permissions', { permissions });
+      // Bust client-side cache so affected roles re-fetch on next page load
+      Object.keys(_permissionsCache).forEach(k => delete _permissionsCache[k]);
       setOriginal(JSON.parse(JSON.stringify(permissions)));
       toast('Permissions saved', 'success');
     } catch (err) {
@@ -131,7 +215,7 @@ export default function FeaturePermissions({ toast }) {
             <div>
               <p className="text-sm font-medium text-violet-800 dark:text-violet-300">SuperAdmin always has full access.</p>
               <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
-                Configure which features each role can access in the HR dashboard. Changes take effect immediately after saving.
+                Configure which features each role can access. Changes take effect immediately after saving.
               </p>
             </div>
           </div>
@@ -143,14 +227,14 @@ export default function FeaturePermissions({ toast }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left px-5 py-3 font-semibold text-gray-700 dark:text-gray-200 w-48">Feature</th>
+                  <th className="text-left px-5 py-3 font-semibold text-gray-700 dark:text-gray-200 w-56">Feature</th>
                   {roles.map(role => {
                     const meta = ROLE_META[role];
                     const perms = permissions[role] || [];
-                    const all = perms.length === allFeatures.length;
+                    const all = perms.length === ALL_FEATURE_KEYS.length;
                     const none = perms.length === 0;
                     return (
-                      <th key={role} className="px-4 py-3 text-center min-w-[140px]">
+                      <th key={role} className="px-4 py-3 text-center min-w-[130px]">
                         <div className="flex flex-col items-center gap-2">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${meta.color}`}>
                             <ShieldCheck size={10} /> {role}
@@ -166,7 +250,7 @@ export default function FeaturePermissions({ toast }) {
                               None
                             </button>
                           </div>
-                          <div className="text-xs text-gray-400 font-normal">{perms.length}/{allFeatures.length}</div>
+                          <div className="text-xs text-gray-400 font-normal">{perms.length}/{ALL_FEATURE_KEYS.length}</div>
                         </div>
                       </th>
                     );
@@ -174,25 +258,63 @@ export default function FeaturePermissions({ toast }) {
                 </tr>
               </thead>
               <tbody>
-                {allFeatures.map((feature, i) => (
-                  <tr key={feature}
-                    className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors
-                      ${i % 2 === 0 ? '' : 'bg-gray-50/50 dark:bg-gray-800/20'}`}>
-                    <td className="px-5 py-3 font-medium text-gray-700 dark:text-gray-200">
-                      {FEATURE_LABELS[feature] || feature}
-                    </td>
-                    {roles.map(role => {
-                      const checked = (permissions[role] || []).includes(feature);
-                      return (
-                        <td key={role} className="px-4 py-3 text-center">
-                          <div className="flex justify-center">
-                            <Toggle checked={checked} onChange={() => toggle(role, feature)} />
-                          </div>
+                {FEATURE_SECTIONS.map(({ section, features }) => {
+                  const sectionKeys = features.map(f => f.key);
+                  return (
+                    <>
+                      {/* Section header row */}
+                      <tr key={`section-${section}`} className="bg-gray-50 dark:bg-gray-800/60">
+                        <td
+                          colSpan={1}
+                          className="px-5 py-2 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                        >
+                          {section}
                         </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                        {roles.map(role => {
+                          const perms = permissions[role] || [];
+                          const allOn = sectionKeys.every(k => perms.includes(k));
+                          const allOff = sectionKeys.every(k => !perms.includes(k));
+                          return (
+                            <td key={role} className="px-4 py-2 text-center">
+                              <div className="flex items-center justify-center gap-1 text-[10px] text-gray-400">
+                                <button
+                                  onClick={() => toggleSection(role, sectionKeys, true)}
+                                  className={`px-1.5 py-0.5 rounded hover:text-green-600 transition-colors ${allOn ? 'text-green-600 font-semibold' : ''}`}
+                                >All</button>
+                                <span>/</span>
+                                <button
+                                  onClick={() => toggleSection(role, sectionKeys, false)}
+                                  className={`px-1.5 py-0.5 rounded hover:text-red-500 transition-colors ${allOff ? 'text-red-500 font-semibold' : ''}`}
+                                >None</button>
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Feature rows */}
+                      {features.map((feature, i) => (
+                        <tr key={feature.key}
+                          className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors
+                            ${i % 2 === 0 ? '' : 'bg-gray-50/30 dark:bg-gray-800/10'}`}>
+                          <td className="px-5 py-2.5 text-gray-700 dark:text-gray-300 pl-8">
+                            {feature.label}
+                          </td>
+                          {roles.map(role => {
+                            const checked = (permissions[role] || []).includes(feature.key);
+                            return (
+                              <td key={role} className="px-4 py-2.5 text-center">
+                                <div className="flex justify-center">
+                                  <Toggle checked={checked} onChange={() => toggle(role, feature.key)} />
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -209,16 +331,19 @@ export default function FeaturePermissions({ toast }) {
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${meta.color}`}>
                     <ShieldCheck size={10} /> {meta.label}
                   </span>
-                  <span className="text-xs text-gray-400">{perms.length} features</span>
+                  <span className="text-xs text-gray-400">{perms.length} / {ALL_FEATURE_KEYS.length} features</span>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
                   {perms.length === 0 ? (
                     <span className="text-xs text-gray-400 italic">No access</span>
-                  ) : perms.map(f => (
-                    <span key={f} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs rounded">
-                      {FEATURE_LABELS[f] || f}
-                    </span>
-                  ))}
+                  ) : perms.map(f => {
+                    const label = FEATURE_SECTIONS.flatMap(s => s.features).find(x => x.key === f)?.label || f;
+                    return (
+                      <span key={f} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs rounded">
+                        {label}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             );

@@ -5,6 +5,7 @@ import ToastContainer from './components/Toast';
 import AIAssistant from './components/AIAssistant';
 import { useToast } from './hooks/useToast';
 import { useTheme } from './hooks/useTheme';
+import { usePermissions } from './hooks/usePermissions';
 import { api } from './api';
 
 import EmpDashboard       from './pages/employee/EmpDashboard';
@@ -44,6 +45,8 @@ export default function EmployeeApp({ user, logout }) {
   const { toasts, toast } = useToast();
   const { accent, setAccent, darkMode, setDarkMode } = useTheme();
 
+  const { can, allowed } = usePermissions(user?.role);
+
   const navigate = useCallback(p => {
     setPage(p);
     if (window.innerWidth < 1024) setSidebarOpen(false);
@@ -59,17 +62,22 @@ export default function EmployeeApp({ user, logout }) {
       .catch(() => {});
   }, []);
 
-  const PageComponent = EMP_PAGES[page] || EmpDashboard;
+  // Guard: redirect to dashboard if feature is not allowed
+  const effectivePage = (allowed && page !== 'emp-dashboard' && !can(page))
+    ? 'emp-dashboard'
+    : page;
+  const PageComponent = EMP_PAGES[effectivePage] || EmpDashboard;
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
       <EmployeeSidebar
-        current={page}
+        current={effectivePage}
         onNavigate={navigate}
         mobileOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={userState}
         onLogout={logout}
+        allowedFeatures={allowed === '*' ? null : allowed}
       />
 
       <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[margin] duration-200 lg:ml-[220px]`}>

@@ -57,13 +57,18 @@ function loadCollapsed() {
 
 export { NAV };
 
-export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout }) {
+export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout, allowedFeatures }) {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [collapsed, setCollapsed] = useState(loadCollapsed);
 
+  // Filter nav items by allowed features (null/undefined = show all, e.g. SuperAdmin)
+  const visibleNAV = allowedFeatures
+    ? NAV.filter(item => !item.key || item.key === 'dashboard' || allowedFeatures.includes(item.key))
+    : NAV;
+
   // Auto-expand section containing active page
   useEffect(() => {
-    const activeItem = NAV.find(n => n.key === current);
+    const activeItem = visibleNAV.find(n => n.key === current);
     if (activeItem?.section && collapsed[activeItem.section]) {
       const next = { ...collapsed };
       delete next[activeItem.section];
@@ -79,9 +84,9 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
     localStorage.setItem('sidebar-collapsed', JSON.stringify(next));
   };
 
-  // Build sections map
+  // Build sections map from visible items
   const sections = {};
-  NAV.forEach(item => {
+  visibleNAV.forEach(item => {
     if (!item.section) return;
     if (!sections[item.section]) sections[item.section] = [];
     sections[item.section].push(item);
@@ -95,7 +100,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
 
   const grouped = [];
   let lastSection = null;
-  NAV.forEach(item => {
+  visibleNAV.forEach(item => {
     if (item.section !== lastSection) {
       lastSection = item.section;
       if (item.section) grouped.push({ type: 'sep', label: item.section });

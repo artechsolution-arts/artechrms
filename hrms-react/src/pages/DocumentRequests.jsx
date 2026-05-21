@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
-import { Upload, Download, FileText, RefreshCw } from 'lucide-react';
+import { Upload, Download, FileText, RefreshCw, Search } from 'lucide-react';
 
 const TABS = ['All', 'Pending', 'Fulfilled'];
 
@@ -9,6 +9,7 @@ export default function DocumentRequests({ toast }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('All');
+  const [search, setSearch] = useState('');
   const [uploading, setUploading] = useState(null);
   const fileInputRef = useRef(null);
   const pendingUploadId = useRef(null);
@@ -16,13 +17,12 @@ export default function DocumentRequests({ toast }) {
   const load = async () => {
     setLoading(true);
     try {
-      const param = tab === 'All' ? '' : `?status=${tab}`;
-      setRequests(await api('GET', `/api/hrm/document-requests${param}`));
+      setRequests(await api('GET', '/api/hrm/document-requests'));
     } catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [tab]);
+  useEffect(() => { load(); }, []);
 
   const handleUploadClick = (id) => {
     pendingUploadId.current = id;
@@ -58,6 +58,10 @@ export default function DocumentRequests({ toast }) {
   const pending   = requests.filter(r => r.status === 'Pending').length;
   const fulfilled = requests.filter(r => r.status === 'Fulfilled').length;
 
+  const visible = requests
+    .filter(r => tab === 'All' || r.status === tab)
+    .filter(r => !search.trim() || r.employee_name?.toLowerCase().includes(search.toLowerCase()) || r.doc_type?.toLowerCase().includes(search.toLowerCase()));
+
   return (
     <>
       <div className="page-head">
@@ -86,40 +90,67 @@ export default function DocumentRequests({ toast }) {
           ))}
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-1">
-          {TABS.map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
-                tab === t
-                  ? 'text-white'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-              }`}
-              style={tab === t ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent-dark)' } : {}}
-            >
-              {t}
-              {t === 'Pending' && pending > 0 && (
-                <span className={`ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  tab === 'Pending'
-                    ? 'bg-white/25 text-white'
-                    : 'bg-amber-100 text-amber-700'
-                }`}>{pending}</span>
-              )}
-            </button>
-          ))}
+        {/* Pending alert */}
+        {pending > 0 && tab !== 'Pending' && (
+          <div
+            className="flex items-center gap-3 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 cursor-pointer"
+            onClick={() => setTab('Pending')}
+          >
+            <FileText size={15} className="text-amber-600 flex-shrink-0" />
+            <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+              {pending} pending request{pending > 1 ? 's' : ''} awaiting document upload
+            </p>
+            <span className="ml-auto text-xs font-semibold text-amber-700 dark:text-amber-400 underline underline-offset-2">
+              View
+            </span>
+          </div>
+        )}
+
+        {/* Filter row */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex gap-1">
+            {TABS.map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
+                  tab === t
+                    ? 'text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
+                }`}
+                style={tab === t ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent-dark)' } : {}}
+              >
+                {t}
+                {t === 'Pending' && pending > 0 && (
+                  <span className={`ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    tab === 'Pending' ? 'bg-white/25 text-white' : 'bg-amber-100 text-amber-700'
+                  }`}>{pending}</span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="relative ml-auto">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search employee or doc type…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-7 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 w-52"
+              style={{ '--tw-ring-color': 'var(--accent)' }}
+            />
+          </div>
         </div>
 
         {/* Table */}
         {loading ? (
           <div className="card p-10 text-center text-sm text-gray-400">Loading…</div>
-        ) : requests.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="card">
             <div className="empty-state">
               <FileText size={40} className="mb-3 text-gray-300" />
-              <p className="text-sm font-medium text-gray-600">
-                {tab === 'All' ? 'No document requests yet' : `No ${tab.toLowerCase()} requests`}
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                {search ? 'No matching requests' : tab === 'All' ? 'No document requests yet' : `No ${tab.toLowerCase()} requests`}
               </p>
               <p className="text-xs text-gray-400 mt-1">Requests raised by employees will appear here</p>
             </div>
@@ -139,15 +170,20 @@ export default function DocumentRequests({ toast }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {requests.map(r => (
+                  {visible.map(r => (
                     <tr key={r.id}>
                       <td>
-                        <div className="font-medium text-gray-900">{r.employee_name}</div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{r.employee_name}</div>
                         <div className="text-[11px] text-gray-400">{r.employee_code}</div>
                       </td>
-                      <td className="font-medium text-gray-800">{r.doc_type}</td>
-                      <td className="text-gray-500 text-xs">{r.requested_at}</td>
-                      <td className="text-gray-500 text-xs max-w-[180px] truncate">{r.remarks || '—'}</td>
+                      <td className="font-medium text-gray-800 dark:text-gray-200">{r.doc_type}</td>
+                      <td>
+                        <div className="text-xs text-gray-500">{r.requested_at}</div>
+                        {r.fulfilled_at && (
+                          <div className="text-[11px] text-green-600 mt-0.5">Fulfilled {r.fulfilled_at}</div>
+                        )}
+                      </td>
+                      <td className="text-gray-500 text-xs max-w-[160px] truncate">{r.remarks || '—'}</td>
                       <td><Badge text={r.status} /></td>
                       <td>
                         {r.status === 'Pending' ? (

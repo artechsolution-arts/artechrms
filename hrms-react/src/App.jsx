@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import ToastContainer from './components/Toast';
@@ -6,6 +6,7 @@ import AIAssistant from './components/AIAssistant';
 import { useToast } from './hooks/useToast';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
+import { usePermissions } from './hooks/usePermissions';
 
 import Login from './pages/Login';
 import EmployeeApp from './EmployeeApp';
@@ -77,6 +78,7 @@ export default function App() {
   const { token, user, login, logout, isAuthenticated } = useAuth();
   const { accent, setAccent, darkMode, setDarkMode } = useTheme();
 
+  const { can, allowed } = usePermissions(user?.role);
   const navigate = useCallback(p => { setPage(p); if (window.innerWidth < 1024) setSidebarOpen(false); }, []);
 
   if (!isAuthenticated) {
@@ -100,18 +102,23 @@ export default function App() {
     return <EmployeeApp user={user} logout={logout} />;
   }
 
-  const PageComponent = PAGES[page] || Dashboard;
-  const isPortalPage = page.startsWith('my-');
+  // Guard: if HR user navigates to a feature they don't have access to, show dashboard
+  const effectivePage = (allowed && allowed !== '*' && page !== 'dashboard' && !can(page))
+    ? 'dashboard'
+    : page;
+  const PageComponent = PAGES[effectivePage] || Dashboard;
+  const isPortalPage = effectivePage.startsWith('my-');
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
       <Sidebar
-        current={page}
+        current={effectivePage}
         onNavigate={navigate}
         mobileOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
         onLogout={logout}
+        allowedFeatures={allowed === '*' ? null : allowed}
       />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden lg:ml-[220px]">

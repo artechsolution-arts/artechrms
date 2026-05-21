@@ -3,19 +3,39 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from backend.database import Base
 
-ALL_FEATURES = [
-    "dashboard", "employees", "departments", "designations",
-    "leaves", "leave-types", "leave-balances", "attendance",
-    "holidays", "announcements",
-    "salary-slips", "payroll-entry", "salary-components",
-    "expenses", "assets",
+# HR-portal features (Sidebar.jsx NAV keys)
+HR_FEATURES = [
+    "dashboard",
+    "employees", "departments", "designations",
+    "leaves", "work-mode-sheet", "leave-types", "leave-balances",
+    "attendance", "holidays", "announcements", "assets",
+    "salary-slips", "payroll-entry",
     "job-openings", "applicants", "appraisals",
-    "document-requests",
+    "edit-requests", "document-requests", "status-sheets",
+    # My Portal section visible inside HR shell
+    "my-profile", "my-leaves", "my-salary", "my-attendance",
+    "my-documents", "my-status", "my-work-mode",
 ]
 
+# Employee-portal features (EmployeeSidebar.jsx NAV keys)
+EMP_FEATURES = [
+    "emp-dashboard",
+    "emp-profile", "emp-leaves", "emp-attendance", "emp-salary",
+    "emp-appraisals", "emp-assets", "emp-documents",
+    "emp-status", "emp-work-mode", "emp-edit-requests",
+    "emp-announcements", "emp-holidays",
+]
+
+ALL_FEATURES = HR_FEATURES + EMP_FEATURES
+
 DEFAULT_PERMISSIONS = {
-    "HR":  ALL_FEATURES,
-    "CEO": ["dashboard", "employees", "leaves", "leave-balances", "attendance", "holidays", "announcements", "document-requests", "appraisals"],
+    "HR": HR_FEATURES,
+    "CEO": [
+        "dashboard", "employees", "leaves", "work-mode-sheet",
+        "leave-balances", "attendance", "holidays", "announcements",
+        "document-requests", "appraisals", "status-sheets",
+    ],
+    "Employee": EMP_FEATURES,
 }
 
 
