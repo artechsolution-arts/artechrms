@@ -52,6 +52,8 @@ class EmployeeIn(BaseModel):
     pf_applicable: bool = True
     esi_applicable: bool = True
     pt_state: str = "Karnataka"
+    education: list = []
+    experience: list = []
 
 
 class EmployeeCreateIn(EmployeeIn):
@@ -247,6 +249,8 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
         "pf_applicable": bool(emp.pf_applicable if emp.pf_applicable is not None else 1),
         "esi_applicable": bool(emp.esi_applicable if emp.esi_applicable is not None else 1),
         "pt_state": emp.pt_state or "Karnataka",
+        "education": emp.education or [],
+        "experience": emp.experience or [],
     }
 
 

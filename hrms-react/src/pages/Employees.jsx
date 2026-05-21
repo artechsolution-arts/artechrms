@@ -10,6 +10,7 @@ import {
   Phone, Mail, Calendar, Building2, Briefcase, CreditCard,
   User, AlertCircle, Clock, TrendingUp, Star, AlertTriangle,
   LogOut, CheckCircle2, ArrowRightLeft, History,
+  GraduationCap, Briefcase as BriefcaseIcon, Plus as PlusIcon,
 } from 'lucide-react';
 
 function Avatar({ name, photo, size = 'sm' }) {
@@ -280,6 +281,236 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
   );
 }
 
+const DEGREE_OPTIONS = ['High School', 'Diploma', 'B.A.', 'B.Sc.', 'B.Com.', 'B.Tech / B.E.', 'BCA', 'BBA', 'M.A.', 'M.Sc.', 'M.Com.', 'M.Tech / M.E.', 'MCA', 'MBA', 'Ph.D.', 'Other'];
+const YEAR_OPTIONS = Array.from({ length: 50 }, (_, i) => String(new Date().getFullYear() - i));
+
+function EduCard({ item, onDelete }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+        <GraduationCap size={14} className="text-blue-600 dark:text-blue-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{item.degree}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{item.institution}</p>
+        <div className="flex flex-wrap gap-x-3 mt-1">
+          {(item.start_year || item.end_year) && (
+            <span className="text-xs text-gray-400">{item.start_year}{item.end_year && item.end_year !== item.start_year ? ` – ${item.end_year}` : ''}</span>
+          )}
+          {item.grade && <span className="text-xs text-gray-400">{item.grade}</span>}
+        </div>
+      </div>
+      {onDelete && (
+        <button onClick={onDelete} className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
+          <Trash2 size={13} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ExpCard({ item, onDelete }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center flex-shrink-0">
+        <BriefcaseIcon size={14} className="text-violet-600 dark:text-violet-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{item.role}</p>
+        <p className="text-xs text-violet-600 dark:text-violet-400 font-medium mt-0.5">{item.company}</p>
+        <div className="flex flex-wrap gap-x-3 mt-1">
+          {(item.from_year || item.to_year) && (
+            <span className="text-xs text-gray-400">{item.from_year}{item.to_year && item.to_year !== item.from_year ? ` – ${item.to_year}` : ''}</span>
+          )}
+        </div>
+        {item.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{item.description}</p>}
+      </div>
+      {onDelete && (
+        <button onClick={onDelete} className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
+          <Trash2 size={13} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EmployeeEduExpTab({ emp, onSave, saving }) {
+  const [education, setEducation] = useState(emp?.education || []);
+  const [experience, setExperience] = useState(emp?.experience || []);
+  const [addingEdu, setAddingEdu] = useState(false);
+  const [addingExp, setAddingExp] = useState(false);
+  const [eduForm, setEduForm] = useState({ degree: '', institution: '', start_year: '', end_year: '', grade: '' });
+  const [expForm, setExpForm] = useState({ company: '', role: '', from_year: '', to_year: '', description: '' });
+
+  useEffect(() => {
+    setEducation(emp?.education || []);
+    setExperience(emp?.experience || []);
+  }, [emp?.id]);
+
+  const ef = v => setEduForm(p => ({ ...p, ...v }));
+  const xf = v => setExpForm(p => ({ ...p, ...v }));
+
+  const saveEdu = () => {
+    if (!eduForm.degree || !eduForm.institution) return;
+    const next = [...education, { ...eduForm }];
+    setEducation(next);
+    setAddingEdu(false);
+    setEduForm({ degree: '', institution: '', start_year: '', end_year: '', grade: '' });
+    onSave({ education: next, experience });
+  };
+
+  const saveExp = () => {
+    if (!expForm.company || !expForm.role) return;
+    const next = [...experience, { ...expForm }];
+    setExperience(next);
+    setAddingExp(false);
+    setExpForm({ company: '', role: '', from_year: '', to_year: '', description: '' });
+    onSave({ education, experience: next });
+  };
+
+  const removeEdu = i => {
+    const next = education.filter((_, idx) => idx !== i);
+    setEducation(next);
+    onSave({ education: next, experience });
+  };
+
+  const removeExp = i => {
+    const next = experience.filter((_, idx) => idx !== i);
+    setExperience(next);
+    onSave({ education, experience: next });
+  };
+
+  return (
+    <div className="px-5 py-4 space-y-6">
+      {/* Education */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <GraduationCap size={14} className="text-blue-500" />
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Education</span>
+          </div>
+          {!addingEdu && (
+            <button onClick={() => setAddingEdu(true)} className="flex items-center gap-1 text-xs text-[var(--accent)] hover:opacity-80 font-medium">
+              <PlusIcon size={12} /> Add
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {education.map((item, i) => (
+            <EduCard key={i} item={item} onDelete={() => removeEdu(i)} />
+          ))}
+          {education.length === 0 && !addingEdu && (
+            <p className="text-xs text-gray-400 italic">No education records yet</p>
+          )}
+        </div>
+
+        {addingEdu && (
+          <div className="mt-3 p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">Degree / Qualification <span className="text-red-400">*</span></label>
+                <select className="form-select text-xs w-full" value={eduForm.degree} onChange={e => ef({ degree: e.target.value })}>
+                  <option value="">Select…</option>
+                  {DEGREE_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">Institution <span className="text-red-400">*</span></label>
+                <input className="form-input text-xs w-full" placeholder="University / College" value={eduForm.institution} onChange={e => ef({ institution: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">Start Year</label>
+                <select className="form-select text-xs w-full" value={eduForm.start_year} onChange={e => ef({ start_year: e.target.value })}>
+                  <option value="">–</option>
+                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">End Year</label>
+                <select className="form-select text-xs w-full" value={eduForm.end_year} onChange={e => ef({ end_year: e.target.value })}>
+                  <option value="">–</option>
+                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs text-gray-500 mb-0.5">Grade / CGPA / %</label>
+                <input className="form-input text-xs w-full" placeholder="e.g. 8.5 CGPA or 78%" value={eduForm.grade} onChange={e => ef({ grade: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={saveEdu} disabled={saving || !eduForm.degree || !eduForm.institution} className="btn btn-primary btn-xs">Save</button>
+              <button onClick={() => { setAddingEdu(false); setEduForm({ degree: '', institution: '', start_year: '', end_year: '', grade: '' }); }} className="btn btn-secondary btn-xs">Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Experience */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <BriefcaseIcon size={14} className="text-violet-500" />
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Work Experience</span>
+          </div>
+          {!addingExp && (
+            <button onClick={() => setAddingExp(true)} className="flex items-center gap-1 text-xs text-[var(--accent)] hover:opacity-80 font-medium">
+              <PlusIcon size={12} /> Add
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {experience.map((item, i) => (
+            <ExpCard key={i} item={item} onDelete={() => removeExp(i)} />
+          ))}
+          {experience.length === 0 && !addingExp && (
+            <p className="text-xs text-gray-400 italic">No experience records yet</p>
+          )}
+        </div>
+
+        {addingExp && (
+          <div className="mt-3 p-3 rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-900/10 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">Company <span className="text-red-400">*</span></label>
+                <input className="form-input text-xs w-full" placeholder="Company name" value={expForm.company} onChange={e => xf({ company: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">Role / Designation <span className="text-red-400">*</span></label>
+                <input className="form-input text-xs w-full" placeholder="e.g. Software Engineer" value={expForm.role} onChange={e => xf({ role: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">From Year</label>
+                <select className="form-select text-xs w-full" value={expForm.from_year} onChange={e => xf({ from_year: e.target.value })}>
+                  <option value="">–</option>
+                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">To Year</label>
+                <select className="form-select text-xs w-full" value={expForm.to_year} onChange={e => xf({ to_year: e.target.value })}>
+                  <option value="">–</option>
+                  <option value="Present">Present</option>
+                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs text-gray-500 mb-0.5">Description</label>
+                <textarea className="form-input text-xs w-full resize-none" rows={2} placeholder="Brief description of responsibilities" value={expForm.description} onChange={e => xf({ description: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={saveExp} disabled={saving || !expForm.company || !expForm.role} className="btn btn-primary btn-xs">Save</button>
+              <button onClick={() => { setAddingExp(false); setExpForm({ company: '', role: '', from_year: '', to_year: '', description: '' }); }} className="btn btn-secondary btn-xs">Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Employees({ toast }) {
   const [rows, setRows] = useState([]);
   const [allEmps, setAllEmps] = useState([]);
@@ -309,6 +540,7 @@ export default function Employees({ toast }) {
   const [showHistoryForm, setShowHistoryForm] = useState(false);
   const [historyForm, setHistoryForm] = useState({});
   const [historySaving, setHistorySaving] = useState(false);
+  const [eduExpSaving, setEduExpSaving] = useState(false);
   const [joinedMonthFilter, setJoinedMonthFilter] = useState('');
   const [joinedMonthLabel, setJoinedMonthLabel] = useState('');
 
@@ -433,6 +665,28 @@ export default function Employees({ toast }) {
       toast('Event deleted', 'success');
       loadHistory(detailEmp.id);
     } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const saveEduExp = async ({ education, experience }) => {
+    if (!detailEmp?.id) return;
+    setEduExpSaving(true);
+    try {
+      await api('PUT', `/api/employees/${detailEmp.id}`, {
+        ...detailEmp,
+        education,
+        experience,
+        department_id: detailEmp.department_id,
+        designation_id: detailEmp.designation_id,
+        date_of_joining: detailEmp.date_of_joining,
+        first_name: detailEmp.first_name,
+        last_name: detailEmp.last_name,
+        pf_applicable: detailEmp.pf_applicable ?? true,
+        esi_applicable: detailEmp.esi_applicable ?? true,
+      });
+      setDetailEmp(p => ({ ...p, education, experience }));
+      toast('Saved', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setEduExpSaving(false); }
   };
 
   const hf = v => setHistoryForm(p => ({ ...p, ...v }));
@@ -855,6 +1109,7 @@ export default function Employees({ toast }) {
               <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 px-5">
                 {[
                   { key: 'details', label: 'Details' },
+                  { key: 'edu-exp', label: 'Education & Experience', icon: GraduationCap },
                   { key: 'history', label: 'History', icon: History },
                 ].map(tab => (
                   <button
@@ -951,6 +1206,12 @@ export default function Employees({ toast }) {
                     </div>
                   )}
                 </>
+              ) : detailTab === 'edu-exp' ? (
+                <EmployeeEduExpTab
+                  emp={detailEmp}
+                  onSave={saveEduExp}
+                  saving={eduExpSaving}
+                />
               ) : (
                 /* ── HISTORY TAB ── */
                 <EmployeeHistoryTab
