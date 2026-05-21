@@ -839,3 +839,62 @@ def hr_reject_work_mode(entry_id: int, data: _WMAction = _WMAction(), db: Sessio
     entry.updated_at = _wm_dt.utcnow()
     db.commit()
     return {"ok": True, "status": "Rejected"}
+
+
+# ── Edit / Correction Requests (HR view) ──────────────────────
+
+from backend.models.edit_request import EditRequest as _EditReq
+from datetime import datetime as _er_dt
+
+
+class _ResolveIn(BaseModel):
+    hr_remarks: Optional[str] = None
+
+
+@router.get("/edit-requests")
+def hr_list_edit_requests(status: Optional[str] = None, db: Session = Depends(get_db)):
+    q = db.query(_EditReq)
+    if status and status != "All":
+        q = q.filter(_EditReq.status == status)
+    rows = q.order_by(_EditReq.created_at.desc()).all()
+    return [
+        {
+            "id":            r.id,
+            "employee_id":   r.employee_id,
+            "employee_name": r.employee.full_name if r.employee else "—",
+            "employee_code": r.employee.employee_id if r.employee else "—",
+            "request_type":  r.request_type,
+            "target_date":   str(r.target_date),
+            "description":   r.description,
+            "reason":        r.reason,
+            "status":        r.status,
+            "hr_remarks":    r.hr_remarks,
+            "created_at":    str(r.created_at)[:10],
+            "resolved_at":   str(r.resolved_at)[:10] if r.resolved_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.put("/edit-requests/{req_id}/approve")
+def hr_approve_edit_request(req_id: int, data: _ResolveIn = _ResolveIn(), db: Session = Depends(get_db)):
+    req = db.query(_EditReq).filter(_EditReq.id == req_id).first()
+    if not req:
+        raise HTTPException(404, "Request not found")
+    req.status = "Approved"
+    req.hr_remarks = data.hr_remarks
+    req.resolved_at = _er_dt.utcnow()
+    db.commit()
+    return {"ok": True}
+
+
+@router.put("/edit-requests/{req_id}/reject")
+def hr_reject_edit_request(req_id: int, data: _ResolveIn = _ResolveIn(), db: Session = Depends(get_db)):
+    req = db.query(_EditReq).filter(_EditReq.id == req_id).first()
+    if not req:
+        raise HTTPException(404, "Request not found")
+    req.status = "Rejected"
+    req.hr_remarks = data.hr_remarks
+    req.resolved_at = _er_dt.utcnow()
+    db.commit()
+    return {"ok": True}

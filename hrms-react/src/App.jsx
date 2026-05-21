@@ -27,6 +27,7 @@ import JobOpenings from './pages/JobOpenings';
 import Applicants from './pages/Applicants';
 import Appraisals from './pages/Appraisals';
 import DocumentRequests from './pages/DocumentRequests';
+import HREditRequests   from './pages/HREditRequests';
 import EmpProfile      from './pages/employee/EmpProfile';
 import EmpLeaves       from './pages/employee/EmpLeaves';
 import EmpSalary       from './pages/employee/EmpSalary';
@@ -55,6 +56,7 @@ const PAGES = {
   'job-openings':       JobOpenings,
   'applicants':         Applicants,
   'appraisals':         Appraisals,
+  'edit-requests':      HREditRequests,
   'document-requests':  DocumentRequests,
   'status-sheets':      HRStatusSheet,
   'work-mode-sheet':    HRWorkMode,

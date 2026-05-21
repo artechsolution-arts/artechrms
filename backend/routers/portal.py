@@ -682,3 +682,63 @@ def portal_delete_work_mode(entry_id: int, request: Request, db: Session = Depen
     db.delete(entry)
     db.commit()
     return {"ok": True}
+
+
+# ── Edit / Correction Requests ─────────────────────────────────
+
+from backend.models.edit_request import EditRequest
+from datetime import datetime as _now_dt
+
+EDIT_REQUEST_TYPES = [
+    "Leave Entry",
+    "Status Sheet",
+    "Attendance",
+    "Other",
+]
+
+
+class EditRequestIn(BaseModel):
+    request_type: str
+    target_date: date
+    description: str
+    reason: str
+
+
+@router.get("/edit-requests")
+def portal_list_edit_requests(request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    rows = db.query(EditRequest).filter(
+        EditRequest.employee_id == emp.id
+    ).order_by(EditRequest.created_at.desc()).all()
+    return [
+        {
+            "id":           r.id,
+            "request_type": r.request_type,
+            "target_date":  str(r.target_date),
+            "description":  r.description,
+            "reason":       r.reason,
+            "status":       r.status,
+            "hr_remarks":   r.hr_remarks,
+            "created_at":   str(r.created_at)[:10],
+            "resolved_at":  str(r.resolved_at)[:10] if r.resolved_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.post("/edit-requests", status_code=201)
+def portal_create_edit_request(data: EditRequestIn, request: Request, db: Session = Depends(get_db)):
+    if data.request_type not in EDIT_REQUEST_TYPES:
+        raise HTTPException(400, f"request_type must be one of: {', '.join(EDIT_REQUEST_TYPES)}")
+    emp = _get_employee(request, db)
+    req = EditRequest(
+        employee_id=emp.id,
+        request_type=data.request_type,
+        target_date=data.target_date,
+        description=data.description,
+        reason=data.reason,
+    )
+    db.add(req)
+    db.commit()
+    db.refresh(req)
+    return {"id": req.id, "ok": True}

@@ -57,6 +57,19 @@ with engine.connect() as _conn:
             run_at TIMESTAMP DEFAULT NOW(),
             employees_credited INTEGER DEFAULT 0
         )""",
+        """CREATE TABLE IF NOT EXISTS edit_requests (
+            id SERIAL PRIMARY KEY,
+            employee_id INTEGER NOT NULL REFERENCES employees(id),
+            request_type VARCHAR(50) NOT NULL,
+            target_date DATE NOT NULL,
+            description TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            status VARCHAR(20) DEFAULT 'Pending',
+            hr_remarks TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            resolved_at TIMESTAMP,
+            resolved_by INTEGER REFERENCES users(id)
+        )""",
     ]:
         try:
             _conn.execute(text(_stmt))

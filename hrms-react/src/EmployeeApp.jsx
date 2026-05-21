@@ -19,6 +19,7 @@ import EmpAssets          from './pages/employee/EmpAssets';
 import EmpDocuments       from './pages/employee/EmpDocuments';
 import EmpStatus          from './pages/employee/EmpStatus';
 import EmpWorkMode        from './pages/employee/EmpWorkMode';
+import EmpEditRequests    from './pages/employee/EmpEditRequests';
 
 const EMP_PAGES = {
   'emp-dashboard':      EmpDashboard,
@@ -33,6 +34,7 @@ const EMP_PAGES = {
   'emp-documents':      EmpDocuments,
   'emp-status':         EmpStatus,
   'emp-work-mode':      EmpWorkMode,
+  'emp-edit-requests':  EmpEditRequests,
 };
 
 export default function EmployeeApp({ user, logout }) {
