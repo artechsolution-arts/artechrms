@@ -333,6 +333,7 @@ def portal_team_leaves(month: str, request: Request, db: Session = Depends(get_d
         {
             "id":             lv.id,
             "employee_name":  lv.employee_rel.full_name if lv.employee_rel else "",
+            "profile_photo":  lv.employee_rel.profile_photo if lv.employee_rel else None,
             "leave_type":     lv.leave_type_rel.name if lv.leave_type_rel else "",
             "from_date":      str(lv.from_date),
             "to_date":        str(lv.to_date),
