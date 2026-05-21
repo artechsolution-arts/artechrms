@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from datetime import date
 from backend.database import get_db
 from backend.models.leave import LeaveType, LeaveApplication, Attendance
+from backend.models.hrm import LeaveBalance
 
 router = APIRouter(prefix="/api/leaves", tags=["Leaves"])
 
@@ -116,6 +117,15 @@ def approve_leave(leave_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Leave not found")
     leave.status = "Approved"
     db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).update({"status": "Approved"})
+    # Deduct from leave balance
+    year = leave.from_date.year if leave.from_date else date.today().year
+    bal = db.query(LeaveBalance).filter(
+        LeaveBalance.employee_id == leave.employee_id,
+        LeaveBalance.leave_type_id == leave.leave_type_id,
+        LeaveBalance.year == year,
+    ).first()
+    if bal:
+        bal.used = round(bal.used + leave.total_days, 2)
     db.commit()
     return {"ok": True}
 

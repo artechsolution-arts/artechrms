@@ -50,12 +50,21 @@ with engine.connect() as _conn:
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS aadhar_no VARCHAR(20)",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pan_no VARCHAR(20)",
         "ALTER TABLE work_mode_entries ADD COLUMN IF NOT EXISTS leave_id INTEGER REFERENCES leave_applications(id) ON DELETE SET NULL",
+        """CREATE TABLE IF NOT EXISTS leave_accrual_log (
+            id SERIAL PRIMARY KEY,
+            year_month VARCHAR(7) NOT NULL UNIQUE,
+            run_at TIMESTAMP DEFAULT NOW(),
+            employees_credited INTEGER DEFAULT 0
+        )""",
     ]:
         try:
             _conn.execute(text(_stmt))
             _conn.commit()
         except Exception:
             pass
+
+from backend.leave_accrual import start_accrual_scheduler, _run_accrual
+start_accrual_scheduler()
 
 app = FastAPI(title="Artech HRMS", version="1.0.0")
 
