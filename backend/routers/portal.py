@@ -417,15 +417,55 @@ def portal_get_slip(slip_id: int, request: Request, db: Session = Depends(get_db
 @router.get("/appraisals")
 def portal_appraisals(request: Request, db: Session = Depends(get_db)):
     emp = _get_employee(request, db)
-    appraisals = db.query(Appraisal).filter(
+    rows = db.query(Appraisal).filter(
         Appraisal.employee_id == emp.id
     ).order_by(Appraisal.created_at.desc()).all()
-    return [
-        {"id": a.id, "period": a.period, "total_score": a.total_score,
-         "status": a.status, "reviewer_comments": a.reviewer_comments,
-         "goals": a.goals}
-        for a in appraisals
-    ]
+    return [{
+        "id": a.id,
+        "period": a.period,
+        "status": a.status,
+        "goals": a.goals or [],
+        "self_eval":     a.self_eval,
+        "manager_eval":  a.manager_eval,
+        "business_eval": a.business_eval,
+        "biz_head_eval": a.biz_head_eval,
+        "self_score":     a.self_score,
+        "manager_score":  a.manager_score,
+        "business_score": a.business_score,
+        "biz_head_score": a.biz_head_score,
+        "total_score": a.total_score,
+        "created_at": str(a.created_at)[:10] if a.created_at else "",
+    } for a in rows]
+
+
+class SelfEvalIn(BaseModel):
+    scores: list           # [{idx, score, comments}]
+    overall_comments: str = ""
+
+
+@router.put("/appraisals/{appraisal_id}/self-eval", status_code=200)
+def portal_self_eval(appraisal_id: int, data: SelfEvalIn, request: Request, db: Session = Depends(get_db)):
+    from backend.routers.appraisals import _weighted_score, _total
+    emp = _get_employee(request, db)
+    a = db.query(Appraisal).filter(
+        Appraisal.id == appraisal_id,
+        Appraisal.employee_id == emp.id,
+    ).first()
+    if not a:
+        raise HTTPException(404, "Appraisal not found")
+    if a.status != "Goals Set":
+        raise HTTPException(400, "Self evaluation already submitted")
+    from datetime import datetime as _dt
+    a.self_eval = {
+        "scores": data.scores,
+        "overall_comments": data.overall_comments,
+        "submitted_at": _dt.utcnow().isoformat(),
+    }
+    a.self_score = _weighted_score(a.goals or [], a.self_eval)
+    a.status = "Self Evaluated"
+    a.total_score = _total(a)
+    db.commit()
+    return {"ok": True}
 
 
 # ── Team leaves for a month (read-only, visible to all employees) ──

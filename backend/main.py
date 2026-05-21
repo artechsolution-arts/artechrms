@@ -47,6 +47,18 @@ with engine.connect() as _conn:
         "ALTER TABLE job_openings ADD COLUMN IF NOT EXISTS social_platforms JSONB DEFAULT '[]'::jsonb",
         # Document requests table is created fresh by SQLAlchemy; no column patches needed
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS self_eval JSONB",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS manager_eval JSONB",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS business_eval JSONB",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS biz_head_eval JSONB",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS self_score FLOAT",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS manager_score FLOAT",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS business_score FLOAT",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS biz_head_score FLOAT",
+        "ALTER TABLE appraisals ALTER COLUMN status TYPE VARCHAR(30)",
+        # Migrate old status values to new flow
+        "UPDATE appraisals SET status = 'Goals Set' WHERE status IN ('Draft')",
+        "UPDATE appraisals SET status = 'Self Evaluated' WHERE status = 'Submitted'",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(20)",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_branch VARCHAR(100)",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS aadhar_no VARCHAR(20)",
