@@ -27,6 +27,7 @@ class LeaveApplication(Base):
     to_date = Column(Date, nullable=False)
     total_days = Column(Float, default=0)
     half_day = Column(Boolean, default=False)
+    leave_category = Column(String(20), default='Planned')   # Planned | Unplanned
     reason = Column(Text)
     status = Column(String(20), default="Pending")  # Pending, Approved, Rejected
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)

@@ -50,6 +50,7 @@ with engine.connect() as _conn:
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS aadhar_no VARCHAR(20)",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pan_no VARCHAR(20)",
         "ALTER TABLE work_mode_entries ADD COLUMN IF NOT EXISTS leave_id INTEGER REFERENCES leave_applications(id) ON DELETE SET NULL",
+        "ALTER TABLE leave_applications ADD COLUMN IF NOT EXISTS leave_category VARCHAR(20) DEFAULT 'Planned'",
         """CREATE TABLE IF NOT EXISTS leave_accrual_log (
             id SERIAL PRIMARY KEY,
             year_month VARCHAR(7) NOT NULL UNIQUE,

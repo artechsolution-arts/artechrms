@@ -92,6 +92,8 @@ def list_leaves(
             "from_date": str(lv.from_date),
             "to_date": str(lv.to_date),
             "total_days": lv.total_days,
+            "half_day": lv.half_day,
+            "leave_category": lv.leave_category or "Planned",
             "status": lv.status,
             "reason": lv.reason,
         })

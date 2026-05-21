@@ -5,7 +5,7 @@ from backend import storage
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from pydantic import BaseModel
-from datetime import date, timedelta, datetime as _datetime
+from datetime import date as _date, date, timedelta, datetime as _datetime
 from typing import Optional
 from backend.database import get_db
 from backend.models.employee import Employee
@@ -135,6 +135,8 @@ def portal_leaves(request: Request, db: Session = Depends(get_db)):
             "from_date": str(lv.from_date),
             "to_date": str(lv.to_date),
             "total_days": lv.total_days,
+            "half_day": lv.half_day,
+            "leave_category": lv.leave_category or "Planned",
             "status": lv.status,
             "reason": lv.reason,
         }
@@ -148,6 +150,7 @@ class PortalLeaveIn(BaseModel):
     to_date: date
     reason: Optional[str] = None
     half_day: bool = False
+    leave_category: str = "Planned"
 
 
 def _leave_type_to_work_mode(leave_type_name: str, half_day: bool) -> str:
@@ -207,6 +210,7 @@ def portal_apply_leave(data: PortalLeaveIn, request: Request, db: Session = Depe
         from_date=data.from_date,
         to_date=data.to_date,
         half_day=data.half_day,
+        leave_category=data.leave_category,
         reason=data.reason,
         total_days=total,
     )
@@ -300,11 +304,77 @@ def portal_appraisals(request: Request, db: Session = Depends(get_db)):
     ]
 
 
+# ── Team leaves for a month (read-only, visible to all employees) ──
+@router.get("/team-leaves")
+def portal_team_leaves(month: str, request: Request, db: Session = Depends(get_db)):
+    """Return all approved/pending leaves for every employee in the given month (YYYY-MM)."""
+    _get_employee(request, db)  # auth check only
+    try:
+        year, mon = map(int, month.split("-"))
+    except Exception:
+        raise HTTPException(400, "Use YYYY-MM format")
+    from calendar import monthrange
+    last_day = monthrange(year, mon)[1]
+    start = _date(year, mon, 1)
+    end   = _date(year, mon, last_day)
+    leaves = (
+        db.query(LeaveApplication)
+        .join(Employee, LeaveApplication.employee_id == Employee.id)
+        .filter(
+            Employee.status == "Active",
+            LeaveApplication.status.in_(["Pending", "Approved"]),
+            LeaveApplication.from_date <= end,
+            LeaveApplication.to_date   >= start,
+        )
+        .order_by(LeaveApplication.from_date.asc())
+        .all()
+    )
+    return [
+        {
+            "id":             lv.id,
+            "employee_name":  lv.employee_rel.full_name if lv.employee_rel else "",
+            "leave_type":     lv.leave_type_rel.name if lv.leave_type_rel else "",
+            "from_date":      str(lv.from_date),
+            "to_date":        str(lv.to_date),
+            "total_days":     lv.total_days,
+            "half_day":       lv.half_day,
+            "leave_category": lv.leave_category or "Planned",
+            "status":         lv.status,
+            "reason":         lv.reason,
+        }
+        for lv in leaves
+    ]
+
+
 # ── Leave Types (for apply form) ───────────────────────────────
 @router.get("/leave-types")
 def portal_leave_types(request: Request, db: Session = Depends(get_db)):
     _get_employee(request, db)  # auth check
     return db.query(LeaveType).all()
+
+
+# ── Leave Balances (for employee dashboard + apply form) ────────
+@router.get("/leave-balances")
+def portal_leave_balances(request: Request, db: Session = Depends(get_db)):
+    from backend.models.hrm import LeaveBalance
+    emp = _get_employee(request, db)
+    year = _datetime.utcnow().year
+    balances = (
+        db.query(LeaveBalance)
+        .filter(LeaveBalance.employee_id == emp.id, LeaveBalance.year == year)
+        .all()
+    )
+    return [
+        {
+            "leave_type_id": b.leave_type_id,
+            "leave_type":    b.leave_type_rel.name if b.leave_type_rel else "",
+            "allocated":     b.allocated,
+            "used":          b.used,
+            "carried_forward": b.carried_forward,
+            "available":     round(b.allocated + b.carried_forward - b.used, 2),
+        }
+        for b in balances
+    ]
 
 
 # ── Expenses ───────────────────────────────────────────────────

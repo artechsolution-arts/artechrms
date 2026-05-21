@@ -3,6 +3,7 @@ import { api } from '../../api';
 import Badge from '../../components/Badge';
 import { CalendarDays, Clock, ClipboardList, Megaphone, Gift, CalendarCheck2, ChevronRight } from 'lucide-react';
 
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const STATUS_COLOR = {
@@ -51,6 +52,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
   const [announcements, setAnnouncements] = useState([]);
   const [holidays, setHolidays] = useState([]);
   const [workMode, setWorkMode] = useState([]);
+  const [balances, setBalances] = useState([]);
 
   const curMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
   const curYear  = new Date().getFullYear();
@@ -64,7 +66,8 @@ export default function EmpDashboard({ toast, onNavigate }) {
       setHolidays(upcoming);
     }).catch(() => {});
     const wmP   = api('GET', `/api/portal/work-mode?month=${curMonth}`).then(d => setWorkMode(d.slice(0, 10))).catch(() => {});
-    Promise.all([dashP, annP, holP, wmP]).finally(() => setLoading(false));
+    const lbP   = api('GET', '/api/portal/leave-balances').then(d => setBalances(Array.isArray(d) ? d : [])).catch(() => {});
+    Promise.all([dashP, annP, holP, wmP, lbP]).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">Loading…</div>;
@@ -89,13 +92,13 @@ export default function EmpDashboard({ toast, onNavigate }) {
         </div>
       </div>
 
-      {/* Stat cards — replaced Attendance Rate with Status Sheet */}
+      {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Pending Leaves',  value: stats.pending_leaves,     icon: CalendarDays,  color: 'text-amber-500',  bg: 'bg-amber-50',   action: 'emp-leaves' },
-          { label: 'Approved Leaves', value: stats.approved_leaves,    icon: CalendarDays,  color: 'text-green-600', bg: 'bg-green-50',   action: null },
-          { label: 'Days Present',    value: stats.present_this_month, icon: Clock,         color: 'text-blue-600',  bg: 'bg-blue-50',    action: 'emp-attendance' },
-          { label: 'Status Sheet',    value: '→',                      icon: ClipboardList, color: 'text-indigo-600',bg: 'bg-indigo-50',  action: 'emp-status' },
+          { label: 'Pending Leaves',  value: stats.pending_leaves,  icon: CalendarDays,  color: 'text-amber-500',  bg: 'bg-amber-50',   action: 'emp-leaves' },
+          { label: 'Approved Leaves', value: stats.approved_leaves, icon: CalendarDays,  color: 'text-green-600', bg: 'bg-green-50',   action: null },
+          { label: 'Leave Balance',   value: balances.reduce((s, b) => s + b.available, 0), icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', action: 'emp-leaves' },
+          { label: 'Status Sheet',    value: '→',                   icon: ClipboardList, color: 'text-indigo-600',bg: 'bg-indigo-50',  action: 'emp-status' },
         ].map(({ label, value, icon: Icon, color, bg, action }) => (
           <button
             key={label}
@@ -105,7 +108,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
             <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
               <Icon size={16} className={color} />
             </div>
-            <div className="text-2xl font-bold text-gray-900 mb-0.5">{value ?? 0}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-0.5">{value ?? 0}</div>
             <div className="text-xs text-gray-500">{label}</div>
           </button>
         ))}

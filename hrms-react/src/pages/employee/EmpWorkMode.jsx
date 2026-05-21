@@ -1,248 +1,159 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api';
-import Modal, { FormGrid, Field } from '../../components/Modal';
-import DatePicker from '../../components/DatePicker';
-import { Plus, Trash2, ChevronLeft, ChevronRight, CalendarCheck2 } from 'lucide-react';
-
-const WORK_MODES = ['WFH', 'PLANNED LEAVE', 'SICK LEAVE', 'CASUAL LEAVE', 'HALF DAY LEAVE', 'OTHER'];
-const DURATIONS  = ['FULL-DAY', 'HALF-DAY (Morning)', 'HALF-DAY (Afternoon)'];
+import { ChevronLeft, ChevronRight, CalendarCheck2, Users } from 'lucide-react';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
   'July','August','September','October','November','December',
 ];
 
+const TYPE_CHIP = {
+  'Casual Leave':  'bg-blue-100 text-blue-700',
+  'Sick Leave':    'bg-rose-100 text-rose-700',
+  'Planned':       'bg-teal-100 text-teal-700',
+  'Unplanned':     'bg-orange-100 text-orange-700',
+};
+
+const STATUS_CHIP = {
+  Approved: 'bg-green-100 text-green-700',
+  Pending:  'bg-amber-100 text-amber-700',
+};
+
 function fmtDate(d) {
   if (!d) return '';
   const dt = new Date(d + 'T00:00:00');
-  return `${dt.getDate()}-${MONTH_NAMES[dt.getMonth()].slice(0,3)}-${String(dt.getFullYear()).slice(2)}`;
+  return `${dt.getDate()} ${MONTH_NAMES[dt.getMonth()].slice(0, 3)}`;
 }
 
-function StatusBadge({ status }) {
-  const map = {
-    Approved: 'bg-green-50 text-green-700 border-green-200',
-    Rejected: 'bg-red-50 text-red-700 border-red-200',
-    Pending:  'bg-amber-50 text-amber-700 border-amber-200',
-  };
+function Avatar({ name }) {
+  const initials = name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const colors = ['bg-blue-500','bg-violet-500','bg-teal-500','bg-rose-500','bg-amber-500','bg-indigo-500'];
+  const color = colors[name.charCodeAt(0) % colors.length];
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${map[status] || 'bg-gray-50 text-gray-500 border-gray-200'}`}>
-      {status}
-    </span>
+    <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center flex-shrink-0`}>
+      <span className="text-white text-xs font-bold">{initials}</span>
+    </div>
   );
 }
 
 export default function EmpWorkMode({ toast }) {
   const today = new Date();
-  const [year, setYear]   = useState(today.getFullYear());
+  const [year,  setYear]  = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-  const [entries, setEntries]   = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [modal, setModal]       = useState(false);
-  const [form, setForm]         = useState({});
-  const [saving, setSaving]     = useState(false);
-  const [deleting, setDeleting] = useState(null);
+  const [leaves,  setLeaves]  = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  const monthStr = `${year}-${String(month).padStart(2, '0')}`;
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
-      setEntries(await api('GET', `/api/portal/work-mode?month=${monthStr}`));
+      setLeaves(await api('GET', `/api/portal/team-leaves?month=${monthStr}`));
     } catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
-  }, [year, month]);
+  }, [monthStr]);
 
   useEffect(() => { load(); }, [load]);
-
-  const openAdd = () => {
-    setForm({
-      entry_date: today.toISOString().slice(0, 10),
-      work_mode:  'PLANNED LEAVE',
-      reason:     '',
-      duration:   'FULL-DAY',
-    });
-    setModal(true);
-  };
-
-  const submit = async () => {
-    if (!form.entry_date) return toast('Select a date', 'warning');
-    if (!form.work_mode)  return toast('Select a type', 'warning');
-    setSaving(true);
-    try {
-      await api('POST', '/api/portal/work-mode', {
-        entry_date: form.entry_date,
-        work_mode:  form.work_mode,
-        reason:     form.reason || null,
-        duration:   form.duration || 'FULL-DAY',
-      });
-      toast('Request submitted', 'success');
-      setModal(false);
-      load();
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setSaving(false); }
-  };
-
-  const cancel = async (id) => {
-    if (!confirm('Cancel this work mode request?')) return;
-    setDeleting(id);
-    try {
-      await api('DELETE', `/api/portal/work-mode/${id}`);
-      toast('Request cancelled', 'success');
-      load();
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setDeleting(null); }
-  };
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
     else setMonth(m => m - 1);
   };
   const nextMonth = () => {
-    if (isCurrentMonth) return;
     if (month === 12) { setYear(y => y + 1); setMonth(1); }
     else setMonth(m => m + 1);
   };
 
-  const pending   = entries.filter(e => e.status === 'Pending').length;
-  const approved  = entries.filter(e => e.status === 'Approved').length;
+  const approved = leaves.filter(l => l.status === 'Approved').length;
+  const pending  = leaves.filter(l => l.status === 'Pending').length;
 
   return (
-    <>
+    <div className="page-content space-y-4">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Work Mode Sheet</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Submit WFH and leave requests for HR approval</p>
-        </div>
-        <button onClick={openAdd} className="btn btn-primary btn-sm gap-1.5">
-          <Plus size={13} /> Add Request
-        </button>
-      </div>
-
-      <div className="page-content space-y-4">
-
-        {/* Month navigator */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button onClick={prevMonth} className="btn btn-secondary btn-sm p-1.5">
-              <ChevronLeft size={15} />
-            </button>
-            <span className="text-sm font-semibold text-gray-800 dark:text-white min-w-[130px] text-center">
-              {MONTH_NAMES[month - 1]} {year}
-            </span>
-            <button onClick={nextMonth} disabled={isCurrentMonth}
-              className="btn btn-secondary btn-sm p-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
-              <ChevronRight size={15} />
-            </button>
-          </div>
-          {entries.length > 0 && (
-            <div className="flex gap-3 text-xs">
-              <span className="text-amber-600 font-medium">{pending} pending</span>
-              <span className="text-green-600 font-medium">{approved} approved</span>
-            </div>
-          )}
-        </div>
-
-        {/* Table */}
-        <div className="card">
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th className="w-[100px]">Date</th>
-                  <th className="w-[150px]">Type</th>
-                  <th>Reason</th>
-                  <th className="hidden sm:table-cell w-[150px]">Duration</th>
-                  <th className="w-[110px]">Status</th>
-                  <th className="hidden sm:table-cell">HR Remarks</th>
-                  <th className="w-[60px]"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={7} className="text-center py-10 text-gray-400">Loading…</td></tr>
-                ) : entries.length === 0 ? (
-                  <tr><td colSpan={7}>
-                    <div className="empty-state">
-                      <CalendarCheck2 size={36} className="mb-2 text-gray-300" />
-                      <p className="text-sm text-gray-500">No requests this month</p>
-                      <p className="text-xs text-gray-400 mt-1">Click "Add Request" to submit a WFH or leave request</p>
-                    </div>
-                  </td></tr>
-                ) : entries.map(e => (
-                  <tr key={e.id}>
-                    <td className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">{fmtDate(e.entry_date)}</td>
-                    <td>
-                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{e.work_mode}</span>
-                    </td>
-                    <td className="text-sm text-gray-600 dark:text-gray-400">{e.reason || '—'}</td>
-                    <td className="hidden sm:table-cell text-sm text-gray-600 dark:text-gray-400">{e.duration}</td>
-                    <td><StatusBadge status={e.status} /></td>
-                    <td className="hidden sm:table-cell text-xs text-gray-500 italic">{e.hr_remarks || '—'}</td>
-                    <td>
-                      {e.status === 'Pending' && (
-                        <button
-                          onClick={() => cancel(e.id)}
-                          disabled={deleting === e.id}
-                          className="btn btn-danger btn-xs gap-1 disabled:opacity-60"
-                          title="Cancel request"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <h1 className="page-title">Team Leaves</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">All employee leaves for the month</p>
         </div>
       </div>
 
-      <Modal
-        open={modal}
-        title="Add Work Mode Request"
-        onClose={() => setModal(false)}
-        onSave={submit}
-        saveLabel={saving ? 'Submitting…' : 'Submit Request'}
-      >
-        <FormGrid>
-          <Field label="Date" required>
-            <DatePicker
-              value={form.entry_date || ''}
-              onChange={v => setForm(p => ({ ...p, entry_date: v }))}
-              placeholder="Select date"
-            />
-          </Field>
-          <Field label="Duration" required>
-            <select
-              className="form-select"
-              value={form.duration || 'FULL-DAY'}
-              onChange={e => setForm(p => ({ ...p, duration: e.target.value }))}
-            >
-              {DURATIONS.map(d => <option key={d}>{d}</option>)}
-            </select>
-          </Field>
-          <Field label="Type (WFH / Leave)" required full>
-            <select
-              className="form-select"
-              value={form.work_mode || ''}
-              onChange={e => setForm(p => ({ ...p, work_mode: e.target.value }))}
-            >
-              <option value="">Select type…</option>
-              {WORK_MODES.map(m => <option key={m}>{m}</option>)}
-            </select>
-          </Field>
-          <Field label="Reason" full>
-            <input
-              className="form-input"
-              placeholder="e.g. Marriage, Personal Work, Medical…"
-              value={form.reason || ''}
-              onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
-            />
-          </Field>
-        </FormGrid>
-      </Modal>
-    </>
+      {/* Month navigator */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button onClick={prevMonth} className="btn btn-secondary btn-sm p-1.5">
+            <ChevronLeft size={15} />
+          </button>
+          <span className="text-sm font-semibold text-gray-800 dark:text-white min-w-[140px] text-center">
+            {MONTH_NAMES[month - 1]} {year}
+          </span>
+          <button onClick={nextMonth} className="btn btn-secondary btn-sm p-1.5">
+            <ChevronRight size={15} />
+          </button>
+        </div>
+        {leaves.length > 0 && (
+          <div className="flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1"><Users size={12} className="text-gray-400" />{leaves.length} leaves</span>
+            <span className="text-green-600 font-medium">{approved} approved</span>
+            {pending > 0 && <span className="text-amber-600 font-medium">{pending} pending</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Leave list */}
+      <div className="card">
+        {loading ? (
+          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+        ) : leaves.length === 0 ? (
+          <div className="empty-state py-14">
+            <CalendarCheck2 size={36} className="mb-2 text-gray-300" />
+            <p className="text-sm font-medium text-gray-600">No leaves this month</p>
+            <p className="text-xs text-gray-400 mt-1">All employees are present in {MONTH_NAMES[month - 1]} {year}</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {leaves.map(lv => (
+              <div key={lv.id} className="flex items-center gap-3 px-4 py-3">
+                <Avatar name={lv.employee_name} />
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                      {lv.employee_name}
+                    </span>
+                    <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${TYPE_CHIP[lv.leave_type] || 'bg-gray-100 text-gray-600'}`}>
+                      {lv.leave_type}
+                    </span>
+                    <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${TYPE_CHIP[lv.leave_category] || 'bg-gray-100 text-gray-600'}`}>
+                      {lv.leave_category}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
+                    <span>
+                      {lv.half_day
+                        ? `${fmtDate(lv.from_date)} · Half Day`
+                        : lv.from_date === lv.to_date
+                          ? fmtDate(lv.from_date)
+                          : `${fmtDate(lv.from_date)} – ${fmtDate(lv.to_date)}`}
+                    </span>
+                    <span className="text-gray-300">·</span>
+                    <span>{lv.total_days} day{lv.total_days !== 1 ? 's' : ''}</span>
+                    {lv.reason && (
+                      <>
+                        <span className="text-gray-300">·</span>
+                        <span className="truncate max-w-[200px]">{lv.reason}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${STATUS_CHIP[lv.status] || 'bg-gray-100 text-gray-600'}`}>
+                  {lv.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
