@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, apiForm } from '../../api';
 import { User, Mail, Phone, Calendar, Briefcase, Building2, CreditCard, Camera, Loader2 } from 'lucide-react';
+import ImageCropModal from '../../components/ImageCropModal';
 
 function InfoRow({ icon: Icon, label, value }) {
   return (
@@ -18,9 +19,10 @@ function InfoRow({ icon: Icon, label, value }) {
 }
 
 export default function EmpProfile({ toast, onPhotoUpdate }) {
-  const [emp, setEmp] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [emp,       setEmp]       = useState(null);
+  const [loading,   setLoading]   = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [cropFile,  setCropFile]  = useState(null);
   const fileRef = useRef(null);
 
   const load = () =>
@@ -31,14 +33,21 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
 
   useEffect(() => { load(); }, []);
 
-  const handlePhotoChange = async e => {
+  const handlePhotoChange = e => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) return toast('Photo must be under 5 MB', 'warning');
-    const fd = new FormData();
-    fd.append('file', file);
+    if (file.size > 20 * 1024 * 1024) return toast('File must be under 20 MB', 'warning');
+    if (!file.type.startsWith('image/')) return toast('Please select an image file', 'warning');
+    setCropFile(file);
+  };
+
+  const uploadCropped = async blob => {
+    setCropFile(null);
     setUploading(true);
     try {
+      const fd = new FormData();
+      fd.append('file', blob, 'profile.jpg');
       const { profile_photo } = await apiForm('/api/portal/profile/photo', fd);
       setEmp(prev => ({ ...prev, profile_photo }));
       onPhotoUpdate?.(profile_photo);
@@ -47,7 +56,6 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
       toast(e.message, 'error');
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
@@ -83,6 +91,13 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+            {cropFile && (
+              <ImageCropModal
+                file={cropFile}
+                onConfirm={uploadCropped}
+                onCancel={() => setCropFile(null)}
+              />
+            )}
           </div>
 
           <div>
