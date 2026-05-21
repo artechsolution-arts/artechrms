@@ -44,6 +44,9 @@ class Employee(Base):
     designation_id = Column(Integer, ForeignKey("designations.id"))
     reports_to_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
     employment_type = Column(String(50), default="Full-time")
+    notice_period_days = Column(Integer, nullable=True)
+    probation_period_days = Column(Integer, nullable=True)
+    office_address = Column(String(500), nullable=True)
     bank_name = Column(String(100))
     bank_account_no = Column(String(50))
     bank_ifsc = Column(String(20))
@@ -65,6 +68,7 @@ class Employee(Base):
 
     department_rel = relationship("Department", back_populates="employees")
     designation_rel = relationship("Designation", back_populates="employees")
+    reports_to_rel = relationship("Employee", foreign_keys=[reports_to_id], remote_side="Employee.id")
     leave_applications = relationship("LeaveApplication", back_populates="employee_rel")
     attendances = relationship("Attendance", back_populates="employee_rel")
     salary_slips = relationship("SalarySlip", back_populates="employee_rel")

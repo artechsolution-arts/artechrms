@@ -8,7 +8,8 @@ import {
   Monitor, Undo2, ChevronDown, ChevronUp,
   LayoutList, LayoutGrid, X,
   Phone, Mail, Calendar, Building2, Briefcase, CreditCard,
-  User, AlertCircle,
+  User, AlertCircle, Clock, TrendingUp, Star, AlertTriangle,
+  LogOut, CheckCircle2, ArrowRightLeft, History,
 } from 'lucide-react';
 
 function Avatar({ name, photo, size = 'sm' }) {
@@ -77,8 +78,211 @@ function DetailSection({ title, children }) {
   );
 }
 
+const EVENT_TYPES = [
+  'Joining', 'Probation Completed', 'Salary Hike', 'Promotion', 'Demotion',
+  'Department Change', 'Transfer', 'Role Change', 'Notice Served', 'Resignation', 'Status Change',
+];
+
+const EVENT_META = {
+  'Joining':             { icon: CheckCircle2,  color: 'bg-green-100 text-green-600',   dot: 'bg-green-500' },
+  'Probation Completed': { icon: Star,           color: 'bg-teal-100 text-teal-600',     dot: 'bg-teal-500' },
+  'Salary Hike':         { icon: TrendingUp,     color: 'bg-blue-100 text-blue-600',     dot: 'bg-blue-500' },
+  'Promotion':           { icon: Star,           color: 'bg-indigo-100 text-indigo-600', dot: 'bg-indigo-500' },
+  'Demotion':            { icon: ChevronDown,    color: 'bg-orange-100 text-orange-600', dot: 'bg-orange-500' },
+  'Department Change':   { icon: ArrowRightLeft, color: 'bg-purple-100 text-purple-600', dot: 'bg-purple-500' },
+  'Transfer':            { icon: ArrowRightLeft, color: 'bg-purple-100 text-purple-600', dot: 'bg-purple-500' },
+  'Role Change':         { icon: ArrowRightLeft, color: 'bg-violet-100 text-violet-600', dot: 'bg-violet-500' },
+  'Notice Served':       { icon: AlertTriangle,  color: 'bg-amber-100 text-amber-600',   dot: 'bg-amber-500' },
+  'Resignation':         { icon: LogOut,         color: 'bg-red-100 text-red-600',       dot: 'bg-red-500' },
+  'Status Change':       { icon: Clock,          color: 'bg-gray-100 text-gray-600',     dot: 'bg-gray-400' },
+};
+
+function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form, setForm, saving, onSave, onDelete }) {
+  const hasJoining = history.some(r => r.change_type === 'Joining');
+  const synthetic = (!hasJoining && emp?.date_of_joining) ? [{
+    id: '__synthetic__',
+    change_type: 'Joining',
+    effective_date: emp.date_of_joining,
+    to_designation: emp.designation || null,
+    to_department: emp.department || null,
+    remarks: 'Joined the organization',
+    _synthetic: true,
+  }] : [];
+
+  const allEvents = [...history, ...synthetic].sort((a, b) =>
+    new Date(b.effective_date) - new Date(a.effective_date)
+  );
+
+  const type = form.change_type || '';
+  const needsDesig = ['Promotion', 'Demotion', 'Role Change'].includes(type);
+  const needsDept  = ['Department Change', 'Transfer'].includes(type);
+  const needsSalary = type === 'Salary Hike';
+  const needsLwd    = ['Resignation', 'Notice Served'].includes(type);
+
+  return (
+    <div className="px-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-gray-500">{allEvents.length} event{allEvents.length !== 1 ? 's' : ''} on record</p>
+        <button
+          onClick={() => setShowForm(v => !v)}
+          className="btn btn-primary btn-sm gap-1.5"
+        >
+          {showForm ? <X size={12} /> : <Plus size={12} />}
+          {showForm ? 'Cancel' : 'Add Event'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
+          <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider">New History Event</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Event Type <span className="text-red-500">*</span></label>
+              <select className="form-select" value={form.change_type || ''} onChange={e => setForm({ change_type: e.target.value })}>
+                <option value="">Select type</option>
+                {EVENT_TYPES.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Effective Date <span className="text-red-500">*</span></label>
+              <DatePicker value={form.effective_date || ''} onChange={v => setForm({ effective_date: v })} placeholder="Select date" />
+            </div>
+            {needsDesig && (
+              <>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">From Designation</label>
+                  <input className="form-input" value={form.from_designation || ''} onChange={e => setForm({ from_designation: e.target.value })} placeholder="Previous designation" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">To Designation</label>
+                  <input className="form-input" value={form.to_designation || ''} onChange={e => setForm({ to_designation: e.target.value })} placeholder="New designation" />
+                </div>
+              </>
+            )}
+            {needsDept && (
+              <>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">From Department</label>
+                  <input className="form-input" value={form.from_department || ''} onChange={e => setForm({ from_department: e.target.value })} placeholder="Previous department" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">To Department</label>
+                  <input className="form-input" value={form.to_department || ''} onChange={e => setForm({ to_department: e.target.value })} placeholder="New department" />
+                </div>
+              </>
+            )}
+            {needsSalary && (
+              <>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Previous Salary (₹)</label>
+                  <input type="number" className="form-input" value={form.salary_before || ''} onChange={e => setForm({ salary_before: e.target.value })} placeholder="e.g. 30000" min="0" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">New Salary (₹)</label>
+                  <input type="number" className="form-input" value={form.salary_after || ''} onChange={e => setForm({ salary_after: e.target.value })} placeholder="e.g. 35000" min="0" />
+                </div>
+              </>
+            )}
+            {needsLwd && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Last Working Date</label>
+                <DatePicker value={form.last_working_date || ''} onChange={v => setForm({ last_working_date: v })} placeholder="Select date" />
+              </div>
+            )}
+            <div className="col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Remarks</label>
+              <textarea className="form-textarea" rows={2} value={form.remarks || ''} onChange={e => setForm({ remarks: e.target.value })} placeholder="Any notes…" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary btn-sm">Cancel</button>
+            <button type="button" onClick={onSave} disabled={saving} className="btn btn-primary btn-sm">
+              {saving ? 'Saving…' : 'Save Event'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center h-24 text-gray-400 text-sm">Loading history…</div>
+      ) : allEvents.length === 0 ? (
+        <div className="text-center py-10 text-gray-400">
+          <History size={32} className="mx-auto mb-2 opacity-30" />
+          <p className="text-sm">No history recorded yet</p>
+          <p className="text-xs mt-1">Add an event to start tracking this employee's journey</p>
+        </div>
+      ) : (
+        <div className="relative">
+          <div className="absolute left-4 top-2 bottom-2 w-px bg-gray-200 dark:bg-gray-700" />
+          <div className="space-y-3">
+            {allEvents.map((ev, i) => {
+              const m = EVENT_META[ev.change_type] || { icon: Clock, color: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' };
+              const Icon = m.icon;
+              return (
+                <div key={ev.id || i} className="relative flex gap-3 pl-10">
+                  <div className={`absolute left-0 w-8 h-8 rounded-full ${m.color} flex items-center justify-center flex-shrink-0 ring-2 ring-white dark:ring-gray-900 z-10`}>
+                    <Icon size={14} />
+                  </div>
+                  <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ev.change_type}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{ev.effective_date}</p>
+                        {(ev.from_designation || ev.to_designation) && (
+                          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1 flex-wrap">
+                            {ev.from_designation && <span className="line-through text-gray-400">{ev.from_designation}</span>}
+                            {ev.from_designation && ev.to_designation && <span className="text-gray-400">→</span>}
+                            {ev.to_designation && <span>{ev.to_designation}</span>}
+                          </p>
+                        )}
+                        {(ev.from_department || ev.to_department) && (
+                          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1 flex-wrap">
+                            {ev.from_department && <span className="text-gray-400">{ev.from_department}</span>}
+                            {ev.from_department && ev.to_department && <span className="text-gray-400">→</span>}
+                            {ev.to_department && <span>{ev.to_department}</span>}
+                          </p>
+                        )}
+                        {(ev.salary_before != null || ev.salary_after != null) && (
+                          <p className="text-xs font-medium mt-1 flex items-center gap-1 flex-wrap">
+                            {ev.salary_before != null && <span className="text-gray-400 line-through">₹{Number(ev.salary_before).toLocaleString('en-IN')}</span>}
+                            {ev.salary_before != null && ev.salary_after != null && <span className="text-gray-400">→</span>}
+                            {ev.salary_after != null && <span className="text-green-600">₹{Number(ev.salary_after).toLocaleString('en-IN')}</span>}
+                            {ev.salary_before != null && ev.salary_after != null && ev.salary_before > 0 && (
+                              <span className="text-green-500 text-[11px]">(+{Math.round((ev.salary_after - ev.salary_before) / ev.salary_before * 100)}%)</span>
+                            )}
+                          </p>
+                        )}
+                        {ev.last_working_date && (
+                          <p className="text-xs text-gray-500 mt-1">Last working day: <span className="font-medium">{ev.last_working_date}</span></p>
+                        )}
+                        {ev.remarks && (
+                          <p className="text-[11px] text-gray-400 mt-1 italic">{ev.remarks}</p>
+                        )}
+                      </div>
+                      {!ev._synthetic && (
+                        <button
+                          onClick={() => onDelete(ev.id)}
+                          className="p-1 rounded-lg hover:bg-red-100 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+                          title="Delete event"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Employees({ toast }) {
   const [rows, setRows] = useState([]);
+  const [allEmps, setAllEmps] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -99,6 +303,12 @@ export default function Employees({ toast }) {
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('emp-view-mode') || 'list');
   const [detailEmp, setDetailEmp] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailTab, setDetailTab] = useState('details');
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showHistoryForm, setShowHistoryForm] = useState(false);
+  const [historyForm, setHistoryForm] = useState({});
+  const [historySaving, setHistorySaving] = useState(false);
   const [joinedMonthFilter, setJoinedMonthFilter] = useState('');
   const [joinedMonthLabel, setJoinedMonthLabel] = useState('');
 
@@ -121,10 +331,14 @@ export default function Employees({ toast }) {
   const changePage = (pg) => { setPage(pg); load(search, deptFilter, statusFilter, pg, joinedMonthFilter); };
 
   useEffect(() => {
-    Promise.all([api('GET', '/api/employees/departments'), api('GET', '/api/employees/designations')])
-      .then(([d, de]) => {
+    Promise.all([
+      api('GET', '/api/employees/departments'),
+      api('GET', '/api/employees/designations'),
+      api('GET', '/api/employees?all=true'),
+    ]).then(([d, de, ae]) => {
         setDepts(d);
         setDesigs(de);
+        setAllEmps(Array.isArray(ae) ? ae : (ae?.data || []));
         try {
           const pending = sessionStorage.getItem('nav-filter');
           if (pending) {
@@ -157,6 +371,10 @@ export default function Employees({ toast }) {
   const openDetail = async (id) => {
     setDetailLoading(true);
     setDetailEmp({ id, _loading: true });
+    setDetailTab('details');
+    setHistory([]);
+    setShowHistoryForm(false);
+    setHistoryForm({});
     try {
       const [emp, contacts, assets] = await Promise.all([
         api('GET', `/api/employees/${id}`),
@@ -169,12 +387,63 @@ export default function Employees({ toast }) {
     finally { setDetailLoading(false); }
   };
 
+  const loadHistory = async (id) => {
+    setHistoryLoading(true);
+    try {
+      const data = await api('GET', `/api/hrm/employees/${id}/history`);
+      setHistory(data);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setHistoryLoading(false); }
+  };
+
+  const switchDetailTab = (tab, emp) => {
+    setDetailTab(tab);
+    if (tab === 'history' && emp?.id) loadHistory(emp.id);
+  };
+
+  const saveHistoryEvent = async () => {
+    if (!historyForm.change_type) return toast('Select an event type', 'warning');
+    if (!historyForm.effective_date) return toast('Effective date is required', 'warning');
+    setHistorySaving(true);
+    try {
+      await api('POST', `/api/hrm/employees/${detailEmp.id}/history`, {
+        change_type: historyForm.change_type,
+        effective_date: historyForm.effective_date,
+        from_department: historyForm.from_department || null,
+        to_department: historyForm.to_department || null,
+        from_designation: historyForm.from_designation || null,
+        to_designation: historyForm.to_designation || null,
+        salary_before: historyForm.salary_before ? parseFloat(historyForm.salary_before) : null,
+        salary_after: historyForm.salary_after ? parseFloat(historyForm.salary_after) : null,
+        last_working_date: historyForm.last_working_date || null,
+        remarks: historyForm.remarks || null,
+      });
+      toast('Event added', 'success');
+      setShowHistoryForm(false);
+      setHistoryForm({});
+      loadHistory(detailEmp.id);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setHistorySaving(false); }
+  };
+
+  const deleteHistoryEvent = async (recordId) => {
+    if (!confirm('Delete this history event?')) return;
+    try {
+      await api('DELETE', `/api/hrm/employees/${detailEmp.id}/history/${recordId}`);
+      toast('Event deleted', 'success');
+      loadHistory(detailEmp.id);
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const hf = v => setHistoryForm(p => ({ ...p, ...v }));
+
   const openAdd = () => {
     setForm({
       employment_type: 'Full-time', status: 'Active',
       hra_percent: 40, special_allowance: 0, lta: 0, other_allowance: 0,
       pf_applicable: true, esi_applicable: true, pt_state: 'Karnataka',
       ec_name: '', ec_relationship: '', ec_phone: '', ec_id: null,
+      reports_to_id: null, notice_period_days: null, probation_period_days: null, office_address: '',
     });
     setEmpAssets([]);
     setShowAssetForm(false);
@@ -193,8 +462,12 @@ export default function Employees({ toast }) {
         ...e,
         ec_name: primary.name || '',
         ec_relationship: primary.relationship_type || '',
-        ec_phone: primary.phone || '',
+        ec_phone: primary.ec_phone || primary.phone || '',
         ec_id: primary.id || null,
+        reports_to_id: e.reports_to_id || null,
+        notice_period_days: e.notice_period_days ?? null,
+        probation_period_days: e.probation_period_days ?? null,
+        office_address: e.office_address || '',
       });
       setEmpAssets(assets);
       setShowAssetForm(false);
@@ -258,7 +531,11 @@ export default function Employees({ toast }) {
           date_of_birth: form.date_of_birth || null,
           department_id: form.department_id ? parseInt(form.department_id) : null,
           designation_id: form.designation_id ? parseInt(form.designation_id) : null,
+          reports_to_id: form.reports_to_id ? parseInt(form.reports_to_id) : null,
           employment_type: form.employment_type, username: form.username, password: form.password,
+          notice_period_days: form.notice_period_days ? parseInt(form.notice_period_days) : null,
+          probation_period_days: form.probation_period_days ? parseInt(form.probation_period_days) : null,
+          office_address: form.office_address || null,
           ...salaryFields, ...bankFields,
         });
         if (form.ec_name?.trim()) {
@@ -276,7 +553,11 @@ export default function Employees({ toast }) {
           date_of_birth: form.date_of_birth || null, status: form.status,
           department_id: form.department_id ? parseInt(form.department_id) : null,
           designation_id: form.designation_id ? parseInt(form.designation_id) : null,
+          reports_to_id: form.reports_to_id ? parseInt(form.reports_to_id) : null,
           employment_type: form.employment_type,
+          notice_period_days: form.notice_period_days ? parseInt(form.notice_period_days) : null,
+          probation_period_days: form.probation_period_days ? parseInt(form.probation_period_days) : null,
+          office_address: form.office_address || null,
           ...salaryFields, ...bankFields,
         });
         if (form.ec_name?.trim()) {
@@ -535,9 +816,9 @@ export default function Employees({ toast }) {
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={() => setDetailEmp(null)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col pointer-events-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col pointer-events-auto">
 
-            {/* Modal header */}
+            {/* Header */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <Avatar name={detailEmp.full_name} photo={detailEmp.profile_photo} size="md" />
               <div className="flex-1 min-w-0">
@@ -553,43 +834,55 @@ export default function Employees({ toast }) {
               <div className="flex items-center gap-1.5">
                 {!detailLoading && (
                   <>
-                    <button
-                      onClick={() => { setDetailEmp(null); openEdit(detailEmp.id); }}
-                      className="btn btn-secondary btn-sm gap-1"
-                    >
+                    <button onClick={() => { setDetailEmp(null); openEdit(detailEmp.id); }} className="btn btn-secondary btn-sm gap-1">
                       <Pencil size={12} /> Edit
                     </button>
-                    <button
-                      onClick={() => del(detailEmp.id, detailEmp.full_name)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors"
-                      title="Delete employee"
-                    >
+                    <button onClick={() => del(detailEmp.id, detailEmp.full_name)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors" title="Delete employee">
                       <Trash2 size={14} />
                     </button>
                   </>
                 )}
-                <button
-                  onClick={() => setDetailEmp(null)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors"
-                >
+                <button onClick={() => setDetailEmp(null)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
                   <X size={16} />
                 </button>
               </div>
             </div>
 
-            {/* Modal body */}
+            {/* Tabs */}
+            {!detailLoading && (
+              <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 px-5">
+                {[
+                  { key: 'details', label: 'Details' },
+                  { key: 'history', label: 'History', icon: History },
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => switchDetailTab(tab.key, detailEmp)}
+                    className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px
+                      ${detailTab === tab.key
+                        ? 'border-[var(--accent)] text-[var(--accent)]'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  >
+                    {tab.icon && <tab.icon size={13} />}
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Body */}
             <div className="flex-1 overflow-y-auto py-4">
               {detailLoading ? (
                 <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Loading details…</div>
-              ) : (
+              ) : detailTab === 'details' ? (
                 <>
-                  {/* Identity chips */}
                   <div className="flex flex-wrap gap-2 px-5 mb-4">
                     <code className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-xs font-mono">{detailEmp.employee_id}</code>
                     <Badge text={detailEmp.status} />
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">{detailEmp.employment_type}</span>
                   </div>
-
                   <DetailSection title="Personal">
                     <DetailRow label="Full Name" value={detailEmp.full_name} />
                     <DetailRow label="Gender" value={detailEmp.gender} />
@@ -597,15 +890,17 @@ export default function Employees({ toast }) {
                     <DetailRow label="Email" value={detailEmp.email} />
                     <DetailRow label="Mobile" value={detailEmp.mobile} />
                   </DetailSection>
-
                   <DetailSection title="Employment">
                     <DetailRow label="Department" value={detailEmp.department} />
                     <DetailRow label="Designation" value={detailEmp.designation} />
                     <DetailRow label="Employment Type" value={detailEmp.employment_type} />
                     <DetailRow label="Date of Joining" value={detailEmp.date_of_joining} />
+                    <DetailRow label="Reporting Manager" value={detailEmp.reporting_manager} />
+                    <DetailRow label="Notice Period" value={detailEmp.notice_period_days ? `${detailEmp.notice_period_days} days` : null} />
+                    <DetailRow label="Probation Period" value={detailEmp.probation_period_days ? `${detailEmp.probation_period_days} days` : null} />
+                    <DetailRow label="Office Address" value={detailEmp.office_address} />
                     <DetailRow label="Status" value={detailEmp.status} />
                   </DetailSection>
-
                   {detailEmp.basic_salary && (
                     <DetailSection title="Payroll">
                       <DetailRow label="Basic Salary" value={`₹${Number(detailEmp.basic_salary).toLocaleString('en-IN')}/mo`} />
@@ -616,7 +911,6 @@ export default function Employees({ toast }) {
                       <DetailRow label="PT State" value={detailEmp.pt_state} />
                     </DetailSection>
                   )}
-
                   {(detailEmp.bank_name || detailEmp.bank_account_no) && (
                     <DetailSection title="Bank Details">
                       <DetailRow label="Bank" value={detailEmp.bank_name} />
@@ -625,14 +919,12 @@ export default function Employees({ toast }) {
                       <DetailRow label="Branch" value={detailEmp.bank_branch} />
                     </DetailSection>
                   )}
-
                   {(detailEmp.aadhar_no || detailEmp.pan_no) && (
                     <DetailSection title="Identity">
                       <DetailRow label="Aadhaar" value={detailEmp.aadhar_no} />
                       <DetailRow label="PAN" value={detailEmp.pan_no} />
                     </DetailSection>
                   )}
-
                   {detailEmp._ec?.name && (
                     <DetailSection title="Emergency Contact">
                       <DetailRow label="Name" value={detailEmp._ec.name} />
@@ -640,7 +932,6 @@ export default function Employees({ toast }) {
                       <DetailRow label="Phone" value={detailEmp._ec.phone} />
                     </DetailSection>
                   )}
-
                   {detailEmp._assets?.length > 0 && (
                     <div className="mb-4">
                       <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 px-5">Allocated Assets</h4>
@@ -660,6 +951,20 @@ export default function Employees({ toast }) {
                     </div>
                   )}
                 </>
+              ) : (
+                /* ── HISTORY TAB ── */
+                <EmployeeHistoryTab
+                  emp={detailEmp}
+                  history={history}
+                  loading={historyLoading}
+                  showForm={showHistoryForm}
+                  setShowForm={setShowHistoryForm}
+                  form={historyForm}
+                  setForm={hf}
+                  saving={historySaving}
+                  onSave={saveHistoryEvent}
+                  onDelete={deleteHistoryEvent}
+                />
               )}
             </div>
           </div>
@@ -728,6 +1033,38 @@ export default function Employees({ toast }) {
             </Field>
             <Field label="Date of Joining" required>
               <DatePicker value={form.date_of_joining || ''} onChange={v => f({ date_of_joining: v })} placeholder="Select joining date" />
+            </Field>
+            <Field label="Reporting Manager">
+              <select className="form-select" value={form.reports_to_id || ''} onChange={e => f({ reports_to_id: e.target.value || null })}>
+                <option value="">None</option>
+                {allEmps.filter(e => e.id !== modal?.id).map(e => (
+                  <option key={e.id} value={e.id}>{e.full_name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Notice Period">
+              <select className="form-select" value={form.notice_period_days ?? ''} onChange={e => f({ notice_period_days: e.target.value || null })}>
+                <option value="">Not set</option>
+                <option value="15">15 days</option>
+                <option value="30">30 days (1 month)</option>
+                <option value="45">45 days</option>
+                <option value="60">60 days (2 months)</option>
+                <option value="90">90 days (3 months)</option>
+                <option value="180">180 days (6 months)</option>
+              </select>
+            </Field>
+            <Field label="Probation Period">
+              <select className="form-select" value={form.probation_period_days ?? ''} onChange={e => f({ probation_period_days: e.target.value || null })}>
+                <option value="">Not set</option>
+                <option value="30">30 days (1 month)</option>
+                <option value="60">60 days (2 months)</option>
+                <option value="90">90 days (3 months)</option>
+                <option value="180">180 days (6 months)</option>
+                <option value="365">1 year</option>
+              </select>
+            </Field>
+            <Field label="Office Address" full>
+              <textarea className="form-textarea" rows={2} value={form.office_address || ''} onChange={e => f({ office_address: e.target.value })} placeholder="e.g. 3rd Floor, Tech Park, Whitefield, Bengaluru — 560066" />
             </Field>
           </FormGrid>
         </FormSection>

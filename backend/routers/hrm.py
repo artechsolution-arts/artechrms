@@ -618,6 +618,9 @@ class EmployeeHistoryIn(BaseModel):
     from_designation: Optional[str] = None
     to_designation: Optional[str] = None
     effective_date: date
+    salary_before: Optional[float] = None
+    salary_after: Optional[float] = None
+    last_working_date: Optional[date] = None
     remarks: Optional[str] = None
     created_by: Optional[str] = None
 
@@ -641,6 +644,9 @@ def get_employee_history(emp_id: int, db: Session = Depends(get_db)):
             "from_designation": r.from_designation,
             "to_designation": r.to_designation,
             "effective_date": str(r.effective_date),
+            "salary_before": r.salary_before,
+            "salary_after": r.salary_after,
+            "last_working_date": str(r.last_working_date) if r.last_working_date else None,
             "remarks": r.remarks,
             "created_by": r.created_by,
             "created_at": str(r.created_at) if r.created_at else None,
@@ -659,6 +665,19 @@ def add_employee_history(
     db.commit()
     db.refresh(record)
     return {"id": record.id, "ok": True}
+
+
+@router.delete("/employees/{emp_id}/history/{record_id}")
+def delete_employee_history(emp_id: int, record_id: int, db: Session = Depends(get_db)):
+    record = db.query(EmployeeHistory).filter(
+        EmployeeHistory.id == record_id,
+        EmployeeHistory.employee_id == emp_id,
+    ).first()
+    if not record:
+        raise HTTPException(404, "History record not found")
+    db.delete(record)
+    db.commit()
+    return {"ok": True}
 
 
 # ===========================================================================
