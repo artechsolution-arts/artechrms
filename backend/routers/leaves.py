@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 from datetime import date
 from backend.database import get_db
-from backend.models.leave import LeaveType, LeaveApplication, Attendance
+from backend.models.leave import LeaveType, LeaveApplication, Attendance, LeavePolicy
 from backend.models.hrm import LeaveBalance
 
 router = APIRouter(prefix="/api/leaves", tags=["Leaves"])
@@ -15,6 +15,16 @@ class LeaveTypeIn(BaseModel):
     max_leaves: float = 0
     is_carry_forward: bool = False
     is_paid: bool = True
+
+
+class LeavePolicyIn(BaseModel):
+    prorate_on_joining: bool = False
+    prorate_cutoff_day: int = 15
+    leaves_before_cutoff: float = 2.0
+    leaves_after_cutoff: float = 1.0
+    carry_forward_max: float = 0
+    encashment_allowed: bool = False
+    min_service_days: int = 0
 
 
 class LeaveAppIn(BaseModel):
@@ -66,6 +76,48 @@ def delete_leave_type(type_id: int, db: Session = Depends(get_db)):
     if not lt:
         raise HTTPException(404, "Leave type not found")
     db.delete(lt)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/types/{type_id}/policy")
+def get_leave_policy(type_id: int, db: Session = Depends(get_db)):
+    policy = db.query(LeavePolicy).filter(LeavePolicy.leave_type_id == type_id).first()
+    if not policy:
+        return {
+            "leave_type_id": type_id,
+            "prorate_on_joining": False,
+            "prorate_cutoff_day": 15,
+            "leaves_before_cutoff": 2.0,
+            "leaves_after_cutoff": 1.0,
+            "carry_forward_max": 0,
+            "encashment_allowed": False,
+            "min_service_days": 0,
+        }
+    return {
+        "leave_type_id": policy.leave_type_id,
+        "prorate_on_joining": policy.prorate_on_joining,
+        "prorate_cutoff_day": policy.prorate_cutoff_day,
+        "leaves_before_cutoff": policy.leaves_before_cutoff,
+        "leaves_after_cutoff": policy.leaves_after_cutoff,
+        "carry_forward_max": policy.carry_forward_max,
+        "encashment_allowed": policy.encashment_allowed,
+        "min_service_days": policy.min_service_days,
+    }
+
+
+@router.put("/types/{type_id}/policy")
+def upsert_leave_policy(type_id: int, data: LeavePolicyIn, db: Session = Depends(get_db)):
+    lt = db.query(LeaveType).filter(LeaveType.id == type_id).first()
+    if not lt:
+        raise HTTPException(404, "Leave type not found")
+    policy = db.query(LeavePolicy).filter(LeavePolicy.leave_type_id == type_id).first()
+    if policy:
+        for k, v in data.model_dump().items():
+            setattr(policy, k, v)
+    else:
+        policy = LeavePolicy(leave_type_id=type_id, **data.model_dump())
+        db.add(policy)
     db.commit()
     return {"ok": True}
 

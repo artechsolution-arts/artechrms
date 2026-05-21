@@ -43,6 +43,31 @@ class LeaveApplication(Base):
     leave_type_rel = relationship("LeaveType", back_populates="applications")
 
 
+class LeavePolicy(Base):
+    __tablename__ = "leave_policies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    leave_type_id = Column(Integer, ForeignKey("leave_types.id"), unique=True, nullable=False)
+
+    # Pro-rata accrual based on joining date
+    prorate_on_joining = Column(Boolean, default=False)
+    prorate_cutoff_day = Column(Integer, default=15)       # joined on/before → full credit
+    leaves_before_cutoff = Column(Float, default=2.0)      # leaves for that month if joined on/before cutoff
+    leaves_after_cutoff = Column(Float, default=1.0)       # leaves if joined after cutoff
+
+    # Carry forward cap (0 = unlimited, only relevant when leave type has carry_forward=True)
+    carry_forward_max = Column(Float, default=0)
+
+    # Other rules
+    encashment_allowed = Column(Boolean, default=False)
+    min_service_days = Column(Integer, default=0)          # days employee must have served before applying
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    leave_type_rel = relationship("LeaveType", foreign_keys=[leave_type_id])
+
+
 class Attendance(Base):
     __tablename__ = "attendance"
 
