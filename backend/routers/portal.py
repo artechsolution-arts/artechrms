@@ -164,6 +164,10 @@ def portal_leaves(request: Request, db: Session = Depends(get_db)):
             "status": lv.status,
             "reason": lv.reason,
             "cancellation_reason": lv.cancellation_reason,
+            "pending_from_date": str(lv.pending_from_date) if lv.pending_from_date else None,
+            "pending_to_date": str(lv.pending_to_date) if lv.pending_to_date else None,
+            "pending_total_days": lv.pending_total_days,
+            "edit_reason": lv.edit_reason,
         }
         for lv in leaves
     ]
@@ -282,6 +286,38 @@ def portal_request_leave_cancellation(leave_id: int, data: CancelRequestIn, requ
         raise HTTPException(400, "Reason is required")
     leave.status = "Cancellation Requested"
     leave.cancellation_reason = data.reason.strip()
+    db.commit()
+    return {"ok": True}
+
+
+class EditRequestIn(BaseModel):
+    from_date: date
+    to_date: date
+    reason: str
+
+
+@router.post("/leaves/{leave_id}/edit-request")
+def portal_request_leave_edit(leave_id: int, data: EditRequestIn, request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    leave = db.query(LeaveApplication).filter(
+        LeaveApplication.id == leave_id,
+        LeaveApplication.employee_id == emp.id,
+    ).first()
+    if not leave:
+        raise HTTPException(404, "Leave not found")
+    if leave.status != "Approved":
+        raise HTTPException(400, "Only approved leaves can request a date change")
+    if data.from_date > data.to_date:
+        raise HTTPException(400, "From date must be before to date")
+    if not data.reason or not data.reason.strip():
+        raise HTTPException(400, "Reason is required")
+    delta = (data.to_date - data.from_date).days + 1
+    pending_days = 0.5 if leave.half_day else float(delta)
+    leave.pending_from_date = data.from_date
+    leave.pending_to_date = data.to_date
+    leave.pending_total_days = pending_days
+    leave.edit_reason = data.reason.strip()
+    leave.status = "Edit Requested"
     db.commit()
     return {"ok": True}
 

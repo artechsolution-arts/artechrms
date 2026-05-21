@@ -11,6 +11,7 @@ const MAP = {
   Rejected:    'bg-red-100 text-red-600',
   Cancelled:   'bg-gray-100 text-gray-500',
   'Cancellation Requested': 'bg-orange-100 text-orange-700',
+  'Edit Requested': 'bg-blue-100 text-blue-700',
   Open:        'bg-green-100 text-green-700',
   Closed:      'bg-gray-100 text-gray-500',
   Draft:       'bg-gray-100 text-gray-500',

@@ -3,18 +3,25 @@ import { api } from '../../api';
 import Badge from '../../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import DatePicker from '../../components/DatePicker';
-import { Plus, Trash2, CalendarDays, XCircle } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, XCircle, PencilLine } from 'lucide-react';
 
 export default function EmpLeaves({ toast }) {
   const [leaves,   setLeaves]   = useState([]);
   const [types,    setTypes]    = useState([]);
   const [balances, setBalances] = useState([]);
   const [loading,  setLoading]  = useState(true);
+
   const [modal,       setModal]       = useState(false);
   const [cancelModal, setCancelModal] = useState(false);
+  const [editModal,   setEditModal]   = useState(false);
+
   const [cancelId,    setCancelId]    = useState(null);
   const [cancelReason,setCancelReason]= useState('');
-  const [form,        setForm]        = useState({});
+
+  const [editLeave,   setEditLeave]   = useState(null);
+  const [editForm,    setEditForm]    = useState({});
+
+  const [form, setForm] = useState({});
   const f = v => setForm(p => ({ ...p, ...v }));
 
   const load = async () => {
@@ -34,7 +41,6 @@ export default function EmpLeaves({ toast }) {
 
   useEffect(() => { load(); }, []);
 
-  // Available balance for selected type
   const selectedBal = balances.find(b => b.leave_type_id === parseInt(form.leave_type_id));
 
   const apply = async () => {
@@ -78,6 +84,31 @@ export default function EmpLeaves({ toast }) {
       await api('POST', `/api/portal/leaves/${cancelId}/cancel-request`, { reason: cancelReason.trim() });
       toast('Cancellation request submitted. HR will review it.', 'success');
       setCancelModal(false);
+      load();
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const openEditRequest = lv => {
+    setEditLeave(lv);
+    setEditForm({ from_date: lv.from_date, to_date: lv.to_date, reason: '' });
+    setEditModal(true);
+  };
+
+  const submitEditRequest = async () => {
+    if (!editForm.from_date || !editForm.to_date)
+      return toast('Please select new dates', 'warning');
+    if (editForm.from_date > editForm.to_date)
+      return toast('From date must be before to date', 'warning');
+    if (!editForm.reason?.trim())
+      return toast('Please provide a reason for the date change', 'warning');
+    try {
+      await api('POST', `/api/portal/leaves/${editLeave.id}/edit-request`, {
+        from_date: editForm.from_date,
+        to_date: editForm.to_date,
+        reason: editForm.reason.trim(),
+      });
+      toast('Date change request submitted. HR will review it.', 'success');
+      setEditModal(false);
       load();
     } catch (e) { toast(e.message, 'error'); }
   };
@@ -131,11 +162,32 @@ export default function EmpLeaves({ toast }) {
                 </thead>
                 <tbody>
                   {leaves.map(lv => (
-                    <tr key={lv.id}>
+                    <tr key={lv.id} className={lv.status === 'Edit Requested' ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''}>
                       <td className="font-medium text-gray-900">{lv.leave_type}</td>
-                      <td className="text-gray-600">{lv.from_date}</td>
-                      <td className="text-gray-600">{lv.half_day ? lv.from_date : lv.to_date}</td>
-                      <td className="text-gray-600">{lv.total_days}</td>
+                      <td className="text-gray-600">
+                        {lv.status === 'Edit Requested' && lv.pending_from_date ? (
+                          <span>
+                            <span className="line-through text-gray-400">{lv.from_date}</span>
+                            <span className="block text-blue-600 font-medium">{lv.pending_from_date}</span>
+                          </span>
+                        ) : lv.from_date}
+                      </td>
+                      <td className="text-gray-600">
+                        {lv.status === 'Edit Requested' && lv.pending_to_date ? (
+                          <span>
+                            <span className="line-through text-gray-400">{lv.half_day ? lv.from_date : lv.to_date}</span>
+                            <span className="block text-blue-600 font-medium">{lv.pending_to_date}</span>
+                          </span>
+                        ) : (lv.half_day ? lv.from_date : lv.to_date)}
+                      </td>
+                      <td className="text-gray-600">
+                        {lv.status === 'Edit Requested' && lv.pending_total_days != null ? (
+                          <span>
+                            <span className="line-through text-gray-400">{lv.total_days}</span>
+                            <span className="block text-blue-600 font-medium">{lv.pending_total_days}</span>
+                          </span>
+                        ) : lv.total_days}
+                      </td>
                       <td>
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${lv.half_day ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                           {lv.half_day ? 'Half Day' : 'Full Day'}
@@ -146,7 +198,13 @@ export default function EmpLeaves({ toast }) {
                           {lv.leave_category || 'Planned'}
                         </span>
                       </td>
-                      <td className="text-gray-500 text-xs max-w-[140px] truncate">{lv.reason || '—'}</td>
+                      <td className="text-gray-500 text-xs max-w-[140px]">
+                        {lv.status === 'Edit Requested' && lv.edit_reason ? (
+                          <span className="text-blue-600 dark:text-blue-400 font-medium truncate block" title={lv.edit_reason}>{lv.edit_reason}</span>
+                        ) : (
+                          <span className="truncate block">{lv.reason || '—'}</span>
+                        )}
+                      </td>
                       <td><Badge text={lv.status} /></td>
                       <td>
                         {lv.status === 'Pending' && (
@@ -155,12 +213,20 @@ export default function EmpLeaves({ toast }) {
                           </button>
                         )}
                         {lv.status === 'Approved' && (
-                          <button onClick={() => openCancelRequest(lv.id)} className="btn btn-secondary btn-xs gap-1 text-orange-600 border-orange-200 hover:bg-orange-50">
-                            <XCircle size={11} /> Request Cancel
-                          </button>
+                          <div className="flex flex-col gap-1">
+                            <button onClick={() => openEditRequest(lv)} className="btn btn-secondary btn-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50">
+                              <PencilLine size={11} /> Edit Dates
+                            </button>
+                            <button onClick={() => openCancelRequest(lv.id)} className="btn btn-secondary btn-xs gap-1 text-orange-600 border-orange-200 hover:bg-orange-50">
+                              <XCircle size={11} /> Request Cancel
+                            </button>
+                          </div>
                         )}
                         {lv.status === 'Cancellation Requested' && (
                           <span className="text-xs text-orange-500 font-medium">Awaiting HR</span>
+                        )}
+                        {lv.status === 'Edit Requested' && (
+                          <span className="text-xs text-blue-500 font-medium">Awaiting HR</span>
                         )}
                       </td>
                     </tr>
@@ -172,6 +238,7 @@ export default function EmpLeaves({ toast }) {
         )}
       </div>
 
+      {/* Cancel approved leave modal */}
       <Modal
         open={cancelModal}
         title="Request Leave Cancellation"
@@ -185,7 +252,7 @@ export default function EmpLeaves({ toast }) {
               <textarea
                 className="form-textarea"
                 rows={4}
-                placeholder="Explain why you need to cancel this approved leave (e.g. plans changed, rescheduled to different dates)…"
+                placeholder="Explain why you need to cancel this approved leave…"
                 value={cancelReason}
                 onChange={e => setCancelReason(e.target.value)}
               />
@@ -194,6 +261,54 @@ export default function EmpLeaves({ toast }) {
         </FormSection>
       </Modal>
 
+      {/* Edit approved leave dates modal */}
+      <Modal
+        open={editModal}
+        title="Request Date Change"
+        onClose={() => setEditModal(false)}
+        onSave={submitEditRequest}
+        saveLabel="Submit for Approval"
+      >
+        <FormSection title="New Leave Dates">
+          <div className="mb-3 px-1">
+            <p className="text-xs text-gray-500">
+              Current approved dates:&nbsp;
+              <span className="font-medium text-gray-700">{editLeave?.from_date} – {editLeave?.half_day ? editLeave?.from_date : editLeave?.to_date}</span>
+              &nbsp;({editLeave?.total_days} day{editLeave?.total_days !== 1 ? 's' : ''})
+            </p>
+          </div>
+          <FormGrid>
+            <Field label="New From Date" required>
+              <DatePicker
+                value={editForm.from_date || ''}
+                onChange={v => setEditForm(p => ({ ...p, from_date: v }))}
+                placeholder="Select new from date"
+              />
+            </Field>
+            {!editLeave?.half_day && (
+              <Field label="New To Date" required>
+                <DatePicker
+                  value={editForm.to_date || ''}
+                  onChange={v => setEditForm(p => ({ ...p, to_date: v }))}
+                  placeholder="Select new to date"
+                  min={editForm.from_date}
+                />
+              </Field>
+            )}
+            <Field label="Reason for Date Change" required full>
+              <textarea
+                className="form-textarea"
+                rows={3}
+                placeholder="Explain why the dates need to change…"
+                value={editForm.reason || ''}
+                onChange={e => setEditForm(p => ({ ...p, reason: e.target.value }))}
+              />
+            </Field>
+          </FormGrid>
+        </FormSection>
+      </Modal>
+
+      {/* Apply leave modal */}
       <Modal open={modal} title="Apply for Leave" onClose={() => setModal(false)} onSave={apply} saveLabel="Submit Application">
         <FormSection title="Leave Details">
           <FormGrid>

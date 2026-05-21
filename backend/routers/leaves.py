@@ -97,6 +97,10 @@ def list_leaves(
             "status": lv.status,
             "reason": lv.reason,
             "cancellation_reason": lv.cancellation_reason if hasattr(lv, 'cancellation_reason') else None,
+            "pending_from_date": str(lv.pending_from_date) if getattr(lv, 'pending_from_date', None) else None,
+            "pending_to_date": str(lv.pending_to_date) if getattr(lv, 'pending_to_date', None) else None,
+            "pending_total_days": getattr(lv, 'pending_total_days', None),
+            "edit_reason": getattr(lv, 'edit_reason', None),
         })
     return result
 
@@ -178,6 +182,65 @@ def reject_leave_cancellation(leave_id: int, db: Session = Depends(get_db)):
         raise HTTPException(400, "Leave is not in Cancellation Requested state")
     leave.status = "Approved"
     leave.cancellation_reason = None
+    db.commit()
+    return {"ok": True}
+
+
+@router.put("/{leave_id}/approve-edit")
+def approve_leave_edit(leave_id: int, db: Session = Depends(get_db)):
+    from backend.models.work_mode_entry import WorkModeEntry
+    leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
+    if not leave:
+        raise HTTPException(404, "Leave not found")
+    if leave.status != "Edit Requested":
+        raise HTTPException(400, "Leave is not in Edit Requested state")
+    old_days = leave.total_days
+    new_from = leave.pending_from_date
+    new_to = leave.pending_to_date
+    new_days = leave.pending_total_days
+    # Adjust leave balance: refund old days, charge new days
+    year = new_from.year if new_from else date.today().year
+    bal = db.query(LeaveBalance).filter(
+        LeaveBalance.employee_id == leave.employee_id,
+        LeaveBalance.leave_type_id == leave.leave_type_id,
+        LeaveBalance.year == year,
+    ).first()
+    if bal:
+        bal.used = max(0, round(bal.used - old_days + new_days, 2))
+    # Remove old work mode entries and re-sync with new dates
+    db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
+    # Apply new dates
+    leave.from_date = new_from
+    leave.to_date = new_to
+    leave.total_days = new_days
+    leave.pending_from_date = None
+    leave.pending_to_date = None
+    leave.pending_total_days = None
+    leave.edit_reason = None
+    leave.status = "Approved"
+    db.commit()
+    # Re-sync work mode entries for new date range
+    from backend.routers.portal import _sync_work_mode_for_leave
+    db.refresh(leave)
+    _sync_work_mode_for_leave(leave, db)
+    # Mark new entries as Approved
+    db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).update({"status": "Approved"})
+    db.commit()
+    return {"ok": True}
+
+
+@router.put("/{leave_id}/reject-edit")
+def reject_leave_edit(leave_id: int, db: Session = Depends(get_db)):
+    leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
+    if not leave:
+        raise HTTPException(404, "Leave not found")
+    if leave.status != "Edit Requested":
+        raise HTTPException(400, "Leave is not in Edit Requested state")
+    leave.status = "Approved"
+    leave.pending_from_date = None
+    leave.pending_to_date = None
+    leave.pending_total_days = None
+    leave.edit_reason = None
     db.commit()
     return {"ok": True}
 

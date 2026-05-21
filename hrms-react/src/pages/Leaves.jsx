@@ -3,16 +3,17 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
-import { Plus, RefreshCw, CheckCircle, XCircle, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Trash2, RotateCcw, PencilLine } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
 const STATUS_TABS = [
-  { value: '',                     label: 'All' },
-  { value: 'Pending',              label: 'Pending' },
+  { value: '',                       label: 'All' },
+  { value: 'Pending',                label: 'Pending' },
   { value: 'Cancellation Requested', label: 'Cancel Requests' },
-  { value: 'Approved',             label: 'Approved' },
-  { value: 'Rejected',             label: 'Rejected' },
-  { value: 'Cancelled',            label: 'Cancelled' },
+  { value: 'Edit Requested',         label: 'Edit Requests' },
+  { value: 'Approved',               label: 'Approved' },
+  { value: 'Rejected',               label: 'Rejected' },
+  { value: 'Cancelled',              label: 'Cancelled' },
 ];
 
 export default function Leaves({ toast }) {
@@ -82,6 +83,16 @@ export default function Leaves({ toast }) {
     catch (e) { toast(e.message, 'error'); }
   };
 
+  const approveEdit = async id => {
+    try { await api('PUT', `/api/leaves/${id}/approve-edit`); toast('Date change approved', 'success'); load(); }
+    catch (e) { toast(e.message, 'error'); }
+  };
+
+  const rejectEdit = async id => {
+    try { await api('PUT', `/api/leaves/${id}/reject-edit`); toast('Date change rejected — leave restored to original dates', 'info'); load(); }
+    catch (e) { toast(e.message, 'error'); }
+  };
+
   const del = async id => {
     if (!confirm('Delete this leave application?')) return;
     try { await api('DELETE', `/api/leaves/${id}`); toast('Deleted', 'success'); load(); }
@@ -89,13 +100,14 @@ export default function Leaves({ toast }) {
   };
 
   const cancelCount = allRows.filter(r => r.status === 'Cancellation Requested').length;
+  const editCount   = allRows.filter(r => r.status === 'Edit Requested').length;
   const pendingCount = allRows.filter(r => r.status === 'Pending').length;
 
-  // Apply tab filter, cancellation requests always float to top
+  // Apply tab filter; cancellation and edit requests float to top
   const rows = (() => {
     const filtered = statusFilter ? allRows.filter(r => r.status === statusFilter) : allRows;
     return [...filtered].sort((a, b) => {
-      const priority = s => s === 'Cancellation Requested' ? 0 : s === 'Pending' ? 1 : 2;
+      const priority = s => s === 'Cancellation Requested' ? 0 : s === 'Edit Requested' ? 1 : s === 'Pending' ? 2 : 3;
       return priority(a.status) - priority(b.status);
     });
   })();
@@ -116,9 +128,11 @@ export default function Leaves({ toast }) {
           {STATUS_TABS.map(tab => {
             const isActive = statusFilter === tab.value;
             const badge = tab.value === 'Cancellation Requested' ? cancelCount
+                        : tab.value === 'Edit Requested' ? editCount
                         : tab.value === 'Pending' ? pendingCount
                         : 0;
-            const isAlert = tab.value === 'Cancellation Requested' && cancelCount > 0;
+            const isAlert = (tab.value === 'Cancellation Requested' && cancelCount > 0)
+                         || (tab.value === 'Edit Requested' && editCount > 0);
             return (
               <button
                 key={tab.value}
@@ -145,6 +159,27 @@ export default function Leaves({ toast }) {
             );
           })}
         </div>
+
+        {/* Edit requests banner */}
+        {editCount > 0 && statusFilter !== 'Edit Requested' && (
+          <div
+            className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+            onClick={() => setStatusFilter('Edit Requested')}
+          >
+            <div className="flex items-center gap-2.5">
+              <PencilLine size={15} className="text-blue-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                  {editCount} Leave Date Change Request{editCount > 1 ? 's' : ''} Pending Review
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  Employees have requested to change their approved leave dates — click to review
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">View →</span>
+          </div>
+        )}
 
         {/* Cancellation requests banner when present and not already filtered */}
         {cancelCount > 0 && statusFilter !== 'Cancellation Requested' && (
@@ -189,16 +224,42 @@ export default function Leaves({ toast }) {
                 ) : rows.map(l => (
                   <tr
                     key={l.id}
-                    className={l.status === 'Cancellation Requested' ? 'bg-orange-50/60 dark:bg-orange-900/10' : ''}
+                    className={
+                      l.status === 'Cancellation Requested' ? 'bg-orange-50/60 dark:bg-orange-900/10' :
+                      l.status === 'Edit Requested' ? 'bg-blue-50/60 dark:bg-blue-900/10' : ''
+                    }
                   >
                     <td className="font-semibold text-gray-900 dark:text-gray-100">{l.employee_name}</td>
                     <td className="text-gray-600 dark:text-gray-400">{l.leave_type}</td>
-                    <td className="text-gray-600 dark:text-gray-400">{l.from_date}</td>
-                    <td className="text-gray-600 dark:text-gray-400">{l.to_date}</td>
-                    <td className="text-gray-600 dark:text-gray-400">{l.total_days}</td>
+                    <td className="text-gray-600 dark:text-gray-400">
+                      {l.status === 'Edit Requested' && l.pending_from_date ? (
+                        <span>
+                          <span className="line-through text-gray-400 text-xs">{l.from_date}</span>
+                          <span className="block text-blue-600 font-medium">{l.pending_from_date}</span>
+                        </span>
+                      ) : l.from_date}
+                    </td>
+                    <td className="text-gray-600 dark:text-gray-400">
+                      {l.status === 'Edit Requested' && l.pending_to_date ? (
+                        <span>
+                          <span className="line-through text-gray-400 text-xs">{l.to_date}</span>
+                          <span className="block text-blue-600 font-medium">{l.pending_to_date}</span>
+                        </span>
+                      ) : l.to_date}
+                    </td>
+                    <td className="text-gray-600 dark:text-gray-400">
+                      {l.status === 'Edit Requested' && l.pending_total_days != null ? (
+                        <span>
+                          <span className="line-through text-gray-400 text-xs">{l.total_days}</span>
+                          <span className="block text-blue-600 font-medium">{l.pending_total_days}</span>
+                        </span>
+                      ) : l.total_days}
+                    </td>
                     <td className="text-xs text-gray-500 max-w-[180px]">
                       {l.status === 'Cancellation Requested' && l.cancellation_reason ? (
                         <span className="text-orange-600 dark:text-orange-400 font-medium">{l.cancellation_reason}</span>
+                      ) : l.status === 'Edit Requested' && l.edit_reason ? (
+                        <span className="text-blue-600 dark:text-blue-400 font-medium">{l.edit_reason}</span>
                       ) : (
                         <span className="truncate block">{l.reason || '—'}</span>
                       )}
@@ -223,6 +284,16 @@ export default function Leaves({ toast }) {
                             </button>
                             <button onClick={() => rejectCancel(l.id)} className="btn btn-danger btn-xs gap-1">
                               <XCircle size={11} /> Reject Cancel
+                            </button>
+                          </>
+                        )}
+                        {l.status === 'Edit Requested' && (
+                          <>
+                            <button onClick={() => approveEdit(l.id)} className="btn btn-success btn-xs gap-1">
+                              <CheckCircle size={11} /> Approve Edit
+                            </button>
+                            <button onClick={() => rejectEdit(l.id)} className="btn btn-danger btn-xs gap-1">
+                              <XCircle size={11} /> Reject Edit
                             </button>
                           </>
                         )}

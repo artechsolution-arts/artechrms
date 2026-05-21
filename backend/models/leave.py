@@ -31,6 +31,10 @@ class LeaveApplication(Base):
     reason = Column(Text)
     status = Column(String(30), default="Pending")  # Pending, Approved, Rejected, Cancellation Requested, Cancelled
     cancellation_reason = Column(Text, nullable=True)
+    pending_from_date = Column(Date, nullable=True)
+    pending_to_date = Column(Date, nullable=True)
+    pending_total_days = Column(Float, nullable=True)
+    edit_reason = Column(Text, nullable=True)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

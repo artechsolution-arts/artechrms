@@ -82,6 +82,24 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "priority": "high",
             })
 
+        edit_requests = db.query(LeaveApplication).filter(
+            LeaveApplication.status == "Edit Requested"
+        ).order_by(LeaveApplication.created_at.desc()).limit(10).all()
+
+        for leave in edit_requests:
+            emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
+            emp_name = emp.full_name if emp else "An employee"
+            notifications.append({
+                "id": f"edit-{leave.id}",
+                "type": "edit_request",
+                "icon": "✏️",
+                "title": "Leave Date Change Request",
+                "message": f"{emp_name} wants to change approved leave dates",
+                "action": "leaves",
+                "time": str(leave.created_at)[:10] if leave.created_at else "",
+                "priority": "high",
+            })
+
         pending_expenses = db.query(ExpenseClaim).filter(
             ExpenseClaim.status == "Pending"
         ).order_by(ExpenseClaim.created_at.desc()).limit(5).all()
