@@ -74,9 +74,9 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
           <div className="relative flex-shrink-0">
             {emp.profile_photo ? (
               <img src={emp.profile_photo} alt={emp.full_name}
-                className="w-20 h-20 rounded-2xl object-cover shadow-lg" />
+                className="w-28 h-28 rounded-full object-cover shadow-lg ring-4 ring-white dark:ring-gray-900" />
             ) : (
-              <div className="w-20 h-20 rounded-2xl text-white flex items-center justify-center text-2xl font-bold shadow-lg"
+              <div className="w-28 h-28 rounded-full text-white flex items-center justify-center text-3xl font-bold shadow-lg ring-4 ring-white dark:ring-gray-900"
                 style={{ background: `linear-gradient(135deg, var(--accent-dark), var(--accent))` }}>
                 {initials}
               </div>
@@ -84,11 +84,11 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-white dark:bg-gray-800 border-2 border-white dark:border-gray-900 shadow flex items-center justify-center hover:scale-110 transition-transform"
+              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white dark:bg-gray-800 border-2 border-white dark:border-gray-900 shadow-md flex items-center justify-center hover:scale-110 transition-transform"
               style={{ color: 'var(--accent)' }}
               title="Change photo"
             >
-              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+              {uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
             {cropFile && (

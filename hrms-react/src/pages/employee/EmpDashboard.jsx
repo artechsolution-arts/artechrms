@@ -84,7 +84,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
           <div className="text-white/70 text-sm">{emp.designation || 'Employee'} · {emp.department || 'Artech Solutions'}</div>
           <div className="text-white/50 text-xs mt-1">Employee ID: {emp.employee_id} · Joined {emp.date_of_joining}</div>
         </div>
-        <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center overflow-hidden flex-shrink-0">
+        <div className="w-20 h-20 rounded-full bg-white/15 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-white/40">
           {emp.profile_photo
             ? <img src={emp.profile_photo} alt="" className="w-full h-full object-cover" />
             : <span className="text-2xl font-bold">{emp.full_name.split(' ').map(w => w[0]).slice(0,2).join('')}</span>
