@@ -11,9 +11,9 @@ export default function ImageCropModal({ file, onConfirm, onCancel }) {
   const [zoom,    setZoom]    = useState(1);
   const [offset,  setOffset]  = useState({ x: 0, y: 0 });
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
+  const [imgSrc,  setImgSrc]  = useState('');
   const [ready,   setReady]   = useState(false);
 
-  const imgRef       = useRef(null);
   const containerRef = useRef(null);
   const dragStart    = useRef(null);
   const imgElRef     = useRef(null);   // loaded Image element for canvas
@@ -22,18 +22,18 @@ export default function ImageCropModal({ file, onConfirm, onCancel }) {
   useEffect(() => {
     if (!file) return;
     const url = URL.createObjectURL(file);
+    setImgSrc(url);
     const img = new Image();
     img.onload = () => {
       imgElRef.current = img;
       setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
-      // Initial zoom: fit the image so its smaller side fills the crop circle
+      // Initial zoom: fit the smaller side to fill the crop circle
       const fit = CROP_PX / Math.min(img.naturalWidth, img.naturalHeight);
       setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, fit)));
       setOffset({ x: 0, y: 0 });
       setReady(true);
     };
     img.src = url;
-    if (imgRef.current) imgRef.current.src = url;
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
@@ -173,9 +173,9 @@ export default function ImageCropModal({ file, onConfirm, onCancel }) {
             }} />
 
             {/* Image */}
-            {ready && (
+            {ready && imgSrc && (
               <img
-                ref={imgRef}
+                src={imgSrc}
                 draggable={false}
                 style={{
                   position: 'absolute',
@@ -189,7 +189,6 @@ export default function ImageCropModal({ file, onConfirm, onCancel }) {
                   pointerEvents: 'none',
                   zIndex: 1,
                 }}
-                alt="crop preview"
               />
             )}
           </div>
