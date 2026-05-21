@@ -29,7 +29,8 @@ class LeaveApplication(Base):
     half_day = Column(Boolean, default=False)
     leave_category = Column(String(20), default='Planned')   # Planned | Unplanned
     reason = Column(Text)
-    status = Column(String(20), default="Pending")  # Pending, Approved, Rejected
+    status = Column(String(20), default="Pending")  # Pending, Approved, Rejected, Cancellation Requested, Cancelled
+    cancellation_reason = Column(Text, nullable=True)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

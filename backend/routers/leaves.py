@@ -96,6 +96,7 @@ def list_leaves(
             "leave_category": lv.leave_category or "Planned",
             "status": lv.status,
             "reason": lv.reason,
+            "cancellation_reason": lv.cancellation_reason if hasattr(lv, 'cancellation_reason') else None,
         })
     return result
 
@@ -140,6 +141,43 @@ def reject_leave(leave_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Leave not found")
     leave.status = "Rejected"
     db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
+    db.commit()
+    return {"ok": True}
+
+
+@router.put("/{leave_id}/approve-cancel")
+def approve_leave_cancellation(leave_id: int, db: Session = Depends(get_db)):
+    from backend.models.work_mode_entry import WorkModeEntry
+    leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
+    if not leave:
+        raise HTTPException(404, "Leave not found")
+    if leave.status != "Cancellation Requested":
+        raise HTTPException(400, "Leave is not in Cancellation Requested state")
+    # Restore balance
+    year = leave.from_date.year if leave.from_date else date.today().year
+    bal = db.query(LeaveBalance).filter(
+        LeaveBalance.employee_id == leave.employee_id,
+        LeaveBalance.leave_type_id == leave.leave_type_id,
+        LeaveBalance.year == year,
+    ).first()
+    if bal:
+        bal.used = max(0, round(bal.used - leave.total_days, 2))
+    # Remove work mode entries
+    db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
+    leave.status = "Cancelled"
+    db.commit()
+    return {"ok": True}
+
+
+@router.put("/{leave_id}/reject-cancel")
+def reject_leave_cancellation(leave_id: int, db: Session = Depends(get_db)):
+    leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
+    if not leave:
+        raise HTTPException(404, "Leave not found")
+    if leave.status != "Cancellation Requested":
+        raise HTTPException(400, "Leave is not in Cancellation Requested state")
+    leave.status = "Approved"
+    leave.cancellation_reason = None
     db.commit()
     return {"ok": True}
 

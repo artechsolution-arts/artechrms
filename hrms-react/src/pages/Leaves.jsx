@@ -65,6 +65,16 @@ export default function Leaves({ toast }) {
     catch (e) { toast(e.message, 'error'); }
   };
 
+  const approveCancel = async id => {
+    try { await api('PUT', `/api/leaves/${id}/approve-cancel`); toast('Cancellation approved — leave removed', 'success'); load(); }
+    catch (e) { toast(e.message, 'error'); }
+  };
+
+  const rejectCancel = async id => {
+    try { await api('PUT', `/api/leaves/${id}/reject-cancel`); toast('Cancellation request rejected — leave restored to Approved', 'info'); load(); }
+    catch (e) { toast(e.message, 'error'); }
+  };
+
   const del = async id => {
     if (!confirm('Delete this leave application?')) return;
     try { await api('DELETE', `/api/leaves/${id}`); toast('Deleted', 'success'); load(); }
@@ -88,6 +98,8 @@ export default function Leaves({ toast }) {
               onChange={e => { setStatusFilter(e.target.value); load(e.target.value); }}>
               <option value="">All Status</option>
               <option>Pending</option><option>Approved</option><option>Rejected</option>
+              <option value="Cancellation Requested">Cancellation Requested</option>
+              <option>Cancelled</option>
             </select>
           </div>
         </div>
@@ -98,14 +110,14 @@ export default function Leaves({ toast }) {
               <thead>
                 <tr>
                   <th>Employee</th><th>Leave Type</th><th>From</th><th>To</th>
-                  <th>Days</th><th>Status</th><th>Actions</th>
+                  <th>Days</th><th>Reason / Note</th><th>Status</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} className="text-center py-10 text-gray-400">Loading...</td></tr>
+                  <tr><td colSpan={8} className="text-center py-10 text-gray-400">Loading...</td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={7}>
+                  <tr><td colSpan={8}>
                     <div className="empty-state">
                       <div className="empty-state-icon">📅</div>
                       <p className="text-sm text-gray-500">No leave applications</p>
@@ -118,6 +130,13 @@ export default function Leaves({ toast }) {
                     <td className="text-gray-600">{l.from_date}</td>
                     <td className="text-gray-600">{l.to_date}</td>
                     <td className="text-gray-600">{l.total_days}</td>
+                    <td className="text-xs text-gray-500 max-w-[180px]">
+                      {l.status === 'Cancellation Requested' && l.cancellation_reason ? (
+                        <span className="text-orange-600 font-medium">{l.cancellation_reason}</span>
+                      ) : (
+                        <span className="truncate block">{l.reason || '—'}</span>
+                      )}
+                    </td>
                     <td><Badge text={l.status} /></td>
                     <td>
                       <div className="flex items-center gap-1 flex-wrap">
@@ -128,6 +147,16 @@ export default function Leaves({ toast }) {
                             </button>
                             <button onClick={() => reject(l.id)} className="btn btn-danger btn-xs gap-1">
                               <XCircle size={11} /> Reject
+                            </button>
+                          </>
+                        )}
+                        {l.status === 'Cancellation Requested' && (
+                          <>
+                            <button onClick={() => approveCancel(l.id)} className="btn btn-success btn-xs gap-1">
+                              <CheckCircle size={11} /> Approve Cancel
+                            </button>
+                            <button onClick={() => rejectCancel(l.id)} className="btn btn-danger btn-xs gap-1">
+                              <XCircle size={11} /> Reject Cancel
                             </button>
                           </>
                         )}

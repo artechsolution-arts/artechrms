@@ -139,6 +139,7 @@ def portal_leaves(request: Request, db: Session = Depends(get_db)):
             "leave_category": lv.leave_category or "Planned",
             "status": lv.status,
             "reason": lv.reason,
+            "cancellation_reason": lv.cancellation_reason,
         }
         for lv in leaves
     ]
@@ -234,6 +235,29 @@ def portal_cancel_leave(leave_id: int, request: Request, db: Session = Depends(g
         raise HTTPException(400, "Only pending leaves can be cancelled")
     _remove_work_mode_for_leave(leave_id, db)
     db.delete(leave)
+    db.commit()
+    return {"ok": True}
+
+
+class CancelRequestIn(BaseModel):
+    reason: str
+
+
+@router.post("/leaves/{leave_id}/cancel-request")
+def portal_request_leave_cancellation(leave_id: int, data: CancelRequestIn, request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    leave = db.query(LeaveApplication).filter(
+        LeaveApplication.id == leave_id,
+        LeaveApplication.employee_id == emp.id,
+    ).first()
+    if not leave:
+        raise HTTPException(404, "Leave not found")
+    if leave.status != "Approved":
+        raise HTTPException(400, "Only approved leaves can request cancellation")
+    if not data.reason or not data.reason.strip():
+        raise HTTPException(400, "Reason is required")
+    leave.status = "Cancellation Requested"
+    leave.cancellation_reason = data.reason.strip()
     db.commit()
     return {"ok": True}
 

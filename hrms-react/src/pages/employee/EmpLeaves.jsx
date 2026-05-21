@@ -3,15 +3,18 @@ import { api } from '../../api';
 import Badge from '../../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import DatePicker from '../../components/DatePicker';
-import { Plus, Trash2, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, XCircle } from 'lucide-react';
 
 export default function EmpLeaves({ toast }) {
   const [leaves,   setLeaves]   = useState([]);
   const [types,    setTypes]    = useState([]);
   const [balances, setBalances] = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [modal,    setModal]    = useState(false);
-  const [form,     setForm]     = useState({});
+  const [modal,       setModal]       = useState(false);
+  const [cancelModal, setCancelModal] = useState(false);
+  const [cancelId,    setCancelId]    = useState(null);
+  const [cancelReason,setCancelReason]= useState('');
+  const [form,        setForm]        = useState({});
   const f = v => setForm(p => ({ ...p, ...v }));
 
   const load = async () => {
@@ -63,6 +66,18 @@ export default function EmpLeaves({ toast }) {
     try {
       await api('DELETE', `/api/portal/leaves/${id}`);
       toast('Leave cancelled', 'success');
+      load();
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const openCancelRequest = id => { setCancelId(id); setCancelReason(''); setCancelModal(true); };
+
+  const submitCancelRequest = async () => {
+    if (!cancelReason.trim()) return toast('Please provide a reason for cancellation', 'warning');
+    try {
+      await api('POST', `/api/portal/leaves/${cancelId}/cancel-request`, { reason: cancelReason.trim() });
+      toast('Cancellation request submitted. HR will review it.', 'success');
+      setCancelModal(false);
       load();
     } catch (e) { toast(e.message, 'error'); }
   };
@@ -139,6 +154,14 @@ export default function EmpLeaves({ toast }) {
                             <Trash2 size={11} /> Cancel
                           </button>
                         )}
+                        {lv.status === 'Approved' && (
+                          <button onClick={() => openCancelRequest(lv.id)} className="btn btn-secondary btn-xs gap-1 text-orange-600 border-orange-200 hover:bg-orange-50">
+                            <XCircle size={11} /> Request Cancel
+                          </button>
+                        )}
+                        {lv.status === 'Cancellation Requested' && (
+                          <span className="text-xs text-orange-500 font-medium">Awaiting HR</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -148,6 +171,28 @@ export default function EmpLeaves({ toast }) {
           </div>
         )}
       </div>
+
+      <Modal
+        open={cancelModal}
+        title="Request Leave Cancellation"
+        onClose={() => setCancelModal(false)}
+        onSave={submitCancelRequest}
+        saveLabel="Submit Request"
+      >
+        <FormSection title="Cancellation Details">
+          <FormGrid>
+            <Field label="Reason for Cancellation" required full>
+              <textarea
+                className="form-textarea"
+                rows={4}
+                placeholder="Explain why you need to cancel this approved leave (e.g. plans changed, rescheduled to different dates)…"
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+              />
+            </Field>
+          </FormGrid>
+        </FormSection>
+      </Modal>
 
       <Modal open={modal} title="Apply for Leave" onClose={() => setModal(false)} onSave={apply} saveLabel="Submit Application">
         <FormSection title="Leave Details">
