@@ -1,9 +1,74 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Menu, Bell, Home, ChevronRight, Palette, Sun, Moon, X } from 'lucide-react';
 import { NAV } from './Sidebar';
 import { EMP_NAV } from './EmployeeSidebar';
 import { ACCENT_THEMES } from '../hooks/useTheme';
 import { api } from '../api';
+
+const SEEN_KEY = 'artech_seen_notif_ids';
+const SLIDE_DURATION = 5000; // ms before auto-dismiss
+
+function SlideNotif({ notif, onClose, onNavigate }) {
+  const [visible, setVisible] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  useEffect(() => {
+    // Trigger slide-in on next tick
+    const t1 = setTimeout(() => setVisible(true), 10);
+    // Auto-dismiss
+    const t2 = setTimeout(() => dismiss(), SLIDE_DURATION);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  const dismiss = () => {
+    setLeaving(true);
+    setTimeout(onClose, 350);
+  };
+
+  const PRIORITY_BG = { high: '#ef4444', medium: '#f59e0b', low: '#6b7280' };
+  const bar = PRIORITY_BG[notif.priority] || '#6b7280';
+
+  return (
+    <div
+      className="relative bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-[320px] overflow-hidden cursor-pointer select-none"
+      style={{
+        transform: visible && !leaving ? 'translateX(0)' : 'translateX(calc(100% + 24px))',
+        opacity: visible && !leaving ? 1 : 0,
+        transition: 'transform 0.35s cubic-bezier(0.34,1.2,0.64,1), opacity 0.3s ease',
+      }}
+      onClick={() => { if (notif.action) { onNavigate(notif.action); dismiss(); } }}
+    >
+      {/* Priority bar */}
+      <div style={{ height: 3, backgroundColor: bar }} />
+      <div className="flex items-start gap-3 px-3.5 py-3">
+        <span className="text-xl flex-shrink-0 mt-0.5">{notif.icon || '🔔'}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">{notif.title}</p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2 leading-snug">{notif.message}</p>
+          {notif.time && <p className="text-[10px] text-gray-400 mt-1">{notif.time}</p>}
+        </div>
+        <button
+          onClick={e => { e.stopPropagation(); dismiss(); }}
+          className="flex-shrink-0 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 mt-0.5"
+        >
+          <X size={13} />
+        </button>
+      </div>
+      {/* Progress bar */}
+      <div style={{ height: 2, backgroundColor: 'var(--accent-50)' }}>
+        <div
+          style={{
+            height: '100%',
+            backgroundColor: 'var(--accent)',
+            width: visible && !leaving ? '0%' : '100%',
+            transition: visible && !leaving ? `width ${SLIDE_DURATION}ms linear` : 'none',
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
 const ALL_NAV = [
   ...NAV,
@@ -25,23 +90,43 @@ export default function Topbar({ current, onNavigate, onToggleSidebar, accent, s
   const [bellOpen, setBellOpen]     = useState(false);
   const [notifs, setNotifs]         = useState([]);
   const [notifsLoading, setNotifsLoading] = useState(false);
+  const [slideNotifs, setSlideNotifs] = useState([]);   // { uid, ...notif }
 
-  const themeRef = useRef(null);
-  const bellRef  = useRef(null);
+  const themeRef     = useRef(null);
+  const bellRef      = useRef(null);
+  const sessionStart = useRef(Date.now());
 
   const fetchNotifs = useCallback(async () => {
     setNotifsLoading(true);
     try {
       const data = await api('GET', '/api/notifications');
-      setNotifs(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setNotifs(list);
+
+      // Show slide-in toasts for IDs not yet seen
+      const seen = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
+      const fresh = list.filter(n => !seen.has(String(n.id)));
+      if (fresh.length) {
+        // On the very first poll (within 2s of session start), only toast if
+        // there are truly new ones — avoids blasting old notifs on every login
+        const isFirstPoll = Date.now() - sessionStart.current < 2000;
+        if (!isFirstPoll) {
+          setSlideNotifs(prev => [
+            ...prev,
+            ...fresh.slice(0, 3).map(n => ({ ...n, uid: `${n.id}-${Date.now()}` })),
+          ]);
+        }
+      }
+      // Mark all current as seen
+      localStorage.setItem(SEEN_KEY, JSON.stringify(list.map(n => String(n.id))));
     } catch { setNotifs([]); }
     finally { setNotifsLoading(false); }
   }, []);
 
-  // Fetch on mount and every 60 seconds
+  // Fetch on mount and every 30 seconds
   useEffect(() => {
     fetchNotifs();
-    const id = setInterval(fetchNotifs, 60000);
+    const id = setInterval(fetchNotifs, 30000);
     return () => clearInterval(id);
   }, [fetchNotifs]);
 
@@ -63,6 +148,7 @@ export default function Topbar({ current, onNavigate, onToggleSidebar, accent, s
   const unreadCount = notifs.length;
 
   return (
+    <>
     <header className="sidebar-desktop h-11 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 items-center px-4 gap-3 flex-shrink-0 z-20">
       <button
         onClick={onToggleSidebar}
@@ -214,5 +300,22 @@ export default function Topbar({ current, onNavigate, onToggleSidebar, accent, s
 
       </div>
     </header>
+
+    {/* Slide-in notification toasts — top-right, Teams/WhatsApp style */}
+    {slideNotifs.length > 0 && createPortal(
+      <div className="fixed top-4 right-4 z-[9998] flex flex-col gap-2 pointer-events-none">
+        {slideNotifs.map(n => (
+          <div key={n.uid} className="pointer-events-auto">
+            <SlideNotif
+              notif={n}
+              onNavigate={onNavigate}
+              onClose={() => setSlideNotifs(prev => prev.filter(x => x.uid !== n.uid))}
+            />
+          </div>
+        ))}
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }
