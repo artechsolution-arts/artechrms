@@ -4,11 +4,22 @@ import Modal, { Field } from '../components/Modal';
 import { Plus, Trash2, Pencil, Building2 } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
+const BG_PALETTE = [
+  'from-blue-500 to-indigo-600',
+  'from-violet-500 to-purple-600',
+  'from-rose-500 to-pink-600',
+  'from-amber-500 to-orange-600',
+  'from-teal-500 to-cyan-600',
+  'from-green-500 to-emerald-600',
+  'from-sky-500 to-blue-600',
+  'from-fuchsia-500 to-pink-600',
+];
+
 export default function Departments({ toast }) {
-  const [rows, setRows] = useState([]);
+  const [rows,    setRows]    = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null); // null | { mode: 'add' } | { mode: 'edit', id, name }
-  const [name, setName] = useState('');
+  const [modal,   setModal]   = useState(null);
+  const [name,    setName]    = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -20,8 +31,8 @@ export default function Departments({ toast }) {
   useEffect(() => { load(); }, [load]);
   useRefreshOnFocus(load);
 
-  const openAdd = () => { setName(''); setModal({ mode: 'add' }); };
-  const openEdit = d => { setName(d.name); setModal({ mode: 'edit', id: d.id }); };
+  const openAdd  = () => { setName(''); setModal({ mode: 'add' }); };
+  const openEdit = d  => { setName(d.name); setModal({ mode: 'edit', id: d.id }); };
 
   const save = async () => {
     if (!name.trim()) return toast('Department name is required', 'warning');
@@ -53,39 +64,71 @@ export default function Departments({ toast }) {
       </div>
 
       <div className="page-content">
-        <div className="card">
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead><tr><th>Department Name</th><th>Actions</th></tr></thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={2} className="text-center py-10 text-gray-400">Loading...</td></tr>
-                ) : rows.length === 0 ? (
-                  <tr><td colSpan={2}>
-                    <div className="empty-state">
-                      <Building2 size={32} className="text-gray-200 mb-2" />
-                      <p className="text-sm text-gray-500">No departments yet</p>
-                    </div>
-                  </td></tr>
-                ) : rows.map(d => (
-                  <tr key={d.id}>
-                    <td className="font-semibold text-gray-900">{d.name}</td>
-                    <td>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => openEdit(d)} className="btn btn-secondary btn-xs gap-1">
-                          <Pencil size={11} /> Edit
-                        </button>
-                        <button onClick={() => del(d.id, d.name)} className="btn btn-danger btn-xs gap-1">
-                          <Trash2 size={11} /> Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="card p-5 animate-pulse">
+                <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 mb-3" />
+                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-3/4" />
+              </div>
+            ))}
           </div>
-        </div>
+        ) : rows.length === 0 ? (
+          <div className="card">
+            <div className="empty-state">
+              <Building2 size={36} className="text-gray-200 dark:text-gray-700 mb-2" />
+              <p className="text-sm text-gray-500">No departments yet</p>
+              <button onClick={openAdd} className="btn btn-primary btn-sm mt-3 gap-1.5">
+                <Plus size={13} /> Add First Department
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {rows.map((d, i) => {
+              const gradient = BG_PALETTE[i % BG_PALETTE.length];
+              const initials = d.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              return (
+                <div key={d.id} className="card p-5 group hover:shadow-md transition-shadow flex flex-col">
+                  {/* Icon */}
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-3 flex-shrink-0`}>
+                    <span className="text-white text-sm font-bold">{initials}</span>
+                  </div>
+
+                  {/* Name */}
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight flex-1 mb-4">
+                    {d.name}
+                  </p>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => openEdit(d)}
+                      className="flex-1 flex items-center justify-center gap-1 py-1 text-xs font-medium text-gray-500 hover:text-[var(--accent)] hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <Pencil size={11} /> Edit
+                    </button>
+                    <button
+                      onClick={() => del(d.id, d.name)}
+                      className="flex-1 flex items-center justify-center gap-1 py-1 text-xs font-medium text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={11} /> Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Add card */}
+            <button
+              onClick={openAdd}
+              className="card p-5 border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-[var(--accent)] min-h-[120px]"
+            >
+              <Plus size={20} />
+              <span className="text-xs font-medium">Add Department</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <Modal
@@ -97,7 +140,8 @@ export default function Departments({ toast }) {
       >
         <Field label="Department Name" required>
           <input
-            className="form-input" value={name}
+            className="form-input"
+            value={name}
             onChange={e => setName(e.target.value)}
             placeholder="e.g. Engineering, Sales, HR..."
             onKeyDown={e => e.key === 'Enter' && save()}
