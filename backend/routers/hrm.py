@@ -777,6 +777,7 @@ def _wm_hr_dict(e) -> dict:
         "employee_id":   e.employee.id if e.employee else None,
         "employee_name": e.employee.full_name if e.employee else "—",
         "employee_code": e.employee.employee_id if e.employee else "—",
+        "profile_photo": e.employee.profile_photo if e.employee else None,
         "entry_date":    str(e.entry_date),
         "work_mode":     e.work_mode,
         "reason":        e.reason,
