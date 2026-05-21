@@ -200,7 +200,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
             )}
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{user?.full_name || 'User'}</div>
-              <div className="text-[11px] text-gray-400 truncate">{user?.role || 'Admin'}</div>
+              <div className="text-[11px] text-gray-400 truncate">{user?.role || 'HR'}</div>
             </div>
             {onLogout && (
               <button

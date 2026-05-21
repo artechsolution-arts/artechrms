@@ -14,7 +14,7 @@ class UserCreate(BaseModel):
     email: str
     full_name: str
     password: str
-    role: str = "HR User"
+    role: str = "HR"
 
 
 @router.post("/login")

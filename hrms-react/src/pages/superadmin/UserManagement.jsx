@@ -5,13 +5,12 @@ import {
   UserCheck, UserX, ShieldCheck, X, Eye, EyeOff,
 } from 'lucide-react';
 
-const ROLES = ['SuperAdmin', 'Admin', 'Manager', 'HR User', 'Employee'];
+const ROLES = ['SuperAdmin', 'CEO', 'HR', 'Employee'];
 
 const ROLE_COLORS = {
   SuperAdmin: 'bg-violet-100 text-violet-700',
-  Admin:      'bg-blue-100 text-blue-700',
-  Manager:    'bg-cyan-100 text-cyan-700',
-  'HR User':  'bg-green-100 text-green-700',
+  CEO:        'bg-rose-100 text-rose-700',
+  HR:         'bg-blue-100 text-blue-700',
   Employee:   'bg-gray-100 text-gray-600',
 };
 
@@ -55,7 +54,7 @@ const BTN_PRIMARY = 'px-4 py-2 text-sm font-medium bg-violet-600 hover:bg-violet
 const BTN_GHOST = 'px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors';
 
 function CreateUserModal({ onClose, onSave, toast }) {
-  const [form, setForm] = useState({ username: '', email: '', full_name: '', password: '', role: 'HR User' });
+  const [form, setForm] = useState({ username: '', email: '', full_name: '', password: '', role: 'HR' });
   const [showPwd, setShowPwd] = useState(false);
   const [saving, setSaving] = useState(false);
 

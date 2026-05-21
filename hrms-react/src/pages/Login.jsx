@@ -63,7 +63,7 @@ export default function Login({ onLogin }) {
       const res = await fetch('/api/auth/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: form.username, password: form.password, full_name: form.full_name, email: form.email, role: 'Admin' }),
+        body: JSON.stringify({ username: form.username, password: form.password, full_name: form.full_name, email: form.email, role: 'SuperAdmin' }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Setup failed'); }
       const data = await res.json();

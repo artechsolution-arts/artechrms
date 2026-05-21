@@ -16,6 +16,7 @@ def get_dashboard(db: Session = Depends(get_db)):
     today = date.today()
     total_employees = db.query(Employee).filter(Employee.status == "Active").count()
     pending_leaves = db.query(LeaveApplication).filter(LeaveApplication.status == "Pending").count()
+    cancellation_requests = db.query(LeaveApplication).filter(LeaveApplication.status == "Cancellation Requested").count()
     approved_leaves = db.query(LeaveApplication).filter(LeaveApplication.status == "Approved").count()
     rejected_leaves = db.query(LeaveApplication).filter(LeaveApplication.status == "Rejected").count()
     open_positions = db.query(JobOpening).filter(JobOpening.status == "Open").count()
@@ -68,11 +69,13 @@ def get_dashboard(db: Session = Depends(get_db)):
         "stats": {
             "total_employees": total_employees,
             "pending_leaves": pending_leaves,
+            "cancellation_requests": cancellation_requests,
             "open_positions": open_positions,
             "present_today": present_today,
         },
         "leave_stats": {
             "pending": pending_leaves,
+            "cancellation_requests": cancellation_requests,
             "approved": approved_leaves,
             "rejected": rejected_leaves,
         },

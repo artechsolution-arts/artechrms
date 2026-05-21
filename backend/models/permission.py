@@ -14,9 +14,8 @@ ALL_FEATURES = [
 ]
 
 DEFAULT_PERMISSIONS = {
-    "Admin": ALL_FEATURES,
-    "Manager": ["dashboard", "employees", "leaves", "leave-balances", "attendance", "appraisals", "announcements"],
-    "HR User": ["dashboard", "employees", "leaves", "leave-types", "leave-balances", "attendance", "holidays", "announcements", "document-requests"],
+    "HR":  ALL_FEATURES,
+    "CEO": ["dashboard", "employees", "leaves", "leave-balances", "attendance", "holidays", "announcements", "document-requests", "appraisals"],
 }
 
 

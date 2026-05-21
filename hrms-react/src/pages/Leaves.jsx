@@ -3,11 +3,20 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
-import { Plus, RefreshCw, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Trash2, RotateCcw } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
+const STATUS_TABS = [
+  { value: '',                     label: 'All' },
+  { value: 'Pending',              label: 'Pending' },
+  { value: 'Cancellation Requested', label: 'Cancel Requests' },
+  { value: 'Approved',             label: 'Approved' },
+  { value: 'Rejected',             label: 'Rejected' },
+  { value: 'Cancelled',            label: 'Cancelled' },
+];
+
 export default function Leaves({ toast }) {
-  const [rows, setRows] = useState([]);
+  const [allRows, setAllRows] = useState([]);
   const [types, setTypes] = useState([]);
   const [emps, setEmps] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
@@ -18,9 +27,7 @@ export default function Leaves({ toast }) {
   const load = useCallback(async (st = statusFilter) => {
     setLoading(true);
     try {
-      let url = '/api/leaves?';
-      if (st) url += `status=${st}`;
-      setRows(await api('GET', url));
+      setAllRows(await api('GET', '/api/leaves'));
     } catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
   }, [statusFilter]);
@@ -71,7 +78,7 @@ export default function Leaves({ toast }) {
   };
 
   const rejectCancel = async id => {
-    try { await api('PUT', `/api/leaves/${id}/reject-cancel`); toast('Cancellation request rejected — leave restored to Approved', 'info'); load(); }
+    try { await api('PUT', `/api/leaves/${id}/reject-cancel`); toast('Cancellation rejected — leave restored to Approved', 'info'); load(); }
     catch (e) { toast(e.message, 'error'); }
   };
 
@@ -80,6 +87,18 @@ export default function Leaves({ toast }) {
     try { await api('DELETE', `/api/leaves/${id}`); toast('Deleted', 'success'); load(); }
     catch (e) { toast(e.message, 'error'); }
   };
+
+  const cancelCount = allRows.filter(r => r.status === 'Cancellation Requested').length;
+  const pendingCount = allRows.filter(r => r.status === 'Pending').length;
+
+  // Apply tab filter, cancellation requests always float to top
+  const rows = (() => {
+    const filtered = statusFilter ? allRows.filter(r => r.status === statusFilter) : allRows;
+    return [...filtered].sort((a, b) => {
+      const priority = s => s === 'Cancellation Requested' ? 0 : s === 'Pending' ? 1 : 2;
+      return priority(a.status) - priority(b.status);
+    });
+  })();
 
   return (
     <>
@@ -92,17 +111,61 @@ export default function Leaves({ toast }) {
       </div>
 
       <div className="page-content">
-        <div className="card mb-4">
-          <div className="p-3">
-            <select className="form-select w-auto" value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); load(e.target.value); }}>
-              <option value="">All Status</option>
-              <option>Pending</option><option>Approved</option><option>Rejected</option>
-              <option value="Cancellation Requested">Cancellation Requested</option>
-              <option>Cancelled</option>
-            </select>
-          </div>
+        {/* Status tabs */}
+        <div className="flex items-center gap-1 mb-4 flex-wrap">
+          {STATUS_TABS.map(tab => {
+            const isActive = statusFilter === tab.value;
+            const badge = tab.value === 'Cancellation Requested' ? cancelCount
+                        : tab.value === 'Pending' ? pendingCount
+                        : 0;
+            const isAlert = tab.value === 'Cancellation Requested' && cancelCount > 0;
+            return (
+              <button
+                key={tab.value}
+                onClick={() => setStatusFilter(tab.value)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+                  ${isActive
+                    ? isAlert
+                      ? 'bg-orange-500 text-white border-orange-500'
+                      : 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                    : isAlert
+                      ? 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+              >
+                {tab.value === 'Cancellation Requested' && <RotateCcw size={11} />}
+                {tab.label}
+                {badge > 0 && (
+                  <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold
+                    ${isActive ? 'bg-white/30 text-white' : isAlert ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                    {badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+
+        {/* Cancellation requests banner when present and not already filtered */}
+        {cancelCount > 0 && statusFilter !== 'Cancellation Requested' && (
+          <div
+            className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+            onClick={() => setStatusFilter('Cancellation Requested')}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg">🔄</span>
+              <div>
+                <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
+                  {cancelCount} Leave Cancellation Request{cancelCount > 1 ? 's' : ''} Pending Review
+                </p>
+                <p className="text-xs text-orange-600 dark:text-orange-400">
+                  Employees have requested to cancel their approved leaves — click to review
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-medium text-orange-600 dark:text-orange-400 whitespace-nowrap">View →</span>
+          </div>
+        )}
 
         <div className="card">
           <div className="table-wrap">
@@ -124,15 +187,18 @@ export default function Leaves({ toast }) {
                     </div>
                   </td></tr>
                 ) : rows.map(l => (
-                  <tr key={l.id}>
-                    <td className="font-semibold text-gray-900">{l.employee_name}</td>
-                    <td className="text-gray-600">{l.leave_type}</td>
-                    <td className="text-gray-600">{l.from_date}</td>
-                    <td className="text-gray-600">{l.to_date}</td>
-                    <td className="text-gray-600">{l.total_days}</td>
+                  <tr
+                    key={l.id}
+                    className={l.status === 'Cancellation Requested' ? 'bg-orange-50/60 dark:bg-orange-900/10' : ''}
+                  >
+                    <td className="font-semibold text-gray-900 dark:text-gray-100">{l.employee_name}</td>
+                    <td className="text-gray-600 dark:text-gray-400">{l.leave_type}</td>
+                    <td className="text-gray-600 dark:text-gray-400">{l.from_date}</td>
+                    <td className="text-gray-600 dark:text-gray-400">{l.to_date}</td>
+                    <td className="text-gray-600 dark:text-gray-400">{l.total_days}</td>
                     <td className="text-xs text-gray-500 max-w-[180px]">
                       {l.status === 'Cancellation Requested' && l.cancellation_reason ? (
-                        <span className="text-orange-600 font-medium">{l.cancellation_reason}</span>
+                        <span className="text-orange-600 dark:text-orange-400 font-medium">{l.cancellation_reason}</span>
                       ) : (
                         <span className="truncate block">{l.reason || '—'}</span>
                       )}

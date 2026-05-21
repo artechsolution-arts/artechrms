@@ -82,7 +82,7 @@ class UserCreateIn(BaseModel):
     email: str
     full_name: str
     password: str
-    role: str = "Admin"
+    role: str = "HR"
 
 
 class UserUpdateIn(BaseModel):

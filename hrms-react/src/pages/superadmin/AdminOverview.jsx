@@ -4,9 +4,8 @@ import { Users, UserCheck, UserX, ShieldCheck, Briefcase, CalendarClock } from '
 
 const ROLE_COLORS = {
   SuperAdmin: 'bg-violet-100 text-violet-700',
-  Admin:      'bg-blue-100 text-blue-700',
-  Manager:    'bg-cyan-100 text-cyan-700',
-  'HR User':  'bg-green-100 text-green-700',
+  CEO:        'bg-rose-100 text-rose-700',
+  HR:         'bg-blue-100 text-blue-700',
   Employee:   'bg-gray-100 text-gray-600',
 };
 

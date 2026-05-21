@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Menu, Bell, Home, ChevronRight, Palette, Sun, Moon, X } from 'lucide-react';
 import { NAV } from './Sidebar';
 import { EMP_NAV } from './EmployeeSidebar';
+import { CEO_NAV } from './CeoSidebar';
 import { ACCENT_THEMES } from '../hooks/useTheme';
 import { api } from '../api';
 
@@ -74,6 +75,7 @@ function SlideNotif({ notif, onClose, onNavigate }) {
 const ALL_NAV = [
   ...NAV,
   ...EMP_NAV.map(n => ({ ...n, section: 'Self Service' })),
+  ...CEO_NAV.map(n => ({ ...n, section: n.section || 'CEO' })),
 ];
 
 const PRIORITY_DOT = {
@@ -84,8 +86,9 @@ const PRIORITY_DOT = {
 
 export default function Topbar({ current, onNavigate, onToggleSidebar, accent, setAccent, darkMode, setDarkMode }) {
   const isEmployee = current?.startsWith('emp-');
+  const isCeo      = current?.startsWith('ceo-');
   const meta = ALL_NAV.find(n => n.key === current) || { label: current, section: null };
-  const homeKey = isEmployee ? 'emp-dashboard' : 'dashboard';
+  const homeKey = isEmployee ? 'emp-dashboard' : isCeo ? 'ceo-dashboard' : 'dashboard';
 
   const [themeOpen, setThemeOpen]   = useState(false);
   const [bellOpen, setBellOpen]     = useState(false);

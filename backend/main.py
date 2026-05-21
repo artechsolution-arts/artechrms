@@ -53,6 +53,8 @@ with engine.connect() as _conn:
         "ALTER TABLE leave_applications ADD COLUMN IF NOT EXISTS leave_category VARCHAR(20) DEFAULT 'Planned'",
         "ALTER TABLE leave_applications ADD COLUMN IF NOT EXISTS cancellation_reason TEXT",
         "ALTER TABLE leave_applications ALTER COLUMN status TYPE VARCHAR(30)",
+        # Consolidate roles: Admin → HR, HR User → HR, Manager → HR
+        "UPDATE users SET role = 'HR' WHERE role IN ('Admin', 'HR User', 'Manager')",
         """CREATE TABLE IF NOT EXISTS leave_accrual_log (
             id SERIAL PRIMARY KEY,
             year_month VARCHAR(7) NOT NULL UNIQUE,

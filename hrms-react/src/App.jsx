@@ -9,6 +9,7 @@ import { useTheme } from './hooks/useTheme';
 
 import Login from './pages/Login';
 import EmployeeApp from './EmployeeApp';
+import CeoApp from './CeoApp';
 import SuperAdminApp from './SuperAdminApp';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
@@ -87,12 +88,14 @@ export default function App() {
     );
   }
 
-  // SuperAdmin (CEO) → dedicated admin panel
   if (user?.role === 'SuperAdmin') {
     return <SuperAdminApp user={user} logout={logout} />;
   }
 
-  // Employee role → show self-service portal
+  if (user?.role === 'CEO') {
+    return <CeoApp user={user} logout={logout} />;
+  }
+
   if (user?.role === 'Employee') {
     return <EmployeeApp user={user} logout={logout} />;
   }

@@ -3,9 +3,8 @@ import { api } from '../../api';
 import { ShieldCheck, Save, RotateCcw } from 'lucide-react';
 
 const ROLE_META = {
-  Admin:    { label: 'Admin (HR Manager)', color: 'bg-blue-100 text-blue-700',   ring: 'ring-blue-400' },
-  Manager:  { label: 'Manager',            color: 'bg-cyan-100 text-cyan-700',   ring: 'ring-cyan-400' },
-  'HR User':{ label: 'HR User',            color: 'bg-green-100 text-green-700', ring: 'ring-green-400' },
+  CEO: { label: 'CEO',  color: 'bg-rose-100 text-rose-700', ring: 'ring-rose-400' },
+  HR:  { label: 'HR',   color: 'bg-blue-100 text-blue-700', ring: 'ring-blue-400' },
 };
 
 const FEATURE_LABELS = {

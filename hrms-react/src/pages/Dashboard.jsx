@@ -18,6 +18,7 @@ function StatCard({ label, value, color, icon: Icon, onClick }) {
     blue: 'text-[#2E6BE6]',
     green: 'text-green-600',
     amber: 'text-amber-500',
+    orange: 'text-orange-500',
     gray: 'text-gray-700',
   };
   return (
@@ -225,10 +226,13 @@ export default function Dashboard({ onNavigate, toast }) {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Active Employees" value={s.total_employees} color="gray"   icon={Users}       onClick={() => onNavigate('employees')} />
-        <StatCard label="Pending Leaves"   value={s.pending_leaves}  color="amber"  icon={CalendarDays} onClick={() => onNavigate('leaves')} />
-        <StatCard label="Open Positions"   value={s.open_positions}  color="blue"   icon={Briefcase}   onClick={() => onNavigate('job-openings')} />
-        <StatCard label="Present Today"    value={s.present_today}   color="green"  icon={Clock}       onClick={() => onNavigate('attendance')} />
+        <StatCard label="Active Employees"       value={s.total_employees}       color="gray"   icon={Users}       onClick={() => onNavigate('employees')} />
+        <StatCard label="Pending Leaves"         value={s.pending_leaves}         color="amber"  icon={CalendarDays} onClick={() => { sessionStorage.setItem('nav-filter', JSON.stringify({ leaveStatus: 'Pending' })); onNavigate('leaves'); }} />
+        {s.cancellation_requests > 0
+          ? <StatCard label="Cancel Requests" value={s.cancellation_requests} color="orange" icon={CalendarDays} onClick={() => { sessionStorage.setItem('nav-filter', JSON.stringify({ leaveStatus: 'Cancellation Requested' })); onNavigate('leaves'); }} />
+          : <StatCard label="Open Positions"  value={s.open_positions}        color="blue"   icon={Briefcase}   onClick={() => onNavigate('job-openings')} />
+        }
+        <StatCard label="Present Today"          value={s.present_today}          color="green"  icon={Clock}       onClick={() => onNavigate('attendance')} />
       </div>
 
       {/* New Hires trend */}

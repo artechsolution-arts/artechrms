@@ -759,6 +759,82 @@ def hr_get_status(employee_id: int, month: str, db: Session = Depends(get_db)):
     }
 
 
+from pydantic import BaseModel as _BM
+from typing import Optional as _Opt
+from datetime import date as _date_t
+
+
+class _StatusUpdate(_BM):
+    task_name:        _Opt[str]   = None
+    due_date:         _Opt[str]   = None
+    status:           _Opt[str]   = None
+    percent_complete: _Opt[int]   = None
+
+
+@router.put("/status/{entry_id}")
+def hr_update_status_entry(entry_id: int, data: _StatusUpdate, db: Session = Depends(get_db)):
+    entry = db.query(_StatusEntry).filter(_StatusEntry.id == entry_id).first()
+    if not entry:
+        raise HTTPException(404, "Entry not found")
+    if data.task_name is not None:
+        entry.task_name = data.task_name
+    if data.due_date is not None:
+        try:
+            entry.due_date = _date_t.fromisoformat(data.due_date) if data.due_date else None
+        except ValueError:
+            pass
+    if data.status is not None:
+        entry.status = data.status
+    if data.percent_complete is not None:
+        entry.percent_complete = max(0, min(100, data.percent_complete))
+    db.commit()
+    return {"ok": True}
+
+
+# ── Team Leaves calendar (HR / CEO view) ──────────────────────
+
+@router.get("/team-leaves")
+def hr_team_leaves(month: str, db: Session = Depends(get_db)):
+    """All approved/pending leaves for every employee — used by HR & CEO work-mode calendar."""
+    from backend.models.leave import LeaveApplication, LeaveType
+    try:
+        year, mon = map(int, month.split("-"))
+    except Exception:
+        raise HTTPException(400, "Use YYYY-MM format")
+    from calendar import monthrange as _mr
+    start = date(year, mon, 1)
+    end   = date(year, mon, _mr(year, mon)[1])
+    leaves = (
+        db.query(LeaveApplication)
+        .join(Employee, LeaveApplication.employee_id == Employee.id)
+        .filter(
+            LeaveApplication.status.in_(["Pending", "Approved"]),
+            LeaveApplication.from_date <= end,
+            LeaveApplication.to_date   >= start,
+        )
+        .order_by(LeaveApplication.from_date.asc())
+        .all()
+    )
+    result = []
+    for lv in leaves:
+        emp = lv.employee_rel
+        lt  = lv.leave_type_rel
+        result.append({
+            "id":             lv.id,
+            "employee_name":  emp.full_name if emp else "",
+            "profile_photo":  emp.profile_photo if emp else None,
+            "leave_type":     lt.name if lt else "",
+            "from_date":      str(lv.from_date),
+            "to_date":        str(lv.to_date),
+            "total_days":     lv.total_days,
+            "half_day":       lv.half_day,
+            "leave_category": lv.leave_category or "Planned",
+            "status":         lv.status,
+            "reason":         lv.reason,
+        })
+    return result
+
+
 # ── Work Mode Sheet (HR view + approve/reject) ─────────────────
 
 from datetime import datetime as _wm_dt

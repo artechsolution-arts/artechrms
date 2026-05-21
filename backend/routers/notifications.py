@@ -42,7 +42,7 @@ def _compute_notifications(user: User, db: Session) -> list:
     now = datetime.utcnow()
 
     # ── HR / Admin / SuperAdmin notifications ──────────────────
-    if user.role in ("HR User", "Admin", "SuperAdmin", "HR"):
+    if user.role in ("HR", "SuperAdmin", "CEO"):
 
         pending_leaves = db.query(LeaveApplication).filter(
             LeaveApplication.status == "Pending"
@@ -58,6 +58,25 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "icon": "🗓️",
                 "title": "Leave Request Pending",
                 "message": f"{emp_name} applied for {days} day{'s' if days > 1 else ''} leave",
+                "action": "leaves",
+                "time": str(leave.created_at)[:10] if leave.created_at else "",
+                "priority": "high",
+            })
+
+        cancel_requests = db.query(LeaveApplication).filter(
+            LeaveApplication.status == "Cancellation Requested"
+        ).order_by(LeaveApplication.created_at.desc()).limit(10).all()
+
+        for leave in cancel_requests:
+            emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
+            emp_name = emp.full_name if emp else "An employee"
+            days = (leave.to_date - leave.from_date).days + 1 if leave.from_date and leave.to_date else 1
+            notifications.append({
+                "id": f"cancel-{leave.id}",
+                "type": "cancel_request",
+                "icon": "🔄",
+                "title": "Leave Cancellation Request",
+                "message": f"{emp_name} wants to cancel {days} day{'s' if days > 1 else ''} leave",
                 "action": "leaves",
                 "time": str(leave.created_at)[:10] if leave.created_at else "",
                 "priority": "high",
