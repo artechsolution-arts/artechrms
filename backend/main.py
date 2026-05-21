@@ -49,6 +49,7 @@ with engine.connect() as _conn:
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_branch VARCHAR(100)",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS aadhar_no VARCHAR(20)",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pan_no VARCHAR(20)",
+        "ALTER TABLE work_mode_entries ADD COLUMN IF NOT EXISTS leave_id INTEGER REFERENCES leave_applications(id) ON DELETE SET NULL",
     ]:
         try:
             _conn.execute(text(_stmt))

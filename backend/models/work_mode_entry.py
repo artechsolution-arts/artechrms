@@ -9,6 +9,7 @@ class WorkModeEntry(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    leave_id    = Column(Integer, ForeignKey("leave_applications.id", ondelete="SET NULL"), nullable=True)
     entry_date = Column(Date, nullable=False)
     work_mode = Column(String(50), nullable=False)   # WFH | PLANNED LEAVE | SICK LEAVE | CASUAL LEAVE
     reason = Column(String(300), nullable=True)

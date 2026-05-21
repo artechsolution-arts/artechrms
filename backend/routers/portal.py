@@ -150,6 +150,52 @@ class PortalLeaveIn(BaseModel):
     half_day: bool = False
 
 
+def _leave_type_to_work_mode(leave_type_name: str, half_day: bool) -> str:
+    """Map a leave type name to the closest WorkModeEntry work_mode value."""
+    if half_day:
+        return "HALF DAY LEAVE"
+    name = (leave_type_name or "").lower()
+    if "sick" in name or "medical" in name:
+        return "SICK LEAVE"
+    if "casual" in name:
+        return "CASUAL LEAVE"
+    return "PLANNED LEAVE"
+
+
+def _sync_work_mode_for_leave(leave, db: Session):
+    """Create one WorkModeEntry per calendar day covered by the leave."""
+    from backend.models.work_mode_entry import WorkModeEntry
+    leave_type_name = leave.leave_type_rel.name if leave.leave_type_rel else ""
+    work_mode = _leave_type_to_work_mode(leave_type_name, leave.half_day)
+    duration = "HALF-DAY (Morning)" if leave.half_day else "FULL-DAY"
+    current = leave.from_date
+    while current <= leave.to_date:
+        existing = db.query(WorkModeEntry).filter(
+            WorkModeEntry.employee_id == leave.employee_id,
+            WorkModeEntry.entry_date == current,
+            WorkModeEntry.leave_id == leave.id,
+        ).first()
+        if not existing:
+            db.add(WorkModeEntry(
+                employee_id=leave.employee_id,
+                leave_id=leave.id,
+                entry_date=current,
+                work_mode=work_mode,
+                duration=duration,
+                reason=leave.reason or leave_type_name,
+                status="Pending",
+            ))
+        current += timedelta(days=1)
+    db.commit()
+
+
+def _remove_work_mode_for_leave(leave_id: int, db: Session):
+    """Delete all WorkModeEntry rows that were auto-created from this leave."""
+    from backend.models.work_mode_entry import WorkModeEntry
+    db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
+    db.commit()
+
+
 @router.post("/leaves")
 def portal_apply_leave(data: PortalLeaveIn, request: Request, db: Session = Depends(get_db)):
     emp = _get_employee(request, db)
@@ -167,6 +213,7 @@ def portal_apply_leave(data: PortalLeaveIn, request: Request, db: Session = Depe
     db.add(leave)
     db.commit()
     db.refresh(leave)
+    _sync_work_mode_for_leave(leave, db)
     return {"id": leave.id, "total_days": leave.total_days}
 
 
@@ -181,6 +228,7 @@ def portal_cancel_leave(leave_id: int, request: Request, db: Session = Depends(g
         raise HTTPException(404, "Leave not found")
     if leave.status != "Pending":
         raise HTTPException(400, "Only pending leaves can be cancelled")
+    _remove_work_mode_for_leave(leave_id, db)
     db.delete(leave)
     db.commit()
     return {"ok": True}

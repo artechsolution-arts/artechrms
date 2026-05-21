@@ -110,20 +110,24 @@ def create_leave(data: LeaveAppIn, db: Session = Depends(get_db)):
 
 @router.put("/{leave_id}/approve")
 def approve_leave(leave_id: int, db: Session = Depends(get_db)):
+    from backend.models.work_mode_entry import WorkModeEntry
     leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
     if not leave:
         raise HTTPException(404, "Leave not found")
     leave.status = "Approved"
+    db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).update({"status": "Approved"})
     db.commit()
     return {"ok": True}
 
 
 @router.put("/{leave_id}/reject")
 def reject_leave(leave_id: int, db: Session = Depends(get_db)):
+    from backend.models.work_mode_entry import WorkModeEntry
     leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
     if not leave:
         raise HTTPException(404, "Leave not found")
     leave.status = "Rejected"
+    db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
     db.commit()
     return {"ok": True}
 
