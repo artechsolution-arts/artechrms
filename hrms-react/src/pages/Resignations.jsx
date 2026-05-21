@@ -3,7 +3,97 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
-import { FileText, CheckCircle2, XCircle, Clock, RefreshCw, ChevronDown } from 'lucide-react';
+import { FileText, CheckCircle2, XCircle, Clock, RefreshCw, ChevronDown, Settings2, Save } from 'lucide-react';
+
+const EMP_TYPES = ['Full-time', 'Part-time', 'Contract', 'Intern'];
+
+function NoticePeriodSettings({ toast }) {
+  const [open,    setOpen]    = useState(false);
+  const [rules,   setRules]   = useState(null);
+  const [draft,   setDraft]   = useState(null);
+  const [saving,  setSaving]  = useState(false);
+
+  useEffect(() => {
+    api('GET', '/api/hr/notice-period-config')
+      .then(d => { setRules(d.rules); setDraft({ ...d.rules }); })
+      .catch(() => {});
+  }, []);
+
+  const isDirty = rules && draft && JSON.stringify(rules) !== JSON.stringify(draft);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await api('PUT', '/api/hr/notice-period-config', { rules: draft });
+      setRules(res.rules);
+      setDraft({ ...res.rules });
+      toast('Notice period policy saved', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setSaving(false); }
+  };
+
+  if (!rules) return null;
+
+  return (
+    <div className="card overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Settings2 size={14} className="text-gray-400" />
+          <span>Notice Period Policy</span>
+          <span className="text-xs text-gray-400 font-normal">— configure days by employment type</span>
+        </div>
+        <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="border-t border-gray-100 dark:border-gray-800 px-4 pb-4 pt-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {EMP_TYPES.map(et => (
+              <div key={et}>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{et}</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={draft?.[et] ?? ''}
+                    onChange={e => setDraft(p => ({ ...p, [et]: e.target.value === '' ? '' : parseInt(e.target.value) || 1 }))}
+                    className="form-input w-full text-sm"
+                    placeholder="days"
+                  />
+                  <span className="text-xs text-gray-400 flex-shrink-0">days</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <button
+              onClick={save}
+              disabled={saving || !isDirty}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors
+                ${isDirty ? 'bg-[var(--accent)] text-white hover:opacity-90' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'}`}
+            >
+              <Save size={12} /> {saving ? 'Saving…' : 'Save Policy'}
+            </button>
+            {isDirty && (
+              <button
+                onClick={() => setDraft({ ...rules })}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Discard
+              </button>
+            )}
+            <p className="text-xs text-gray-400 ml-auto">Changes apply to new resignations only</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STATUS_TABS = ['All', 'Pending', 'Approved', 'Rejected', 'Withdrawn'];
 
@@ -84,6 +174,9 @@ export default function Resignations({ toast }) {
       </div>
 
       <div className="page-content space-y-4">
+        {/* Notice period policy settings */}
+        <NoticePeriodSettings toast={toast} />
+
         {/* Status tabs */}
         <div className="flex gap-1 flex-wrap">
           {STATUS_TABS.map(s => {

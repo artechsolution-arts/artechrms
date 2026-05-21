@@ -916,6 +916,15 @@ def portal_create_edit_request(data: EditRequestIn, request: Request, db: Sessio
 # ── Resignation ────────────────────────────────────────────────
 
 from backend.models.resignation import Resignation
+from backend.models.notice_period_config import NoticePeriodConfig, DEFAULT_RULES
+
+
+@router.get("/notice-period-rules")
+def portal_notice_period_rules(request: Request, db: Session = Depends(get_db)):
+    """Returns the configured notice period rules — readable by any authenticated user."""
+    _get_user(request, db)
+    cfg = db.query(NoticePeriodConfig).filter(NoticePeriodConfig.id == 1).first()
+    return cfg.rules if cfg else DEFAULT_RULES
 
 class ResignationIn(BaseModel):
     reason: str
@@ -953,11 +962,15 @@ def portal_submit_resignation(data: ResignationIn, request: Request, db: Session
     ).first()
     if existing:
         raise HTTPException(400, "You already have a pending resignation request")
+    cfg = db.query(NoticePeriodConfig).filter(NoticePeriodConfig.id == 1).first()
+    rules = cfg.rules if cfg else DEFAULT_RULES
+    emp_type = emp.employment_type or ''
+    notice_days = rules.get(emp_type) or rules.get('Part-time', 15)
     r = Resignation(
         employee_id=emp.id,
         reason=data.reason.strip(),
         last_working_date=data.last_working_date,
-        notice_period_days=data.notice_period_days,
+        notice_period_days=notice_days,
     )
     db.add(r)
     db.commit()

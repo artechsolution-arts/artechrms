@@ -10,18 +10,31 @@ const STATUS_CONFIG = {
 };
 
 export default function EmpResignation({ toast }) {
-  const [existing, setExisting] = useState(undefined); // undefined=loading, null=none
-  const [loading,  setLoading]  = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form,     setForm]     = useState({ reason: '', last_working_date: '', notice_period_days: '' });
-  const [submitting, setSubmitting] = useState(false);
+  const [existing,    setExisting]    = useState(undefined); // undefined=loading, null=none
+  const [loading,     setLoading]     = useState(true);
+  const [showForm,    setShowForm]    = useState(false);
+  const [form,        setForm]        = useState({ reason: '', last_working_date: '', notice_period_days: 0 });
+  const [submitting,  setSubmitting]  = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
-  const [confirm,  setConfirm]  = useState(false);
+  const [confirm,     setConfirm]     = useState(false);
+  const [empType,     setEmpType]     = useState('');
+  const [noticeDays,  setNoticeDays]  = useState(0);
 
   const load = () => {
     setLoading(true);
-    api('GET', '/api/portal/resignation')
-      .then(d => setExisting(d))
+    Promise.all([
+      api('GET', '/api/portal/resignation'),
+      api('GET', '/api/portal/profile'),
+      api('GET', '/api/portal/notice-period-rules'),
+    ])
+      .then(([resignation, profile, rules]) => {
+        setExisting(resignation);
+        const et = profile.employment_type || '';
+        setEmpType(et);
+        const days = rules[et] ?? rules['Part-time'] ?? 15;
+        setNoticeDays(days);
+        setForm(p => ({ ...p, notice_period_days: days }));
+      })
       .catch(e => toast(e.message, 'error'))
       .finally(() => setLoading(false));
   };
@@ -41,7 +54,7 @@ export default function EmpResignation({ toast }) {
       });
       toast('Resignation submitted. HR will review and respond.', 'success');
       setShowForm(false);
-      setForm({ reason: '', last_working_date: '', notice_period_days: '' });
+      setForm({ reason: '', last_working_date: '', notice_period_days: noticeDays });
       load();
     } catch (e) { toast(e.message, 'error'); }
     finally { setSubmitting(false); }
@@ -207,16 +220,14 @@ export default function EmpResignation({ toast }) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                  Notice Period (days)
+                  Notice Period
                 </label>
-                <input
-                  type="number"
-                  className="form-input w-full"
-                  placeholder="e.g. 30"
-                  min={0}
-                  value={form.notice_period_days}
-                  onChange={e => f({ notice_period_days: e.target.value })}
-                />
+                <div className="form-input w-full bg-gray-50 dark:bg-gray-800 cursor-default select-none flex items-center justify-between">
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">{noticeDays} days</span>
+                  <span className="text-xs text-gray-400 ml-2">
+                    {empType === 'Full-time' ? 'Full-time policy' : 'Standard policy'}
+                  </span>
+                </div>
               </div>
             </div>
 
