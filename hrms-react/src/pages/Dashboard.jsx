@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import { Users, CalendarDays, Briefcase, Clock, RefreshCw } from 'lucide-react';
+import EmpAvatar from '../components/EmpAvatar';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
   BarElement, ArcElement, Title, Tooltip, Legend, Filler
@@ -294,9 +295,7 @@ export default function Dashboard({ onNavigate, toast }) {
                     <tr key={i}>
                       <td>
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-blue-400 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-                            {e.name.charAt(0).toUpperCase()}
-                          </div>
+                          <EmpAvatar name={e.name} photo={e.profile_photo} size="sm" colorIndex={i} rounded="rounded-full" />
                           <div>
                             <div className="font-medium text-gray-900 text-sm">{e.name}</div>
                             <div className="text-xs text-gray-400">{e.designation || '—'}</div>

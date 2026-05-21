@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { Save, Plus, Trash2, Info, RefreshCw } from 'lucide-react';
+import Select from '../components/Select';
 
 function Toggle({ checked, onChange }) {
   return (
@@ -206,14 +207,15 @@ export default function PayrollRules({ toast }) {
           </RuleRow>
           {form.lop_enabled && (
             <RuleRow label="LOP Basis" hint="Divisor used to compute per-day salary">
-              <select
-                className="form-select w-48"
+              <Select
                 value={form.lop_basis || 'calendar'}
-                onChange={e => f({ lop_basis: e.target.value })}
-              >
-                <option value="calendar">Calendar days in month</option>
-                <option value="working">Working days (~26 days)</option>
-              </select>
+                onChange={v => f({ lop_basis: v })}
+                options={[
+                  { value: 'calendar', label: 'Calendar days in month' },
+                  { value: 'working', label: 'Working days (~26 days)' },
+                ]}
+                className="w-48"
+              />
             </RuleRow>
           )}
         </RuleSection>
@@ -289,25 +291,20 @@ export default function PayrollRules({ toast }) {
                           />
                         </td>
                         <td className="px-3 py-2">
-                          <select
-                            className="form-select text-xs"
+                          <Select
                             value={c.component_type || 'Earning'}
-                            onChange={e => updateCustom(i, { component_type: e.target.value })}
-                          >
-                            <option value="Earning">Earning</option>
-                            <option value="Deduction">Deduction</option>
-                          </select>
+                            onChange={v => updateCustom(i, { component_type: v })}
+                            options={['Earning', 'Deduction']}
+                            size="sm"
+                          />
                         </td>
                         <td className="px-3 py-2">
-                          <select
-                            className="form-select text-xs"
+                          <Select
                             value={c.calc_type || 'fixed'}
-                            onChange={e => updateCustom(i, { calc_type: e.target.value })}
-                          >
-                            {CALC_TYPES.map(t => (
-                              <option key={t.value} value={t.value}>{t.label}</option>
-                            ))}
-                          </select>
+                            onChange={v => updateCustom(i, { calc_type: v })}
+                            options={CALC_TYPES}
+                            size="sm"
+                          />
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">

@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import { Plus, RefreshCw } from 'lucide-react';
+import Select from '../components/Select';
 
 export default function Applicants({ toast }) {
   const [rows, setRows] = useState([]);
@@ -60,11 +61,13 @@ export default function Applicants({ toast }) {
       <div className="page-content">
         <div className="card mb-4">
           <div className="p-3">
-            <select className="form-select w-auto min-w-[180px]" value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); load(e.target.value); }}>
-              <option value="">All Status</option>
-              {['Applied','Screening','Interview','Offered','Hired','Rejected'].map(s => <option key={s}>{s}</option>)}
-            </select>
+            <Select
+              value={statusFilter}
+              onChange={v => { setStatusFilter(v); load(v); }}
+              options={[{ value: '', label: 'All Status' }, 'Applied', 'Screening', 'Interview', 'Offered', 'Hired', 'Rejected']}
+              size="sm"
+              className="w-44"
+            />
           </div>
         </div>
 
@@ -94,15 +97,13 @@ export default function Applicants({ toast }) {
                     <td><Badge text={a.status} /></td>
                     <td className="text-gray-500">{a.created_at}</td>
                     <td>
-                      <select
-                        className="form-select py-1 text-xs w-auto"
-                        defaultValue={a.status}
-                        onChange={e => updateStatus(a.id, e.target.value)}
-                      >
-                        {['Applied','Screening','Interview','Offered','Hired','Rejected'].map(s =>
-                          <option key={s}>{s}</option>
-                        )}
-                      </select>
+                      <Select
+                        value={a.status}
+                        onChange={v => updateStatus(a.id, v)}
+                        options={['Applied', 'Screening', 'Interview', 'Offered', 'Hired', 'Rejected']}
+                        size="sm"
+                        className="w-36"
+                      />
                     </td>
                   </tr>
                 ))}
@@ -125,10 +126,13 @@ export default function Applicants({ toast }) {
               <input className="form-input" value={form.phone || ''} onChange={e => f({ phone: e.target.value })} placeholder="Phone number" />
             </Field>
             <Field label="Job Opening" required>
-              <select className="form-select" value={form.job_opening_id || ''} onChange={e => f({ job_opening_id: e.target.value })}>
-                <option value="">Select</option>
-                {openings.map(o => <option key={o.id} value={o.id}>{o.title}</option>)}
-              </select>
+              <Select
+                value={form.job_opening_id || ''}
+                onChange={v => f({ job_opening_id: v })}
+                options={openings.map(o => ({ value: String(o.id), label: o.title }))}
+                placeholder="Select"
+                searchable
+              />
             </Field>
             <Field label="Cover Letter" full>
               <textarea className="form-textarea" rows={4} value={form.cover_letter || ''} onChange={e => f({ cover_letter: e.target.value })} placeholder="Cover letter..." />

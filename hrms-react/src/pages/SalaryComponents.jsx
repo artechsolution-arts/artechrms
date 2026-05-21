@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import { Plus, RefreshCw, Trash2 } from 'lucide-react';
+import Select from '../components/Select';
 
 export default function SalaryComponents({ toast }) {
   const [comps, setComps] = useState([]);
@@ -95,9 +96,11 @@ export default function SalaryComponents({ toast }) {
               <input className="form-input" value={form.abbr || ''} onChange={e => f({ abbr: e.target.value })} placeholder="e.g. BASIC" />
             </Field>
             <Field label="Type">
-              <select className="form-select" value={form.component_type || 'Earning'} onChange={e => f({ component_type: e.target.value })}>
-                <option>Earning</option><option>Deduction</option>
-              </select>
+              <Select
+                value={form.component_type || 'Earning'}
+                onChange={v => f({ component_type: v })}
+                options={['Earning', 'Deduction']}
+              />
             </Field>
             <Field label="Default Amount">
               <input type="number" className="form-input" value={form.amount || 0} onChange={e => f({ amount: e.target.value })} />

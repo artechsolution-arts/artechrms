@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
+import Select from '../components/Select';
 import { Plus, Monitor, Undo2, Trash2 } from 'lucide-react';
 
 const STATUS_COLOR = {
@@ -70,11 +71,13 @@ export default function Assets({ toast }) {
       <div className="page-head">
         <h1 className="page-title">Asset Management</h1>
         <div className="flex gap-2">
-          <select className="form-select text-sm w-36" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="">All Status</option>
-            <option>Allocated</option>
-            <option>Returned</option>
-          </select>
+          <Select
+            value={filterStatus}
+            onChange={v => setFilterStatus(v)}
+            options={[{ value: '', label: 'All Status' }, 'Allocated', 'Returned']}
+            size="sm"
+            className="w-36"
+          />
           <button onClick={() => setModal(true)} className="btn btn-primary btn-sm gap-1.5"><Plus size={13}/>Allocate Asset</button>
         </div>
       </div>
@@ -140,19 +143,24 @@ export default function Assets({ toast }) {
         <FormSection title="Asset Details">
           <FormGrid>
             <Field label="Employee" required>
-              <select className="form-select" value={form.employee_id || ''} onChange={e => f({ employee_id: e.target.value })}>
-                <option value="">Select employee</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
+              <Select
+                value={form.employee_id || ''}
+                onChange={v => f({ employee_id: v })}
+                options={employees.map(e => ({ value: String(e.id), label: e.full_name }))}
+                placeholder="Select employee"
+                searchable
+              />
             </Field>
             <Field label="Asset Name" required>
               <input className="form-input" value={form.asset_name || ''} onChange={e => f({ asset_name: e.target.value })} placeholder="e.g. ThinkPad X1 Carbon"/>
             </Field>
             <Field label="Asset Type" required>
-              <select className="form-select" value={form.asset_type || ''} onChange={e => f({ asset_type: e.target.value })}>
-                <option value="">Select type</option>
-                {ASSET_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
+              <Select
+                value={form.asset_type || ''}
+                onChange={v => f({ asset_type: v })}
+                options={ASSET_TYPES}
+                placeholder="Select type"
+              />
             </Field>
             <Field label="Serial Number">
               <input className="form-input" value={form.serial_number || ''} onChange={e => f({ serial_number: e.target.value })} placeholder="SN-XXXXX"/>
@@ -161,9 +169,11 @@ export default function Assets({ toast }) {
               <DatePicker value={form.allocated_date || ''} onChange={v => f({ allocated_date: v })} placeholder="Select date" />
             </Field>
             <Field label="Condition">
-              <select className="form-select" value={form.condition} onChange={e => f({ condition: e.target.value })}>
-                {['New', 'Good', 'Fair', 'Poor'].map(c => <option key={c}>{c}</option>)}
-              </select>
+              <Select
+                value={form.condition}
+                onChange={v => f({ condition: v })}
+                options={['New', 'Good', 'Fair', 'Poor']}
+              />
             </Field>
             <Field label="Notes">
               <input className="form-input" value={form.notes || ''} onChange={e => f({ notes: e.target.value })} placeholder="Any notes…"/>
@@ -184,10 +194,11 @@ export default function Assets({ toast }) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Condition</label>
-                <select className="form-select w-full" value={returnForm.condition}
-                  onChange={e => setReturnForm(p => ({ ...p, condition: e.target.value }))}>
-                  {['New', 'Good', 'Fair', 'Poor', 'Damaged'].map(c => <option key={c}>{c}</option>)}
-                </select>
+                <Select
+                  value={returnForm.condition}
+                  onChange={v => setReturnForm(p => ({ ...p, condition: v }))}
+                  options={['New', 'Good', 'Fair', 'Poor', 'Damaged']}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>

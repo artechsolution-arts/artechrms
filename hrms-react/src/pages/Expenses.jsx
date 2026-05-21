@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
+import Select from '../components/Select';
 import { Plus, Receipt, CheckCircle, XCircle, Trash2, ChevronDown } from 'lucide-react';
 
 const STATUS_COLOR = {
@@ -77,10 +78,13 @@ export default function Expenses({ toast }) {
       <div className="page-head">
         <h1 className="page-title">Expense Claims</h1>
         <div className="flex gap-2">
-          <select className="form-select text-sm w-36" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="">All Status</option>
-            {['Pending', 'Approved', 'Rejected'].map(s => <option key={s}>{s}</option>)}
-          </select>
+          <Select
+            value={filterStatus}
+            onChange={v => setFilterStatus(v)}
+            options={[{ value: '', label: 'All Status' }, 'Pending', 'Approved', 'Rejected']}
+            size="sm"
+            className="w-36"
+          />
           <button onClick={() => setModal(true)} className="btn btn-primary btn-sm gap-1.5"><Plus size={13}/>Add Claim</button>
         </div>
       </div>
@@ -164,16 +168,21 @@ export default function Expenses({ toast }) {
         <FormSection title="Claim Details">
           <FormGrid>
             <Field label="Employee" required>
-              <select className="form-select" value={form.employee_id || ''} onChange={e => f({ employee_id: e.target.value })}>
-                <option value="">Select employee</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
+              <Select
+                value={form.employee_id || ''}
+                onChange={v => f({ employee_id: v })}
+                options={employees.map(e => ({ value: String(e.id), label: e.full_name }))}
+                placeholder="Select employee"
+                searchable
+              />
             </Field>
             <Field label="Expense Type" required>
-              <select className="form-select" value={form.expense_type || ''} onChange={e => f({ expense_type: e.target.value })}>
-                <option value="">Select type</option>
-                {EXPENSE_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
+              <Select
+                value={form.expense_type || ''}
+                onChange={v => f({ expense_type: v })}
+                options={EXPENSE_TYPES}
+                placeholder="Select type"
+              />
             </Field>
             <Field label="Amount (₹)" required>
               <input type="number" min="0" step="0.01" className="form-input" value={form.amount || ''} onChange={e => f({ amount: e.target.value })} placeholder="0.00"/>

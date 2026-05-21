@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api';
 import DatePicker from '../../components/DatePicker';
+import Select from '../../components/Select';
 import { ChevronLeft, ChevronRight, Save, CheckCircle2, ClipboardList } from 'lucide-react';
 
 const STATUSES = ['In Progress', 'Completed', 'On Hold', 'Pending'];
@@ -216,13 +217,11 @@ export default function EmpStatus({ toast }) {
 
                       <td>
                         {isCurrentMonth ? (
-                          <select
-                            className="form-select text-xs"
+                          <Select
                             value={local.status}
-                            onChange={e => handleChange(entry.id, 'status', e.target.value)}
-                          >
-                            {STATUSES.map(s => <option key={s}>{s}</option>)}
-                          </select>
+                            onChange={v => handleChange(entry.id, 'status', v)}
+                            options={STATUSES}
+                          />
                         ) : (
                           <StatusBadge status={entry.status} />
                         )}

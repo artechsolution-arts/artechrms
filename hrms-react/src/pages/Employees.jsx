@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
+import Select from '../components/Select';
 import {
   Plus, RefreshCw, Search, Pencil, Trash2, Eye, EyeOff,
   Monitor, Undo2, ChevronDown, ChevronUp,
@@ -139,10 +140,12 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Event Type <span className="text-red-500">*</span></label>
-              <select className="form-select" value={form.change_type || ''} onChange={e => setForm({ change_type: e.target.value })}>
-                <option value="">Select type</option>
-                {EVENT_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
+              <Select
+                value={form.change_type || ''}
+                onChange={v => setForm({ change_type: v })}
+                options={[{ value: '', label: 'Select type' }, ...EVENT_TYPES.map(t => ({ value: t, label: t }))]}
+                placeholder="Select type"
+              />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Effective Date <span className="text-red-500">*</span></label>
@@ -410,10 +413,13 @@ function EmployeeEduExpTab({ emp, onSave, saving }) {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs text-gray-500 mb-0.5">Degree / Qualification <span className="text-red-400">*</span></label>
-                <select className="form-select text-xs w-full" value={eduForm.degree} onChange={e => ef({ degree: e.target.value })}>
-                  <option value="">Select…</option>
-                  {DEGREE_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <Select
+                  value={eduForm.degree}
+                  onChange={v => ef({ degree: v })}
+                  options={[{ value: '', label: 'Select…' }, ...DEGREE_OPTIONS.map(d => ({ value: d, label: d }))]}
+                  placeholder="Select…"
+                  size="sm"
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-0.5">Institution <span className="text-red-400">*</span></label>
@@ -421,17 +427,23 @@ function EmployeeEduExpTab({ emp, onSave, saving }) {
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-0.5">Start Year</label>
-                <select className="form-select text-xs w-full" value={eduForm.start_year} onChange={e => ef({ start_year: e.target.value })}>
-                  <option value="">–</option>
-                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
+                <Select
+                  value={eduForm.start_year}
+                  onChange={v => ef({ start_year: v })}
+                  options={[{ value: '', label: '–' }, ...YEAR_OPTIONS.map(y => ({ value: y, label: y }))]}
+                  placeholder="–"
+                  size="sm"
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-0.5">End Year</label>
-                <select className="form-select text-xs w-full" value={eduForm.end_year} onChange={e => ef({ end_year: e.target.value })}>
-                  <option value="">–</option>
-                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
+                <Select
+                  value={eduForm.end_year}
+                  onChange={v => ef({ end_year: v })}
+                  options={[{ value: '', label: '–' }, ...YEAR_OPTIONS.map(y => ({ value: y, label: y }))]}
+                  placeholder="–"
+                  size="sm"
+                />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs text-gray-500 mb-0.5">Grade / CGPA / %</label>
@@ -482,18 +494,23 @@ function EmployeeEduExpTab({ emp, onSave, saving }) {
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-0.5">From Year</label>
-                <select className="form-select text-xs w-full" value={expForm.from_year} onChange={e => xf({ from_year: e.target.value })}>
-                  <option value="">–</option>
-                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
+                <Select
+                  value={expForm.from_year}
+                  onChange={v => xf({ from_year: v })}
+                  options={[{ value: '', label: '–' }, ...YEAR_OPTIONS.map(y => ({ value: y, label: y }))]}
+                  placeholder="–"
+                  size="sm"
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-0.5">To Year</label>
-                <select className="form-select text-xs w-full" value={expForm.to_year} onChange={e => xf({ to_year: e.target.value })}>
-                  <option value="">–</option>
-                  <option value="Present">Present</option>
-                  {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
+                <Select
+                  value={expForm.to_year}
+                  onChange={v => xf({ to_year: v })}
+                  options={[{ value: '', label: '–' }, { value: 'Present', label: 'Present' }, ...YEAR_OPTIONS.map(y => ({ value: y, label: y }))]}
+                  placeholder="–"
+                  size="sm"
+                />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs text-gray-500 mb-0.5">Description</label>
@@ -907,16 +924,20 @@ export default function Employees({ toast }) {
                 onChange={e => { setSearch(e.target.value); setPage(1); load(e.target.value, deptFilter, statusFilter, 1); }}
               />
             </div>
-            <select className="form-select w-auto min-w-[160px]" value={deptFilter}
-              onChange={e => { setDeptFilter(e.target.value); setPage(1); load(search, e.target.value, statusFilter, 1); }}>
-              <option value="">All Departments</option>
-              {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-            <select className="form-select w-auto" value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); setPage(1); load(search, deptFilter, e.target.value, 1); }}>
-              <option value="">All Status</option>
-              <option>Active</option><option>Inactive</option><option>Left</option>
-            </select>
+            <Select
+              value={deptFilter}
+              onChange={v => { setDeptFilter(v); setPage(1); load(search, v, statusFilter, 1); }}
+              options={[{ value: '', label: 'All Departments' }, ...depts.map(d => ({ value: String(d.id), label: d.name }))]}
+              placeholder="All Departments"
+              className="min-w-[160px]"
+            />
+            <Select
+              value={statusFilter}
+              onChange={v => { setStatusFilter(v); setPage(1); load(search, deptFilter, v, 1); }}
+              options={[{ value: '', label: 'All Status' }, { value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }, { value: 'Left', label: 'Left' }]}
+              placeholder="All Status"
+              className="w-36"
+            />
           </div>
         </div>
 
@@ -1274,59 +1295,78 @@ export default function Employees({ toast }) {
           <FormGrid>
             {modal?.mode === 'edit' && (
               <Field label="Status">
-                <select className="form-select" value={form.status || ''} onChange={e => f({ status: e.target.value })}>
-                  {['Active', 'Inactive', 'Left'].map(s => <option key={s}>{s}</option>)}
-                </select>
+                <Select
+                  value={form.status || ''}
+                  onChange={v => f({ status: v })}
+                  options={['Active', 'Inactive', 'Left']}
+                />
               </Field>
             )}
             <Field label="Department">
-              <select className="form-select" value={form.department_id || ''} onChange={e => f({ department_id: e.target.value })}>
-                <option value="">Select</option>
-                {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
+              <Select
+                value={form.department_id || ''}
+                onChange={v => f({ department_id: v })}
+                options={[{ value: '', label: 'Select' }, ...depts.map(d => ({ value: String(d.id), label: d.name }))]}
+                placeholder="Select"
+              />
             </Field>
             <Field label="Designation">
-              <select className="form-select" value={form.designation_id || ''} onChange={e => f({ designation_id: e.target.value })}>
-                <option value="">Select</option>
-                {desigs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
+              <Select
+                value={form.designation_id || ''}
+                onChange={v => f({ designation_id: v })}
+                options={[{ value: '', label: 'Select' }, ...desigs.map(d => ({ value: String(d.id), label: d.name }))]}
+                placeholder="Select"
+              />
             </Field>
             <Field label="Employment Type">
-              <select className="form-select" value={form.employment_type || 'Full-time'} onChange={e => f({ employment_type: e.target.value })}>
-                {['Full-time', 'Part-time', 'Contract', 'Intern'].map(t => <option key={t}>{t}</option>)}
-              </select>
+              <Select
+                value={form.employment_type || 'Full-time'}
+                onChange={v => f({ employment_type: v })}
+                options={['Full-time', 'Part-time', 'Contract', 'Intern']}
+              />
             </Field>
             <Field label="Date of Joining" required>
               <DatePicker value={form.date_of_joining || ''} onChange={v => f({ date_of_joining: v })} placeholder="Select joining date" />
             </Field>
             <Field label="Reporting Manager">
-              <select className="form-select" value={form.reports_to_id || ''} onChange={e => f({ reports_to_id: e.target.value || null })}>
-                <option value="">None</option>
-                {allEmps.filter(e => e.id !== modal?.id).map(e => (
-                  <option key={e.id} value={e.id}>{e.full_name}</option>
-                ))}
-              </select>
+              <Select
+                value={form.reports_to_id || ''}
+                onChange={v => f({ reports_to_id: v || null })}
+                options={[{ value: '', label: 'None' }, ...allEmps.filter(e => e.id !== modal?.id).map(e => ({ value: String(e.id), label: e.full_name }))]}
+                placeholder="None"
+                searchable
+              />
             </Field>
             <Field label="Notice Period">
-              <select className="form-select" value={form.notice_period_days ?? ''} onChange={e => f({ notice_period_days: e.target.value || null })}>
-                <option value="">Not set</option>
-                <option value="15">15 days</option>
-                <option value="30">30 days (1 month)</option>
-                <option value="45">45 days</option>
-                <option value="60">60 days (2 months)</option>
-                <option value="90">90 days (3 months)</option>
-                <option value="180">180 days (6 months)</option>
-              </select>
+              <Select
+                value={form.notice_period_days ?? ''}
+                onChange={v => f({ notice_period_days: v || null })}
+                options={[
+                  { value: '', label: 'Not set' },
+                  { value: '15', label: '15 days' },
+                  { value: '30', label: '30 days (1 month)' },
+                  { value: '45', label: '45 days' },
+                  { value: '60', label: '60 days (2 months)' },
+                  { value: '90', label: '90 days (3 months)' },
+                  { value: '180', label: '180 days (6 months)' },
+                ]}
+                placeholder="Not set"
+              />
             </Field>
             <Field label="Probation Period">
-              <select className="form-select" value={form.probation_period_days ?? ''} onChange={e => f({ probation_period_days: e.target.value || null })}>
-                <option value="">Not set</option>
-                <option value="30">30 days (1 month)</option>
-                <option value="60">60 days (2 months)</option>
-                <option value="90">90 days (3 months)</option>
-                <option value="180">180 days (6 months)</option>
-                <option value="365">1 year</option>
-              </select>
+              <Select
+                value={form.probation_period_days ?? ''}
+                onChange={v => f({ probation_period_days: v || null })}
+                options={[
+                  { value: '', label: 'Not set' },
+                  { value: '30', label: '30 days (1 month)' },
+                  { value: '60', label: '60 days (2 months)' },
+                  { value: '90', label: '90 days (3 months)' },
+                  { value: '180', label: '180 days (6 months)' },
+                  { value: '365', label: '1 year' },
+                ]}
+                placeholder="Not set"
+              />
             </Field>
             <Field label="Office Address" full>
               <textarea className="form-textarea" rows={2} value={form.office_address || ''} onChange={e => f({ office_address: e.target.value })} placeholder="e.g. 3rd Floor, Tech Park, Whitefield, Bengaluru — 560066" />
@@ -1353,10 +1393,12 @@ export default function Employees({ toast }) {
               <input className="form-input" value={form.mobile || ''} onChange={e => f({ mobile: e.target.value })} placeholder="Mobile" />
             </Field>
             <Field label="Gender">
-              <select className="form-select" value={form.gender || ''} onChange={e => f({ gender: e.target.value })}>
-                <option value="">Select</option>
-                {['Male', 'Female', 'Other'].map(g => <option key={g}>{g}</option>)}
-              </select>
+              <Select
+                value={form.gender || ''}
+                onChange={v => f({ gender: v })}
+                options={[{ value: '', label: 'Select' }, ...['Male', 'Female', 'Other'].map(g => ({ value: g, label: g }))]}
+                placeholder="Select"
+              />
             </Field>
             <Field label="Date of Birth">
               <DatePicker value={form.date_of_birth || ''} onChange={v => f({ date_of_birth: v })} placeholder="Select date of birth" />
@@ -1382,9 +1424,11 @@ export default function Employees({ toast }) {
               <input type="number" className="form-input" value={form.other_allowance || 0} onChange={e => f({ other_allowance: e.target.value })} min="0" />
             </Field>
             <Field label="PT State">
-              <select className="form-select" value={form.pt_state || 'Karnataka'} onChange={e => f({ pt_state: e.target.value })}>
-                {PT_STATES.map(s => <option key={s}>{s}</option>)}
-              </select>
+              <Select
+                value={form.pt_state || 'Karnataka'}
+                onChange={v => f({ pt_state: v })}
+                options={PT_STATES}
+              />
             </Field>
             <Field label="PF Applicable">
               <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
@@ -1433,10 +1477,12 @@ export default function Employees({ toast }) {
           <FormGrid>
             <Field label="Contact Name"><input className="form-input" value={form.ec_name || ''} onChange={e => f({ ec_name: e.target.value })} placeholder="Full name" /></Field>
             <Field label="Relationship">
-              <select className="form-select" value={form.ec_relationship || ''} onChange={e => f({ ec_relationship: e.target.value })}>
-                <option value="">Select</option>
-                {['Spouse', 'Parent', 'Sibling', 'Child', 'Friend', 'Other'].map(r => <option key={r}>{r}</option>)}
-              </select>
+              <Select
+                value={form.ec_relationship || ''}
+                onChange={v => f({ ec_relationship: v })}
+                options={[{ value: '', label: 'Select' }, ...['Spouse', 'Parent', 'Sibling', 'Child', 'Friend', 'Other'].map(r => ({ value: r, label: r }))]}
+                placeholder="Select"
+              />
             </Field>
             <Field label="Phone"><input className="form-input" value={form.ec_phone || ''} onChange={e => f({ ec_phone: e.target.value })} placeholder="Mobile number" /></Field>
           </FormGrid>
@@ -1491,16 +1537,20 @@ export default function Employees({ toast }) {
                 <FormGrid>
                   <Field label="Asset Name" required><input className="form-input" value={assetForm.asset_name} onChange={e => setAssetForm(p => ({ ...p, asset_name: e.target.value }))} placeholder="e.g. ThinkPad X1 Carbon" /></Field>
                   <Field label="Type" required>
-                    <select className="form-select" value={assetForm.asset_type} onChange={e => setAssetForm(p => ({ ...p, asset_type: e.target.value }))}>
-                      <option value="">Select type</option>
-                      {ASSET_TYPES.map(t => <option key={t}>{t}</option>)}
-                    </select>
+                    <Select
+                      value={assetForm.asset_type}
+                      onChange={v => setAssetForm(p => ({ ...p, asset_type: v }))}
+                      options={[{ value: '', label: 'Select type' }, ...ASSET_TYPES.map(t => ({ value: t, label: t }))]}
+                      placeholder="Select type"
+                    />
                   </Field>
                   <Field label="Serial Number"><input className="form-input" value={assetForm.serial_number} onChange={e => setAssetForm(p => ({ ...p, serial_number: e.target.value }))} placeholder="SN-XXXXX" /></Field>
                   <Field label="Condition">
-                    <select className="form-select" value={assetForm.condition} onChange={e => setAssetForm(p => ({ ...p, condition: e.target.value }))}>
-                      {['New', 'Good', 'Fair', 'Poor'].map(c => <option key={c}>{c}</option>)}
-                    </select>
+                    <Select
+                      value={assetForm.condition}
+                      onChange={v => setAssetForm(p => ({ ...p, condition: v }))}
+                      options={['New', 'Good', 'Fair', 'Poor']}
+                    />
                   </Field>
                   <Field label="Given On"><DatePicker value={assetForm.allocated_date} onChange={v => setAssetForm(p => ({ ...p, allocated_date: v }))} placeholder="Select date" /></Field>
                   <Field label="Notes"><input className="form-input" value={assetForm.notes} onChange={e => setAssetForm(p => ({ ...p, notes: e.target.value }))} placeholder="Any notes…" /></Field>

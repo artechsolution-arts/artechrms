@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import { Star, Target, ClipboardCheck, Briefcase, Crown,
          ChevronDown, CheckCircle2, Clock, Lock } from 'lucide-react';
+import Select from '../../components/Select';
 
 // ── Stage metadata ──────────────────────────────────────────────
 const STAGES = [
@@ -104,18 +105,18 @@ function SelfEvalForm({ appraisal, onSubmit, submitting }) {
                 {g.target && <p className="text-xs text-gray-500 mt-0.5">Target: {g.target}</p>}
                 <p className="text-xs text-purple-500 mt-0.5">Weightage: {g.weight}%</p>
               </div>
-              <select
-                className="form-select text-sm py-1.5 px-2 w-24 flex-shrink-0"
+              <Select
                 value={scores[i]?.score ?? ''}
-                onChange={e => update(i, 'score', e.target.value)}
-              >
-                <option value="">Rate</option>
-                {[1,2,3,4,5].map(v => (
-                  <option key={v} value={v}>
-                    {v} — {v === 1 ? 'Poor' : v === 2 ? 'Below Avg' : v === 3 ? 'Average' : v === 4 ? 'Good' : 'Excellent'}
-                  </option>
-                ))}
-              </select>
+                onChange={v => update(i, 'score', v)}
+                options={[
+                  { value: '1', label: '1 — Poor',          description: 'Needs significant improvement' },
+                  { value: '2', label: '2 — Below Average',  description: 'Below expectations' },
+                  { value: '3', label: '3 — Average',        description: 'Meets expectations' },
+                  { value: '4', label: '4 — Good',           description: 'Exceeds expectations' },
+                  { value: '5', label: '5 — Excellent',      description: 'Outstanding performance' },
+                ]}
+                placeholder="Rate 1-5…"
+              />
             </div>
             {scores[i]?.score && <ScoreBar score={parseFloat(scores[i].score)} />}
             <textarea

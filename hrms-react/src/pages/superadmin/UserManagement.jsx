@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import Select from '../../components/Select';
 import {
   Plus, Pencil, Trash2, KeyRound, Search, ChevronDown,
   UserCheck, UserX, ShieldCheck, X, Eye, EyeOff,
@@ -86,9 +87,11 @@ function CreateUserModal({ onClose, onSave, toast }) {
             <input className={INPUT} value={form.username} onChange={set('username')} placeholder="e.g. john.doe" />
           </Field>
           <Field label="Role">
-            <select className={SELECT} value={form.role} onChange={set('role')}>
-              {ROLES.map(r => <option key={r}>{r}</option>)}
-            </select>
+            <Select
+              value={form.role}
+              onChange={v => setForm(f => ({ ...f, role: v }))}
+              options={ROLES}
+            />
           </Field>
         </div>
         <Field label="Full Name *">
@@ -159,16 +162,21 @@ function EditUserModal({ user, onClose, onSave, toast }) {
         </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Role">
-            <select className={SELECT} value={form.role} onChange={set('role')}>
-              {ROLES.map(r => <option key={r}>{r}</option>)}
-            </select>
+            <Select
+              value={form.role}
+              onChange={v => setForm(f => ({ ...f, role: v }))}
+              options={ROLES}
+            />
           </Field>
           <Field label="Status">
-            <select className={SELECT} value={form.is_active ? 'active' : 'inactive'}
-              onChange={e => setForm(f => ({ ...f, is_active: e.target.value === 'active' }))}>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
+            <Select
+              value={form.is_active ? 'active' : 'inactive'}
+              onChange={v => setForm(f => ({ ...f, is_active: v === 'active' }))}
+              options={[
+                { value: 'active',   label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+              ]}
+            />
           </Field>
         </div>
         <div className="flex justify-end gap-2 pt-2">
@@ -311,13 +319,13 @@ export default function UserManagement({ toast }) {
               placeholder="Search by name, username or email…"
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <div className="relative">
-            <select className="pl-3 pr-8 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 appearance-none cursor-pointer"
-              value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-              <option value="">All Roles</option>
-              {ROLES.map(r => <option key={r}>{r}</option>)}
-            </select>
-            <ChevronDown size={12} className="absolute right-2.5 top-3 text-gray-400 pointer-events-none" />
+          <div>
+            <Select
+              value={roleFilter}
+              onChange={v => setRoleFilter(v)}
+              options={[{ value: '', label: 'All Roles' }, ...ROLES.map(r => ({ value: r, label: r }))]}
+              placeholder="All Roles"
+            />
           </div>
         </div>
 

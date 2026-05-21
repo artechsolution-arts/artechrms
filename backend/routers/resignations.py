@@ -29,6 +29,7 @@ def _serialize(r: Resignation) -> dict:
         "id": r.id,
         "employee_id": emp.id if emp else None,
         "employee_name": emp.full_name if emp else None,
+        "profile_photo": emp.profile_photo if emp else None,
         "employee_code": emp.employee_id if emp else None,
         "department": emp.department_rel.name if emp and emp.department_rel else None,
         "designation": emp.designation_rel.name if emp and emp.designation_rel else None,

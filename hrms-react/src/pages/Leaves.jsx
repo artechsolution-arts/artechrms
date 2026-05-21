@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
+import Select from '../components/Select';
 import { Plus, RefreshCw, CheckCircle, XCircle, Trash2, RotateCcw, PencilLine } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
@@ -314,16 +315,21 @@ export default function Leaves({ toast }) {
         <FormSection title="Leave Details">
           <FormGrid>
             <Field label="Employee" required>
-              <select className="form-select" value={form.employee_id || ''} onChange={e => f({ employee_id: e.target.value })}>
-                <option value="">Select Employee</option>
-                {emps.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
+              <Select
+                value={form.employee_id || ''}
+                onChange={v => f({ employee_id: v })}
+                options={emps.map(e => ({ value: String(e.id), label: e.full_name }))}
+                placeholder="Select Employee"
+                searchable
+              />
             </Field>
             <Field label="Leave Type" required>
-              <select className="form-select" value={form.leave_type_id || ''} onChange={e => f({ leave_type_id: e.target.value })}>
-                <option value="">Select Type</option>
-                {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              <Select
+                value={form.leave_type_id || ''}
+                onChange={v => f({ leave_type_id: v })}
+                options={types.map(t => ({ value: String(t.id), label: t.name }))}
+                placeholder="Select Type"
+              />
             </Field>
             <Field label="From Date" required>
               <DatePicker value={form.from_date || ''} onChange={v => f({ from_date: v })} placeholder="Select from date" />

@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import { Play, RefreshCw, Eye, ChevronRight, Settings2, CheckCircle2, XCircle } from 'lucide-react';
+import Select from '../components/Select';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_NAMES = [
@@ -235,9 +236,11 @@ export default function PayrollEntry({ toast, onNavigate }) {
             <FormSection title="Payroll Period">
               <FormGrid>
                 <Field label="Month">
-                  <select className="form-select" value={runForm.month || now.getMonth() + 1} onChange={e => rf({ month: e.target.value })}>
-                    {MONTH_NAMES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                  </select>
+                  <Select
+                    value={String(runForm.month || now.getMonth() + 1)}
+                    onChange={v => rf({ month: v })}
+                    options={MONTH_NAMES.map((m, i) => ({ value: String(i + 1), label: m }))}
+                  />
                 </Field>
                 <Field label="Year">
                   <input type="number" className="form-input" value={runForm.year || now.getFullYear()} onChange={e => rf({ year: e.target.value })} min="2020" max="2030" />

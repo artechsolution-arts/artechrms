@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
+import EmpAvatar from '../components/EmpAvatar';
 import { FileText, CheckCircle2, XCircle, Clock, RefreshCw, ChevronDown, Settings2, Save } from 'lucide-react';
 
 const EMP_TYPES = ['Full-time', 'Part-time', 'Contract', 'Intern'];
@@ -217,9 +218,7 @@ export default function Resignations({ toast }) {
               {/* Header row */}
               <div className="flex items-start gap-4 p-4">
                 {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-400 to-rose-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                  {r.employee_name?.charAt(0) || '?'}
-                </div>
+                <EmpAvatar name={r.employee_name} photo={r.profile_photo} size="md" colorIndex={r.id} rounded="rounded-full" />
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3 flex-wrap">

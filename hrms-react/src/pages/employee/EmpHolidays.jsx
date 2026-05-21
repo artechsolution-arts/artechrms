@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import Badge from '../../components/Badge';
+import Select from '../../components/Select';
 import { CalendarDays } from 'lucide-react';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -32,9 +33,13 @@ export default function EmpHolidays({ toast }) {
       <div className="max-w-3xl mx-auto space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Holiday Calendar</h2>
-          <select className="form-select w-28 text-sm" value={year} onChange={e => setYear(+e.target.value)}>
-            {[2024,2025,2026,2027].map(y => <option key={y}>{y}</option>)}
-          </select>
+          <Select
+            value={year}
+            onChange={v => setYear(Number(v))}
+            options={[2024, 2025, 2026, 2027].map(y => ({ value: y, label: String(y) }))}
+            size="sm"
+            className="w-24"
+          />
         </div>
 
         {rows.length === 0 ? (

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import DatePicker from '../../components/DatePicker';
+import Select from '../../components/Select';
 import { Plus, Receipt } from 'lucide-react';
 
 const STATUS_COLOR = {
@@ -114,10 +115,12 @@ export default function EmpExpenses({ toast }) {
         <FormSection title="Claim Details">
           <FormGrid>
             <Field label="Expense Type" required>
-              <select className="form-select" value={form.expense_type || ''} onChange={e => f({ expense_type: e.target.value })}>
-                <option value="">Select type</option>
-                {EXPENSE_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
+              <Select
+                value={form.expense_type || ''}
+                onChange={v => f({ expense_type: v })}
+                options={EXPENSE_TYPES}
+                placeholder="Select type"
+              />
             </Field>
             <Field label="Amount (₹)" required>
               <input type="number" min="0" step="0.01" className="form-input" value={form.amount || ''} onChange={e => f({ amount: e.target.value })} placeholder="0.00"/>

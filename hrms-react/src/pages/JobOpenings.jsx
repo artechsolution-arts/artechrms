@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api, apiForm } from '../api';
 import Badge from '../components/Badge';
 import DatePicker from '../components/DatePicker';
+import Select from '../components/Select';
 import { Plus, RefreshCw, Trash2, XCircle, Paperclip, Share2, Eye, Download, X } from 'lucide-react';
 
 // ── Inline brand SVG icons ─────────────────────────────────────
@@ -863,11 +864,13 @@ export default function JobOpenings({ toast }) {
       <div className="page-content">
         <div className="card mb-4">
           <div className="p-3">
-            <select className="form-select w-auto" value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); load(e.target.value); }}>
-              <option value="">All Status</option>
-              <option>Open</option><option>Closed</option>
-            </select>
+            <Select
+              value={statusFilter}
+              onChange={v => { setStatusFilter(v); load(v); }}
+              options={[{ value: '', label: 'All Status' }, 'Open', 'Closed']}
+              size="sm"
+              className="w-36"
+            />
           </div>
         </div>
 

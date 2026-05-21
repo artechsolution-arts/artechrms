@@ -3,6 +3,7 @@ import { api } from '../../api';
 import Badge from '../../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import DatePicker from '../../components/DatePicker';
+import Select from '../../components/Select';
 import { Plus, Trash2, CalendarDays, XCircle, PencilLine } from 'lucide-react';
 
 export default function EmpLeaves({ toast }) {
@@ -313,18 +314,20 @@ export default function EmpLeaves({ toast }) {
         <FormSection title="Leave Details">
           <FormGrid>
             <Field label="Leave Type" required full>
-              <select className="form-select" value={form.leave_type_id || ''} onChange={e => f({ leave_type_id: e.target.value })}>
-                <option value="">Select leave type</option>
-                {types.map(t => {
+              <Select
+                value={form.leave_type_id || ''}
+                onChange={v => f({ leave_type_id: v })}
+                options={types.map(t => {
                   const bal = balances.find(b => b.leave_type_id === t.id);
                   const avail = bal ? bal.available : 0;
-                  return (
-                    <option key={t.id} value={t.id}>
-                      {t.name} — {avail} day{avail !== 1 ? 's' : ''} available
-                    </option>
-                  );
+                  return {
+                    value: String(t.id),
+                    label: t.name,
+                    description: `${avail} day${avail !== 1 ? 's' : ''} available`,
+                  };
                 })}
-              </select>
+                placeholder="Select leave type"
+              />
               {selectedBal && (
                 <p className="text-xs mt-1" style={{ color: selectedBal.available > 0 ? 'var(--accent)' : '#ef4444' }}>
                   {selectedBal.available > 0
@@ -335,17 +338,25 @@ export default function EmpLeaves({ toast }) {
             </Field>
 
             <Field label="Duration" required>
-              <select className="form-select" value={form.duration || 'Full Day'} onChange={e => f({ duration: e.target.value })}>
-                <option value="Full Day">Full Day</option>
-                <option value="Half Day">Half Day</option>
-              </select>
+              <Select
+                value={form.duration || 'Full Day'}
+                onChange={v => f({ duration: v })}
+                options={[
+                  { value: 'Full Day', label: 'Full Day' },
+                  { value: 'Half Day', label: 'Half Day' },
+                ]}
+              />
             </Field>
 
             <Field label="Leave Category" required>
-              <select className="form-select" value={form.leave_category || 'Planned'} onChange={e => f({ leave_category: e.target.value })}>
-                <option value="Planned">Planned Leave</option>
-                <option value="Unplanned">Unplanned Leave</option>
-              </select>
+              <Select
+                value={form.leave_category || 'Planned'}
+                onChange={v => f({ leave_category: v })}
+                options={[
+                  { value: 'Planned', label: 'Planned Leave' },
+                  { value: 'Unplanned', label: 'Unplanned Leave' },
+                ]}
+              />
             </Field>
 
             <Field label="From Date" required>

@@ -3,6 +3,7 @@ import { api } from '../../api';
 import Badge from '../../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import DatePicker from '../../components/DatePicker';
+import Select from '../../components/Select';
 import { Plus, FilePenLine, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 const REQUEST_TYPES = [
@@ -158,14 +159,12 @@ export default function EmpEditRequests({ toast }) {
         <FormSection title="Request Details">
           <FormGrid>
             <Field label="Request Type" required>
-              <select
-                className="form-select"
+              <Select
                 value={form.request_type || ''}
-                onChange={e => f({ request_type: e.target.value })}
-              >
-                <option value="">Select type</option>
-                {REQUEST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+                onChange={v => f({ request_type: v })}
+                options={REQUEST_TYPES.map(t => ({ value: t, label: t }))}
+                placeholder="Select type"
+              />
             </Field>
 
             <Field label="Date to Correct" required>

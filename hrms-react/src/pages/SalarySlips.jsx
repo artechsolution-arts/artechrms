@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import { Plus, RefreshCw, Eye, Printer, FileDown } from 'lucide-react';
+import Select from '../components/Select';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_NAMES = [
@@ -280,15 +281,20 @@ export default function SalarySlips({ toast }) {
         <FormSection title="Slip Details">
           <FormGrid>
             <Field label="Employee" required>
-              <select className="form-select" value={form.employee_id || ''} onChange={e => f({ employee_id: e.target.value })}>
-                <option value="">Select Employee</option>
-                {emps.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
+              <Select
+                value={String(form.employee_id || '')}
+                onChange={v => f({ employee_id: v })}
+                options={emps.map(e => ({ value: String(e.id), label: e.full_name }))}
+                placeholder="Select Employee"
+                searchable
+              />
             </Field>
             <Field label="Month" required>
-              <select className="form-select" value={form.month || now.getMonth() + 1} onChange={e => f({ month: e.target.value })}>
-                {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-              </select>
+              <Select
+                value={String(form.month || now.getMonth() + 1)}
+                onChange={v => f({ month: v })}
+                options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+              />
             </Field>
             <Field label="Year" required>
               <input type="number" className="form-input" value={form.year || now.getFullYear()} onChange={e => f({ year: e.target.value })} min="2020" max="2030" />

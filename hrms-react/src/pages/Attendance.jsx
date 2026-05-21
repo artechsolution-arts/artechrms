@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
+import Select from '../components/Select';
 import { Plus, RefreshCw, Clock } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
@@ -127,18 +128,23 @@ export default function Attendance({ toast }) {
         <FormSection title="Attendance Details">
           <FormGrid>
             <Field label="Employee" required>
-              <select className="form-select" value={form.employee_id || ''} onChange={e => f({ employee_id: e.target.value })}>
-                <option value="">Select Employee</option>
-                {emps.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
+              <Select
+                value={form.employee_id || ''}
+                onChange={v => f({ employee_id: v })}
+                options={emps.map(e => ({ value: String(e.id), label: e.full_name }))}
+                placeholder="Select employee"
+                searchable
+              />
             </Field>
             <Field label="Date" required>
               <DatePicker value={form.date || today} onChange={v => f({ date: v })} placeholder="Select date" />
             </Field>
             <Field label="Status">
-              <select className="form-select" value={form.status || 'Present'} onChange={e => f({ status: e.target.value })}>
-                {['Present', 'Absent', 'On Leave', 'Half Day', 'WFH'].map(s => <option key={s}>{s}</option>)}
-              </select>
+              <Select
+                value={form.status || 'Present'}
+                onChange={v => f({ status: v })}
+                options={['Present', 'Absent', 'On Leave', 'Half Day', 'WFH']}
+              />
             </Field>
             <Field label="In Time">
               <input type="time" className="form-input" value={form.in_time || ''} onChange={e => f({ in_time: e.target.value })} />
@@ -156,9 +162,11 @@ export default function Attendance({ toast }) {
           <FormSection title="Update Times">
             <FormGrid>
               <Field label="Status">
-                <select className="form-select" value={editForm.status || 'Present'} onChange={e => ef({ status: e.target.value })}>
-                  {['Present', 'Absent', 'On Leave', 'Half Day', 'WFH'].map(s => <option key={s}>{s}</option>)}
-                </select>
+                <Select
+                  value={editForm.status || 'Present'}
+                  onChange={v => ef({ status: v })}
+                  options={['Present', 'Absent', 'On Leave', 'Half Day', 'WFH']}
+                />
               </Field>
               <div />
               <Field label="In Time (Check-In)">

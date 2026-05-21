@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
+import Select from '../components/Select';
 import { Plus, CalendarDays, Trash2 } from 'lucide-react';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -47,9 +48,13 @@ export default function Holidays({ toast }) {
       <div className="page-head">
         <h1 className="page-title">Holiday Calendar</h1>
         <div className="flex gap-2">
-          <select className="form-select w-28 text-sm" value={year} onChange={e => setYear(+e.target.value)}>
-            {[2024,2025,2026,2027].map(y => <option key={y}>{y}</option>)}
-          </select>
+          <Select
+            value={year}
+            onChange={v => setYear(Number(v))}
+            options={[2024,2025,2026,2027].map(y => ({ value: y, label: String(y) }))}
+            size="sm"
+            className="w-24"
+          />
           <button onClick={() => setModal(true)} className="btn btn-primary btn-sm gap-1.5"><Plus size={13}/>Add Holiday</button>
         </div>
       </div>
@@ -99,9 +104,11 @@ export default function Holidays({ toast }) {
               <DatePicker value={form.date || ''} onChange={v => f({ date: v })} placeholder="Select holiday date" />
             </Field>
             <Field label="Type">
-              <select className="form-select" value={form.holiday_type||'Public'} onChange={e => f({holiday_type:e.target.value})}>
-                {['Public','Optional','Restricted'].map(t => <option key={t}>{t}</option>)}
-              </select>
+              <Select
+                value={form.holiday_type || 'Public'}
+                onChange={v => f({ holiday_type: v })}
+                options={['Public', 'Optional', 'Restricted']}
+              />
             </Field>
             <Field label="Description (optional)">
               <input className="form-input" value={form.description||''} onChange={e => f({description:e.target.value})}/>

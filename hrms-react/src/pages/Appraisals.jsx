@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
+import Select from '../components/Select';
 import { Plus, RefreshCw, Trash2, ChevronDown, Target, Star, ClipboardCheck,
          Briefcase, Crown, Eye, X } from 'lucide-react';
 
@@ -113,14 +114,21 @@ function EvalForm({ goals, onSubmit, submitting }) {
                 <p className="text-xs text-gray-400">Weight: {g.weight}%</p>
               </div>
               <div className="flex-shrink-0">
-                <select
-                  className="form-select text-xs py-1 px-2 w-20"
+                <Select
                   value={scores[i]?.score ?? ''}
-                  onChange={e => update(i, 'score', e.target.value)}
-                >
-                  <option value="">—</option>
-                  {[1,2,3,4,5].map(v => <option key={v} value={v}>{v}/5</option>)}
-                </select>
+                  onChange={v => update(i, 'score', v)}
+                  options={[
+                    { value: '', label: '—' },
+                    { value: '1', label: '1', description: 'Poor' },
+                    { value: '2', label: '2', description: 'Below Average' },
+                    { value: '3', label: '3', description: 'Average' },
+                    { value: '4', label: '4', description: 'Good' },
+                    { value: '5', label: '5', description: 'Excellent' },
+                  ]}
+                  placeholder="—"
+                  size="sm"
+                  className="w-28"
+                />
               </div>
             </div>
             <input
@@ -545,10 +553,13 @@ export default function Appraisals({ toast }) {
         <FormSection title="Basic Info">
           <FormGrid>
             <Field label="Employee" required>
-              <select className="form-select" value={form.employee_id || ''} onChange={e => f({ employee_id: e.target.value })}>
-                <option value="">Select Employee</option>
-                {emps.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </select>
+              <Select
+                value={form.employee_id || ''}
+                onChange={v => f({ employee_id: v })}
+                options={[{ value: '', label: 'Select Employee' }, ...emps.map(e => ({ value: String(e.id), label: e.full_name }))]}
+                placeholder="Select Employee"
+                searchable
+              />
             </Field>
             <Field label="Appraisal Period" required>
               <input
