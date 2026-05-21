@@ -18,6 +18,8 @@ from backend.models.leave import LeaveApplication
 from backend.models.hrm import ExpenseClaim, Announcement
 from backend.models.document_request import DocumentRequest
 from backend.models.recruitment import JobApplicant
+from backend.models.profile_update_log import ProfileUpdateLog
+from backend.models.resignation import Resignation
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
@@ -136,6 +138,44 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "priority": "medium",
             })
 
+        pending_resignations = db.query(Resignation).filter(
+            Resignation.status == "Pending"
+        ).order_by(Resignation.created_at.desc()).limit(10).all()
+
+        for res in pending_resignations:
+            emp = db.query(Employee).filter(Employee.id == res.employee_id).first()
+            emp_name = emp.full_name if emp else "An employee"
+            lwd = f" — LWD: {res.last_working_date}" if res.last_working_date else ""
+            notifications.append({
+                "id": f"resignation-{res.id}",
+                "type": "resignation",
+                "icon": "📝",
+                "title": "Resignation Submitted",
+                "message": f"{emp_name} has submitted a resignation{lwd}",
+                "action": "resignations",
+                "time": str(res.created_at)[:10] if res.created_at else "",
+                "priority": "high",
+            })
+
+        profile_updates = db.query(ProfileUpdateLog).filter(
+            ProfileUpdateLog.seen_by_hr == False  # noqa: E712
+        ).order_by(ProfileUpdateLog.changed_at.desc()).limit(10).all()
+
+        for pu in profile_updates:
+            emp = db.query(Employee).filter(Employee.id == pu.employee_id).first()
+            emp_name = emp.full_name if emp else "An employee"
+            fields = ", ".join(v["label"] for v in pu.changes.values()) if pu.changes else "profile"
+            notifications.append({
+                "id": f"profile-update-{pu.id}",
+                "type": "profile_update",
+                "icon": "👤",
+                "title": "Profile Updated",
+                "message": f"{emp_name} updated their {fields}",
+                "action": "employees",
+                "time": str(pu.changed_at)[:10] if pu.changed_at else "",
+                "priority": "medium",
+            })
+
         week_ago = date.today() - timedelta(days=7)
         new_applicants = db.query(JobApplicant).filter(
             JobApplicant.created_at >= week_ago
@@ -196,6 +236,26 @@ def _compute_notifications(user: User, db: Session) -> list:
                 Announcement.is_active == True  # noqa: E712
             ).order_by(Announcement.created_at.desc()).limit(3).all()
 
+            # Resignation status updates
+            my_resignations = db.query(Resignation).filter(
+                Resignation.employee_id == emp.id,
+                Resignation.status.in_(["Approved", "Rejected"]),
+            ).order_by(Resignation.actioned_at.desc()).limit(3).all()
+
+            for res in my_resignations:
+                icon = "✅" if res.status == "Approved" else "❌"
+                lwd = f" — LWD: {res.approved_last_working_date or res.last_working_date}" if (res.approved_last_working_date or res.last_working_date) else ""
+                notifications.append({
+                    "id": f"my-resignation-{res.id}",
+                    "type": "resignation",
+                    "icon": icon,
+                    "title": f"Resignation {res.status}",
+                    "message": f"Your resignation has been {res.status.lower()}{lwd}",
+                    "action": "emp-resignation",
+                    "time": str(res.actioned_at)[:10] if res.actioned_at else "",
+                    "priority": "high",
+                })
+
             for ann in announcements:
                 notifications.append({
                     "id": f"ann-{ann.id}",
@@ -211,6 +271,18 @@ def _compute_notifications(user: User, db: Session) -> list:
     priority_order = {"high": 0, "medium": 1, "low": 2}
     notifications = sorted(notifications, key=lambda n: (priority_order.get(n["priority"], 3), ""))
     return notifications[:20]
+
+
+@router.post("/profile-update/{log_id}/seen")
+def mark_profile_update_seen(log_id: int, request: Request, db: Session = Depends(get_db)):
+    user = _get_user(request, db)
+    if not user or user.role not in ("HR", "SuperAdmin", "CEO"):
+        return {"ok": False}
+    log = db.query(ProfileUpdateLog).filter(ProfileUpdateLog.id == log_id).first()
+    if log:
+        log.seen_by_hr = True
+        db.commit()
+    return {"ok": True}
 
 
 @router.get("")

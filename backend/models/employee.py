@@ -47,6 +47,7 @@ class Employee(Base):
     notice_period_days = Column(Integer, nullable=True)
     probation_period_days = Column(Integer, nullable=True)
     office_address = Column(String(500), nullable=True)
+    residential_address = Column(String(500), nullable=True)
     bank_name = Column(String(100))
     bank_account_no = Column(String(50))
     bank_ifsc = Column(String(20))

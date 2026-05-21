@@ -38,6 +38,7 @@ class EmployeeIn(BaseModel):
     notice_period_days: Optional[int] = None
     probation_period_days: Optional[int] = None
     office_address: Optional[str] = None
+    residential_address: Optional[str] = None
     bank_name: Optional[str] = None
     bank_account_no: Optional[str] = None
     bank_ifsc: Optional[str] = None
@@ -235,6 +236,7 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
         "notice_period_days": emp.notice_period_days,
         "probation_period_days": emp.probation_period_days,
         "office_address": emp.office_address,
+        "residential_address": emp.residential_address,
         "bank_name": emp.bank_name,
         "bank_account_no": emp.bank_account_no,
         "bank_ifsc": emp.bank_ifsc,

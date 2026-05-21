@@ -37,6 +37,7 @@ const FEATURE_SECTIONS = [
       { key: 'announcements',    label: 'Announcements' },
       { key: 'assets',           label: 'Asset Management' },
       { key: 'edit-requests',    label: 'Edit Requests' },
+      { key: 'resignations',     label: 'Resignations' },
       { key: 'status-sheets',    label: 'Status Sheets' },
       { key: 'document-requests', label: 'Document Requests' },
     ],
@@ -83,6 +84,7 @@ const FEATURE_SECTIONS = [
       { key: 'emp-status',       label: 'Status Sheet' },
       { key: 'emp-work-mode',    label: 'Team Calendar' },
       { key: 'emp-edit-requests', label: 'Edit Requests' },
+      { key: 'emp-resignation',   label: 'Resignation' },
     ],
   },
   {

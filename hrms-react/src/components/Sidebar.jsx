@@ -4,7 +4,7 @@ import {
   DollarSign, FileText, Briefcase, UserCheck,
   Star, X, Award, ListChecks, LogOut, Megaphone, Gift,
   Monitor, BookOpen, FileDown, UserCircle, Receipt, Wallet, ClipboardList, CalendarCheck2,
-  ChevronDown, ChevronRight, FilePenLine
+  ChevronDown, ChevronRight, FilePenLine, UserMinus
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -36,6 +36,7 @@ const NAV = [
   { key: 'applicants',         label: 'Applicants',         icon: UserCheck,       section: 'Recruitment' },
   { key: 'appraisals',         label: 'Appraisals',         icon: Star,            section: 'Appraisals' },
   { key: 'edit-requests',      label: 'Edit Requests',      icon: FilePenLine,     section: 'HR' },
+  { key: 'resignations',       label: 'Resignations',       icon: UserMinus,       section: 'HR' },
   { key: 'document-requests',  label: 'Document Requests',  icon: FileDown,        section: 'Documents' },
   { key: 'status-sheets',      label: 'Status Sheets',      icon: ClipboardList,   section: 'Documents' },
   { key: 'my-profile',         label: 'My Profile',         icon: UserCircle,      section: 'My Portal' },

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   LayoutDashboard, User, CalendarDays, Clock,
   DollarSign, Star, X, LogOut, Megaphone, Gift, Monitor, FileDown,
-  ClipboardList, CalendarCheck2, FilePenLine
+  ClipboardList, CalendarCheck2, FilePenLine, LogOut as ResignIcon
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -26,6 +26,7 @@ const EMP_NAV = [
   { key: 'emp-status',          label: 'Status Sheet',        icon: ClipboardList,   section: 'Self Service' },
   { key: 'emp-work-mode',       label: 'Team Calendar',       icon: CalendarCheck2,  section: 'Self Service' },
   { key: 'emp-edit-requests',  label: 'Edit Requests',       icon: FilePenLine,     section: 'Self Service' },
+  { key: 'emp-resignation',   label: 'Resignation',         icon: ResignIcon,      section: 'Self Service' },
   { key: 'emp-announcements',   label: 'Announcements',       icon: Megaphone,       section: 'Company' },
   { key: 'emp-holidays',        label: 'Holidays',            icon: Gift,            section: 'Company' },
 ];

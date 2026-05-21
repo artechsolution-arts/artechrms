@@ -697,7 +697,7 @@ export default function Employees({ toast }) {
       hra_percent: 40, special_allowance: 0, lta: 0, other_allowance: 0,
       pf_applicable: true, esi_applicable: true, pt_state: 'Karnataka',
       ec_name: '', ec_relationship: '', ec_phone: '', ec_id: null,
-      reports_to_id: null, notice_period_days: null, probation_period_days: null, office_address: '',
+      reports_to_id: null, notice_period_days: null, probation_period_days: null, office_address: '', residential_address: '',
     });
     setEmpAssets([]);
     setShowAssetForm(false);
@@ -722,6 +722,7 @@ export default function Employees({ toast }) {
         notice_period_days: e.notice_period_days ?? null,
         probation_period_days: e.probation_period_days ?? null,
         office_address: e.office_address || '',
+        residential_address: e.residential_address || '',
       });
       setEmpAssets(assets);
       setShowAssetForm(false);
@@ -790,6 +791,7 @@ export default function Employees({ toast }) {
           notice_period_days: form.notice_period_days ? parseInt(form.notice_period_days) : null,
           probation_period_days: form.probation_period_days ? parseInt(form.probation_period_days) : null,
           office_address: form.office_address || null,
+          residential_address: form.residential_address || null,
           ...salaryFields, ...bankFields,
         });
         if (form.ec_name?.trim()) {
@@ -812,6 +814,7 @@ export default function Employees({ toast }) {
           notice_period_days: form.notice_period_days ? parseInt(form.notice_period_days) : null,
           probation_period_days: form.probation_period_days ? parseInt(form.probation_period_days) : null,
           office_address: form.office_address || null,
+          residential_address: form.residential_address || null,
           ...salaryFields, ...bankFields,
         });
         if (form.ec_name?.trim()) {
@@ -1154,6 +1157,7 @@ export default function Employees({ toast }) {
                     <DetailRow label="Notice Period" value={detailEmp.notice_period_days ? `${detailEmp.notice_period_days} days` : null} />
                     <DetailRow label="Probation Period" value={detailEmp.probation_period_days ? `${detailEmp.probation_period_days} days` : null} />
                     <DetailRow label="Office Address" value={detailEmp.office_address} />
+                    <DetailRow label="Residential Address" value={detailEmp.residential_address} />
                     <DetailRow label="Status" value={detailEmp.status} />
                   </DetailSection>
                   {detailEmp.basic_salary && (
@@ -1326,6 +1330,9 @@ export default function Employees({ toast }) {
             </Field>
             <Field label="Office Address" full>
               <textarea className="form-textarea" rows={2} value={form.office_address || ''} onChange={e => f({ office_address: e.target.value })} placeholder="e.g. 3rd Floor, Tech Park, Whitefield, Bengaluru — 560066" />
+            </Field>
+            <Field label="Residential Address" full>
+              <textarea className="form-textarea" rows={2} value={form.residential_address || ''} onChange={e => f({ residential_address: e.target.value })} placeholder="Home address of the employee" />
             </Field>
           </FormGrid>
         </FormSection>

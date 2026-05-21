@@ -31,6 +31,7 @@ import Applicants from './pages/Applicants';
 import Appraisals from './pages/Appraisals';
 import DocumentRequests from './pages/DocumentRequests';
 import HREditRequests   from './pages/HREditRequests';
+import Resignations     from './pages/Resignations';
 import EmpProfile      from './pages/employee/EmpProfile';
 import EmpLeaves       from './pages/employee/EmpLeaves';
 import EmpSalary       from './pages/employee/EmpSalary';
@@ -61,6 +62,7 @@ const PAGES = {
   'applicants':         Applicants,
   'appraisals':         Appraisals,
   'edit-requests':      HREditRequests,
+  'resignations':       Resignations,
   'document-requests':  DocumentRequests,
   'status-sheets':      HRStatusSheet,
   'work-mode-sheet':    HRWorkMode,

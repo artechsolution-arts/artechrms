@@ -12,7 +12,7 @@ from backend.models.employee import Employee
 from backend.models.leave import LeaveApplication, LeaveType, Attendance
 from backend.models.payroll import SalarySlip
 from backend.models.appraisal import Appraisal
-from backend.models.hrm import ExpenseClaim
+from backend.models.hrm import ExpenseClaim, EmergencyContact, EmployeeAsset
 from backend.auth_utils import decode_token
 from backend.models.auth import User
 
@@ -124,6 +124,11 @@ def portal_dashboard(request: Request, db: Session = Depends(get_db)):
 @router.get("/profile")
 def portal_profile(request: Request, db: Session = Depends(get_db)):
     emp = _get_employee(request, db)
+    ec = db.query(EmergencyContact).filter(EmergencyContact.employee_id == emp.id).first()
+    assets = db.query(EmployeeAsset).filter(
+        EmployeeAsset.employee_id == emp.id,
+        EmployeeAsset.status == "Allocated",
+    ).all()
     return {
         "id": emp.id,
         "employee_id": emp.employee_id,
@@ -139,9 +144,44 @@ def portal_profile(request: Request, db: Session = Depends(get_db)):
         "employment_type": emp.employment_type,
         "department": emp.department_rel.name if emp.department_rel else None,
         "designation": emp.designation_rel.name if emp.designation_rel else None,
+        "reporting_manager": emp.reports_to_rel.full_name if getattr(emp, "reports_to_rel", None) else None,
+        "notice_period_days": emp.notice_period_days,
+        "probation_period_days": emp.probation_period_days,
+        "office_address": emp.office_address,
+        "residential_address": emp.residential_address,
         "bank_name": emp.bank_name,
         "bank_account_no": emp.bank_account_no,
+        "bank_ifsc": emp.bank_ifsc,
+        "bank_branch": emp.bank_branch,
+        "aadhar_no": emp.aadhar_no,
+        "pan_no": emp.pan_no,
+        "basic_salary": emp.basic_salary,
+        "hra_percent": emp.hra_percent if emp.hra_percent is not None else 40.0,
+        "special_allowance": emp.special_allowance or 0.0,
+        "pf_applicable": bool(emp.pf_applicable if emp.pf_applicable is not None else 1),
+        "esi_applicable": bool(emp.esi_applicable if emp.esi_applicable is not None else 1),
+        "pt_state": emp.pt_state or "Karnataka",
         "profile_photo": emp.profile_photo,
+        "education": emp.education or [],
+        "experience": emp.experience or [],
+        "_ec": {
+            "name": ec.name,
+            "relationship_type": ec.relationship_type,
+            "phone": ec.phone,
+            "email": ec.email,
+        } if ec else None,
+        "_assets": [
+            {
+                "id": a.id,
+                "asset_name": a.asset_name,
+                "asset_type": a.asset_type,
+                "serial_number": a.serial_number,
+                "allocated_date": str(a.allocated_date) if a.allocated_date else None,
+                "condition": a.condition,
+                "status": a.status,
+            }
+            for a in assets
+        ],
     }
 
 
@@ -521,6 +561,51 @@ async def upload_portal_photo(request: Request, file: UploadFile = File(...), db
     return {"profile_photo": url}
 
 
+# ── Profile self-edit ──────────────────────────────────────────
+
+class ProfileUpdateIn(BaseModel):
+    email: Optional[str] = None
+    mobile: Optional[str] = None
+    residential_address: Optional[str] = None
+
+
+@router.patch("/profile")
+def update_portal_profile(data: ProfileUpdateIn, request: Request, db: Session = Depends(get_db)):
+    from backend.models.profile_update_log import ProfileUpdateLog
+    emp = _get_employee(request, db)
+
+    LABELS = {"email": "Email", "mobile": "Mobile", "residential_address": "Residential Address"}
+    changes = {}
+
+    if data.email is not None:
+        new_val = data.email.strip()
+        if new_val and new_val != emp.email:
+            changes["email"] = {"label": LABELS["email"], "old": emp.email, "new": new_val}
+            emp.email = new_val
+
+    if data.mobile is not None:
+        new_val = data.mobile.strip() or None
+        if new_val != emp.mobile:
+            changes["mobile"] = {"label": LABELS["mobile"], "old": emp.mobile, "new": new_val}
+            emp.mobile = new_val
+
+    if data.residential_address is not None:
+        new_val = data.residential_address.strip() or None
+        if new_val != emp.residential_address:
+            changes["residential_address"] = {
+                "label": LABELS["residential_address"],
+                "old": emp.residential_address,
+                "new": new_val,
+            }
+            emp.residential_address = new_val
+
+    if changes:
+        db.add(ProfileUpdateLog(employee_id=emp.id, changes=changes))
+
+    db.commit()
+    return {"ok": True, "changed": list(changes.keys())}
+
+
 # ── Document Requests ──────────────────────────────────────────
 
 from backend.models.document_request import DocumentRequest
@@ -826,3 +911,70 @@ def portal_create_edit_request(data: EditRequestIn, request: Request, db: Sessio
     db.commit()
     db.refresh(req)
     return {"id": req.id, "ok": True}
+
+
+# ── Resignation ────────────────────────────────────────────────
+
+from backend.models.resignation import Resignation
+
+class ResignationIn(BaseModel):
+    reason: str
+    last_working_date: Optional[date] = None
+    notice_period_days: Optional[int] = None
+
+
+@router.get("/resignation")
+def portal_get_resignation(request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    r = db.query(Resignation).filter(
+        Resignation.employee_id == emp.id
+    ).order_by(Resignation.created_at.desc()).first()
+    if not r:
+        return None
+    return {
+        "id": r.id,
+        "reason": r.reason,
+        "last_working_date": str(r.last_working_date) if r.last_working_date else None,
+        "notice_period_days": r.notice_period_days,
+        "status": r.status,
+        "hr_remarks": r.hr_remarks,
+        "approved_last_working_date": str(r.approved_last_working_date) if r.approved_last_working_date else None,
+        "created_at": str(r.created_at)[:10] if r.created_at else None,
+        "actioned_at": str(r.actioned_at)[:10] if r.actioned_at else None,
+    }
+
+
+@router.post("/resignation", status_code=201)
+def portal_submit_resignation(data: ResignationIn, request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    existing = db.query(Resignation).filter(
+        Resignation.employee_id == emp.id,
+        Resignation.status == "Pending",
+    ).first()
+    if existing:
+        raise HTTPException(400, "You already have a pending resignation request")
+    r = Resignation(
+        employee_id=emp.id,
+        reason=data.reason.strip(),
+        last_working_date=data.last_working_date,
+        notice_period_days=data.notice_period_days,
+    )
+    db.add(r)
+    db.commit()
+    db.refresh(r)
+    return {"id": r.id, "ok": True}
+
+
+@router.delete("/resignation/{resignation_id}")
+def portal_withdraw_resignation(resignation_id: int, request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    r = db.query(Resignation).filter(
+        Resignation.id == resignation_id,
+        Resignation.employee_id == emp.id,
+        Resignation.status == "Pending",
+    ).first()
+    if not r:
+        raise HTTPException(404, "No pending resignation found")
+    r.status = "Withdrawn"
+    db.commit()
+    return {"ok": True}

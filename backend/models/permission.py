@@ -11,7 +11,7 @@ HR_FEATURES = [
     "attendance", "holidays", "announcements", "assets",
     "salary-slips", "payroll-entry", "payroll-rules",
     "job-openings", "applicants", "appraisals",
-    "edit-requests", "document-requests", "status-sheets",
+    "edit-requests", "resignations", "document-requests", "status-sheets",
     # My Portal section visible inside HR shell
     "my-profile", "my-leaves", "my-salary", "my-attendance",
     "my-documents", "my-status", "my-work-mode",
@@ -22,7 +22,7 @@ EMP_FEATURES = [
     "emp-dashboard",
     "emp-profile", "emp-leaves", "emp-attendance", "emp-salary",
     "emp-appraisals", "emp-assets", "emp-documents",
-    "emp-status", "emp-work-mode", "emp-edit-requests",
+    "emp-status", "emp-work-mode", "emp-edit-requests", "emp-resignation",
     "emp-announcements", "emp-holidays",
 ]
 
