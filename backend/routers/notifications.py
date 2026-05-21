@@ -1,12 +1,16 @@
 """
 Computed notifications endpoint — returns role-aware notifications for the bell icon.
 No separate DB table; notifications are derived from existing data in real time.
+Supports both REST polling (/api/notifications) and SSE push (/api/notifications/stream).
 """
+import asyncio
+import json
 from fastapi import APIRouter, Request, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
 
-from backend.database import get_db
+from backend.database import get_db, SessionLocal
 from backend.auth_utils import decode_token
 from backend.models.auth import User
 from backend.models.employee import Employee
@@ -32,19 +36,14 @@ def _get_employee(user: User, db: Session):
     return db.query(Employee).filter(Employee.email == user.email).first()
 
 
-@router.get("")
-def get_notifications(request: Request, db: Session = Depends(get_db)):
-    user = _get_user(request, db)
-    if not user:
-        return []
-
+def _compute_notifications(user: User, db: Session) -> list:
+    """Core logic: build notification list for a given user. Shared by REST + SSE."""
     notifications = []
     now = datetime.utcnow()
 
     # ── HR / Admin / SuperAdmin notifications ──────────────────
     if user.role in ("HR User", "Admin", "SuperAdmin", "HR"):
 
-        # Pending leave applications
         pending_leaves = db.query(LeaveApplication).filter(
             LeaveApplication.status == "Pending"
         ).order_by(LeaveApplication.created_at.desc()).limit(10).all()
@@ -64,7 +63,6 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
                 "priority": "high",
             })
 
-        # Pending expense claims
         pending_expenses = db.query(ExpenseClaim).filter(
             ExpenseClaim.status == "Pending"
         ).order_by(ExpenseClaim.created_at.desc()).limit(5).all()
@@ -83,7 +81,6 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
                 "priority": "medium",
             })
 
-        # Pending document requests
         pending_docs = db.query(DocumentRequest).filter(
             DocumentRequest.status == "Pending"
         ).order_by(DocumentRequest.requested_at.desc()).limit(5).all()
@@ -102,7 +99,6 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
                 "priority": "medium",
             })
 
-        # New job applicants (last 7 days)
         week_ago = date.today() - timedelta(days=7)
         new_applicants = db.query(JobApplicant).filter(
             JobApplicant.created_at >= week_ago
@@ -124,7 +120,6 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
     elif user.role == "Employee":
         emp = _get_employee(user, db)
         if emp:
-            # Recent leave status changes (last 30 days)
             recent_leaves = db.query(LeaveApplication).filter(
                 LeaveApplication.employee_id == emp.id,
                 LeaveApplication.status.in_(["Approved", "Rejected"]),
@@ -143,7 +138,6 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
                     "priority": "high" if leave.status == "Rejected" else "medium",
                 })
 
-            # Fulfilled document requests
             fulfilled_docs = db.query(DocumentRequest).filter(
                 DocumentRequest.employee_id == emp.id,
                 DocumentRequest.status == "Fulfilled",
@@ -161,7 +155,6 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
                     "priority": "high",
                 })
 
-            # Active announcements (latest 3)
             announcements = db.query(Announcement).filter(
                 Announcement.is_active == True  # noqa: E712
             ).order_by(Announcement.created_at.desc()).limit(3).all()
@@ -178,9 +171,71 @@ def get_notifications(request: Request, db: Session = Depends(get_db)):
                     "priority": ann.priority.lower() if ann.priority else "low",
                 })
 
-    # Sort: high priority first, then by time desc
     priority_order = {"high": 0, "medium": 1, "low": 2}
-    notifications.sort(key=lambda n: (priority_order.get(n["priority"], 3), n["time"] or ""), reverse=False)
     notifications = sorted(notifications, key=lambda n: (priority_order.get(n["priority"], 3), ""))
-
     return notifications[:20]
+
+
+@router.get("")
+def get_notifications(request: Request, db: Session = Depends(get_db)):
+    user = _get_user(request, db)
+    if not user:
+        return []
+    return _compute_notifications(user, db)
+
+
+@router.get("/stream")
+async def stream_notifications(request: Request, token: str = ""):
+    """SSE endpoint — pushes notification updates in real time (no polling needed on client)."""
+    username = decode_token(token) if token else None
+
+    async def generator():
+        if not username:
+            yield "event: auth_error\ndata: {}\n\n"
+            return
+
+        last_fingerprint = None
+        heartbeat_ticks = 0
+
+        while True:
+            # Check if client disconnected
+            if await request.is_disconnected():
+                break
+
+            db = SessionLocal()
+            try:
+                user = db.query(User).filter(User.username == username).first()
+                if not user:
+                    yield "event: auth_error\ndata: {}\n\n"
+                    break
+
+                notifs = _compute_notifications(user, db)
+                # Fingerprint: sorted IDs joined — changes whenever the list changes
+                fp = "|".join(sorted(str(n["id"]) for n in notifs))
+
+                if fp != last_fingerprint:
+                    last_fingerprint = fp
+                    heartbeat_ticks = 0
+                    yield f"data: {json.dumps(notifs)}\n\n"
+                else:
+                    heartbeat_ticks += 1
+                    # Send a keep-alive comment every ~30s (6 ticks × 5s)
+                    if heartbeat_ticks >= 6:
+                        heartbeat_ticks = 0
+                        yield ": ping\n\n"
+            except Exception:
+                yield ": error\n\n"
+            finally:
+                db.close()
+
+            await asyncio.sleep(5)
+
+    return StreamingResponse(
+        generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )

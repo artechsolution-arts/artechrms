@@ -100,6 +100,7 @@ app.add_middleware(
 _PUBLIC_PREFIXES = (
     "/api/auth/login", "/api/auth/setup", "/api/auth/needs-setup",
     "/api/social/callback/",
+    "/api/notifications/stream",  # SSE: auth handled inside via ?token= query param
 )
 
 # Paths accessible by Employee role only

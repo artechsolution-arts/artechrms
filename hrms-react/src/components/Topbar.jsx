@@ -6,7 +6,8 @@ import { EMP_NAV } from './EmployeeSidebar';
 import { ACCENT_THEMES } from '../hooks/useTheme';
 import { api } from '../api';
 
-const SEEN_KEY = 'artech_seen_notif_ids';
+const SEEN_KEY  = 'artech_seen_notif_ids';
+const TOKEN_KEY = 'artech_hrms_token';
 const SLIDE_DURATION = 5000; // ms before auto-dismiss
 
 function SlideNotif({ notif, onClose, onNavigate }) {
@@ -92,43 +93,78 @@ export default function Topbar({ current, onNavigate, onToggleSidebar, accent, s
   const [notifsLoading, setNotifsLoading] = useState(false);
   const [slideNotifs, setSlideNotifs] = useState([]);   // { uid, ...notif }
 
-  const themeRef     = useRef(null);
-  const bellRef      = useRef(null);
-  const sessionStart = useRef(Date.now());
+  const themeRef = useRef(null);
+  const bellRef  = useRef(null);
 
+  // Shared handler: update notif state + show slide-in toasts for new items
+  const applyNotifs = useCallback((list, isInitial = false) => {
+    setNotifs(list);
+    const seen = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
+    const fresh = list.filter(n => !seen.has(String(n.id)));
+    if (fresh.length && !isInitial) {
+      setSlideNotifs(prev => [
+        ...prev,
+        ...fresh.slice(0, 3).map(n => ({ ...n, uid: `${n.id}-${Date.now()}` })),
+      ]);
+    }
+    localStorage.setItem(SEEN_KEY, JSON.stringify(list.map(n => String(n.id))));
+  }, []);
+
+  // Manual fetch (used when bell is opened)
   const fetchNotifs = useCallback(async () => {
     setNotifsLoading(true);
     try {
       const data = await api('GET', '/api/notifications');
-      const list = Array.isArray(data) ? data : [];
-      setNotifs(list);
-
-      // Show slide-in toasts for IDs not yet seen
-      const seen = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
-      const fresh = list.filter(n => !seen.has(String(n.id)));
-      if (fresh.length) {
-        // On the very first poll (within 2s of session start), only toast if
-        // there are truly new ones — avoids blasting old notifs on every login
-        const isFirstPoll = Date.now() - sessionStart.current < 2000;
-        if (!isFirstPoll) {
-          setSlideNotifs(prev => [
-            ...prev,
-            ...fresh.slice(0, 3).map(n => ({ ...n, uid: `${n.id}-${Date.now()}` })),
-          ]);
-        }
-      }
-      // Mark all current as seen
-      localStorage.setItem(SEEN_KEY, JSON.stringify(list.map(n => String(n.id))));
+      applyNotifs(Array.isArray(data) ? data : []);
     } catch { setNotifs([]); }
     finally { setNotifsLoading(false); }
-  }, []);
+  }, [applyNotifs]);
 
-  // Fetch on mount and every 30 seconds
+  // SSE: real-time push from server — reconnects automatically on drop
   useEffect(() => {
-    fetchNotifs();
-    const id = setInterval(fetchNotifs, 30000);
-    return () => clearInterval(id);
-  }, [fetchNotifs]);
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+
+    let es;
+    let retryDelay = 3000;
+    let retryTimer;
+    let isFirst = true;
+
+    const connect = () => {
+      es = new EventSource(`/api/notifications/stream?token=${encodeURIComponent(token)}`);
+
+      es.onmessage = (e) => {
+        try {
+          const list = JSON.parse(e.data);
+          if (!Array.isArray(list)) return;
+          applyNotifs(list, isFirst);
+          isFirst = false;
+          retryDelay = 3000; // reset backoff on success
+        } catch { /* ignore parse errors */ }
+      };
+
+      es.addEventListener('auth_error', () => {
+        es.close();
+        // Token expired — don't retry, let normal auth flow handle it
+      });
+
+      es.onerror = () => {
+        es.close();
+        // Exponential backoff: 3s → 6s → 12s → max 30s
+        retryTimer = setTimeout(() => {
+          retryDelay = Math.min(retryDelay * 2, 30000);
+          connect();
+        }, retryDelay);
+      };
+    };
+
+    connect();
+
+    return () => {
+      clearTimeout(retryTimer);
+      if (es) es.close();
+    };
+  }, [applyNotifs]);
 
   // Close dropdowns on outside click
   useEffect(() => {
