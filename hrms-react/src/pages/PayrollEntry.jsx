@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
-import { Play, RefreshCw, Eye, ChevronRight } from 'lucide-react';
+import { Play, RefreshCw, Eye, ChevronRight, Settings2, CheckCircle2, XCircle } from 'lucide-react';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_NAMES = [
@@ -10,7 +10,21 @@ const MONTH_NAMES = [
   'July','August','September','October','November','December'
 ];
 
-export default function PayrollEntry({ toast }) {
+function RulePill({ label, value, active }) {
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-xs">
+      {active !== undefined && (
+        active
+          ? <CheckCircle2 size={11} className="text-green-500 flex-shrink-0" />
+          : <XCircle size={11} className="text-gray-300 flex-shrink-0" />
+      )}
+      <span className="text-gray-500 dark:text-gray-400">{label}:</span>
+      <span className="font-semibold text-gray-700 dark:text-gray-200">{value}</span>
+    </div>
+  );
+}
+
+export default function PayrollEntry({ toast, onNavigate }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [runModal, setRunModal] = useState(false);
@@ -19,14 +33,21 @@ export default function PayrollEntry({ toast }) {
   const [previewData, setPreviewData] = useState([]);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState(null);
+  const [rules, setRules] = useState(null);
 
   const now = new Date();
   const rf = v => setRunForm(prev => ({ ...prev, ...v }));
 
   const load = async () => {
     setLoading(true);
-    try { setEntries(await api('GET', '/api/payroll/entries')); }
-    catch (e) { toast(e.message, 'error'); }
+    try {
+      const [entriesData, rulesData] = await Promise.all([
+        api('GET', '/api/payroll/entries'),
+        api('GET', '/api/payroll/rules').catch(() => null),
+      ]);
+      setEntries(entriesData);
+      if (rulesData) setRules(rulesData);
+    } catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
   };
 
@@ -88,6 +109,40 @@ export default function PayrollEntry({ toast }) {
       </div>
 
       <div className="page-content">
+        {/* Active Rules Summary */}
+        {rules && (
+          <div className="card p-4 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Settings2 size={14} className="text-violet-500" />
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Active Payroll Rules</span>
+              </div>
+              {onNavigate && (
+                <button
+                  onClick={() => onNavigate('payroll-rules')}
+                  className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-700 font-medium"
+                >
+                  Edit Rules <ChevronRight size={12} />
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <RulePill label="Employee PF" value={`${rules.pf_employee_rate}%`} active={true} />
+              <RulePill label="Employer PF" value={`${rules.pf_employer_rate}%`} active={true} />
+              <RulePill label="Employee ESI" value={`${rules.esi_employee_rate}%`} active={true} />
+              <RulePill label="ESI Ceiling" value={`₹${rules.esi_wage_ceiling?.toLocaleString()}`} active={true} />
+              <RulePill label="HRA Default" value={`${rules.default_hra_percent}% of Basic`} active={true} />
+              <RulePill label="Prof. Tax" value={rules.pt_enabled ? 'On' : 'Off'} active={!!rules.pt_enabled} />
+              <RulePill label="LOP" value={rules.lop_enabled ? (rules.lop_basis === 'working' ? 'On (26 days)' : 'On (calendar)') : 'Off'} active={!!rules.lop_enabled} />
+              <RulePill label="Bonus" value={rules.bonus_enabled ? `${rules.bonus_rate}%` : 'Off'} active={!!rules.bonus_enabled} />
+              <RulePill label="Gratuity" value={rules.gratuity_enabled ? `${rules.gratuity_rate}%` : 'Off'} active={!!rules.gratuity_enabled} />
+              {(rules.custom_components?.length > 0) && (
+                <RulePill label="Custom" value={`${rules.custom_components.length} component${rules.custom_components.length > 1 ? 's' : ''}`} active={true} />
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="card">
           <div className="table-wrap">
             <table className="data-table">

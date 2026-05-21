@@ -1,7 +1,49 @@
-from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, DateTime, Text, JSON
+from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, DateTime, Text, JSON, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from backend.database import Base
+
+
+class PayrollRules(Base):
+    """Company-wide payroll calculation rules. Only one row ever exists (id=1)."""
+    __tablename__ = "payroll_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Provident Fund
+    pf_employee_rate = Column(Float, default=12.0)    # % of basic
+    pf_employee_cap  = Column(Float, default=1800.0)  # monthly cap (0 = no cap)
+    pf_employer_rate = Column(Float, default=12.0)
+    pf_employer_cap  = Column(Float, default=1800.0)
+
+    # ESI
+    esi_employee_rate = Column(Float, default=0.75)   # % of gross
+    esi_employer_rate = Column(Float, default=3.25)
+    esi_wage_ceiling  = Column(Float, default=21000.0)
+
+    # Professional Tax
+    pt_enabled = Column(Boolean, default=True)
+
+    # HRA default (fallback when not configured on employee)
+    default_hra_percent = Column(Float, default=40.0)
+
+    # LOP (Loss of Pay)
+    lop_enabled = Column(Boolean, default=False)
+    lop_basis   = Column(String(20), default="calendar")  # calendar | working
+
+    # Gratuity (employer provision)
+    gratuity_enabled = Column(Boolean, default=False)
+    gratuity_rate    = Column(Float, default=4.81)    # % of basic  (15/26/12 * 100)
+
+    # Bonus
+    bonus_enabled    = Column(Boolean, default=False)
+    bonus_rate       = Column(Float, default=8.33)    # % of basic
+    bonus_wage_ceil  = Column(Float, default=7000.0)  # apply on min(basic, ceiling)
+
+    # Custom components: [{name, component_type, calc_type, value}]
+    custom_components = Column(JSON, default=[])
+
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class SalaryComponent(Base):

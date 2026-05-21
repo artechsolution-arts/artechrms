@@ -16,7 +16,7 @@ export const CEO_NAV = [
   { key: 'ceo-dashboard',     label: 'Dashboard',       icon: LayoutDashboard, section: null },
   { key: 'ceo-employees',     label: 'Employees',        icon: Users,           section: 'People' },
   { key: 'ceo-leaves',        label: 'Leave Approvals',  icon: CalendarDays,    section: 'Approvals' },
-  { key: 'ceo-work-mode',     label: 'Work Mode Sheet',  icon: CalendarCheck2,  section: 'Approvals' },
+  { key: 'ceo-work-mode',     label: 'Team Calendar',    icon: CalendarCheck2,  section: 'Approvals' },
   { key: 'ceo-status-sheets', label: 'Status Sheets',    icon: ClipboardList,   section: 'Reports' },
   { key: 'ceo-attendance',    label: 'Attendance',       icon: Clock,           section: 'Reports' },
 ];

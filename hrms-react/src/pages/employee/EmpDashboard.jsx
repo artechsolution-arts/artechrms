@@ -185,7 +185,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
       </div>
 
       {/* Work Mode Sheet */}
-      <SectionCard title="Work Mode — This Month" icon={CalendarCheck2} action="emp-work-mode" onNavigate={onNavigate}>
+      <SectionCard title="Team Calendar — This Month" icon={CalendarCheck2} action="emp-work-mode" onNavigate={onNavigate}>
         {workMode.length === 0 ? (
           <div className="p-5 text-center text-sm text-gray-400">No work mode entries this month</div>
         ) : (

@@ -24,7 +24,7 @@ const FEATURE_SECTIONS = [
     section: 'HR Portal — Leaves & Attendance',
     features: [
       { key: 'leaves',           label: 'Leave Applications' },
-      { key: 'work-mode-sheet',  label: 'Work Mode Sheet' },
+      { key: 'work-mode-sheet',  label: 'Team Calendar' },
       { key: 'leave-types',      label: 'Leave Types' },
       { key: 'leave-balances',   label: 'Leave Balances' },
       { key: 'attendance',       label: 'Attendance' },
@@ -46,6 +46,7 @@ const FEATURE_SECTIONS = [
     features: [
       { key: 'salary-slips',     label: 'Salary Slips' },
       { key: 'payroll-entry',    label: 'Payroll Entry' },
+      { key: 'payroll-rules',    label: 'Payroll Rules' },
     ],
   },
   {
@@ -65,7 +66,7 @@ const FEATURE_SECTIONS = [
       { key: 'my-attendance',    label: 'My Attendance' },
       { key: 'my-documents',     label: 'My Documents' },
       { key: 'my-status',        label: 'My Status Sheet' },
-      { key: 'my-work-mode',     label: 'My Work Mode' },
+      { key: 'my-work-mode',     label: 'Team Calendar' },
     ],
   },
   {
@@ -80,7 +81,7 @@ const FEATURE_SECTIONS = [
       { key: 'emp-assets',       label: 'My Assets' },
       { key: 'emp-documents',    label: 'My Documents' },
       { key: 'emp-status',       label: 'Status Sheet' },
-      { key: 'emp-work-mode',    label: 'Work Mode' },
+      { key: 'emp-work-mode',    label: 'Team Calendar' },
       { key: 'emp-edit-requests', label: 'Edit Requests' },
     ],
   },

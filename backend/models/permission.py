@@ -9,7 +9,7 @@ HR_FEATURES = [
     "employees", "departments", "designations",
     "leaves", "work-mode-sheet", "leave-types", "leave-balances",
     "attendance", "holidays", "announcements", "assets",
-    "salary-slips", "payroll-entry",
+    "salary-slips", "payroll-entry", "payroll-rules",
     "job-openings", "applicants", "appraisals",
     "edit-requests", "document-requests", "status-sheets",
     # My Portal section visible inside HR shell

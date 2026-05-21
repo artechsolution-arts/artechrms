@@ -249,7 +249,7 @@ export default function HRWorkMode({ toast }) {
     <div className="page-content space-y-4">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Team Leaves</h1>
+          <h1 className="page-title">Team Calendar</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">All employee leaves for the month</p>
         </div>
 

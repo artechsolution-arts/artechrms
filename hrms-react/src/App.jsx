@@ -24,6 +24,7 @@ import Holidays from './pages/Holidays';
 import Announcements from './pages/Announcements';
 import SalarySlips from './pages/SalarySlips';
 import PayrollEntry from './pages/PayrollEntry';
+import PayrollRules from './pages/PayrollRules';
 import Assets from './pages/Assets';
 import JobOpenings from './pages/JobOpenings';
 import Applicants from './pages/Applicants';
@@ -54,6 +55,7 @@ const PAGES = {
   'announcements':      Announcements,
   'salary-slips':       SalarySlips,
   'payroll-entry':      PayrollEntry,
+  'payroll-rules':      PayrollRules,
   'assets':             Assets,
   'job-openings':       JobOpenings,
   'applicants':         Applicants,

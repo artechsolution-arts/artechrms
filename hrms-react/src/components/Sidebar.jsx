@@ -22,7 +22,7 @@ const NAV = [
   { key: 'departments',        label: 'Departments',        icon: Building2,       section: 'HR' },
   { key: 'designations',       label: 'Designations',       icon: Award,           section: 'HR' },
   { key: 'leaves',             label: 'Leave Applications', icon: CalendarDays,    section: 'HR' },
-  { key: 'work-mode-sheet',    label: 'Work Mode Sheet',    icon: CalendarCheck2,  section: 'HR' },
+  { key: 'work-mode-sheet',    label: 'Team Calendar',      icon: CalendarCheck2,  section: 'HR' },
   { key: 'leave-types',        label: 'Leave Types',        icon: ListChecks,      section: 'HR' },
   { key: 'leave-balances',     label: 'Leave Balances',     icon: BookOpen,        section: 'HR' },
   { key: 'attendance',         label: 'Attendance',         icon: Clock,           section: 'HR' },
@@ -31,6 +31,7 @@ const NAV = [
   { key: 'assets',             label: 'Asset Management',   icon: Monitor,         section: 'HR' },
   { key: 'salary-slips',       label: 'Salary Slips',       icon: DollarSign,      section: 'Payroll' },
   { key: 'payroll-entry',      label: 'Payroll Entry',      icon: FileText,        section: 'Payroll' },
+  { key: 'payroll-rules',      label: 'Payroll Rules',      icon: ClipboardList,   section: 'Payroll' },
   { key: 'job-openings',       label: 'Job Openings',       icon: Briefcase,       section: 'Recruitment' },
   { key: 'applicants',         label: 'Applicants',         icon: UserCheck,       section: 'Recruitment' },
   { key: 'appraisals',         label: 'Appraisals',         icon: Star,            section: 'Appraisals' },
@@ -43,7 +44,7 @@ const NAV = [
   { key: 'my-attendance',      label: 'My Attendance',      icon: Clock,           section: 'My Portal' },
   { key: 'my-documents',       label: 'My Documents',       icon: Receipt,         section: 'My Portal' },
   { key: 'my-status',          label: 'Status Sheet',       icon: ClipboardList,   section: 'My Portal' },
-  { key: 'my-work-mode',       label: 'Work Mode',          icon: CalendarCheck2,  section: 'My Portal' },
+  { key: 'my-work-mode',       label: 'Team Calendar',      icon: CalendarCheck2,  section: 'My Portal' },
 ];
 
 const ALL_SECTIONS = ['HR', 'Payroll', 'Recruitment', 'Appraisals', 'Documents', 'My Portal'];

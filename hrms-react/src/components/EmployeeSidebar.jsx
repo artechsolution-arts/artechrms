@@ -24,7 +24,7 @@ const EMP_NAV = [
   { key: 'emp-assets',          label: 'My Assets',           icon: Monitor,         section: 'Self Service' },
   { key: 'emp-documents',       label: 'My Documents',        icon: FileDown,        section: 'Self Service' },
   { key: 'emp-status',          label: 'Status Sheet',        icon: ClipboardList,   section: 'Self Service' },
-  { key: 'emp-work-mode',       label: 'Work Mode',           icon: CalendarCheck2,  section: 'Self Service' },
+  { key: 'emp-work-mode',       label: 'Team Calendar',       icon: CalendarCheck2,  section: 'Self Service' },
   { key: 'emp-edit-requests',  label: 'Edit Requests',       icon: FilePenLine,     section: 'Self Service' },
   { key: 'emp-announcements',   label: 'Announcements',       icon: Megaphone,       section: 'Company' },
   { key: 'emp-holidays',        label: 'Holidays',            icon: Gift,            section: 'Company' },
