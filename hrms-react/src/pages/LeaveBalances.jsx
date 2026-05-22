@@ -243,10 +243,6 @@ export default function LeaveBalances({ toast }) {
     !search || name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalEmps        = entries.length;
-  const totalAllocated   = rows.reduce((s, b) => s + (b.allocated || 0), 0);
-  const totalUsed        = rows.reduce((s, b) => s + ((b.allocated || 0) - (b.available || 0)), 0);
-
   return (
     <>
       <div className="page-head">
@@ -264,20 +260,6 @@ export default function LeaveBalances({ toast }) {
       <div className="page-content space-y-4">
         {!loading && entries.length > 0 && (
           <>
-            {/* Summary */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Employees',       value: totalEmps },
-                { label: 'Total Allocated', value: `${totalAllocated} days` },
-                { label: 'Total Used',      value: `${totalUsed} days` },
-              ].map(s => (
-                <div key={s.label} className="card px-4 py-3 text-center">
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">{s.value}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
-                </div>
-              ))}
-            </div>
-
             {/* Search */}
             <div className="relative max-w-xs">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
