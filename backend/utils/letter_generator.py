@@ -448,6 +448,41 @@ def _body_extended_probation(c, fields):
     _signoff(c, y, _t("hr_role", HR_ROLE))
 
 
+def _inline_section(c, heading, body, y):
+    """Bold heading + normal body inline on same line, with proper word-wrap."""
+    fsize = _fsize()
+    hfont = _HF_SEMI
+    bfont = _font()
+    prefix = heading + ': '
+    hw = c.stringWidth(prefix, hfont, fsize)
+    max_w = PAGE_W - MR - ML
+
+    y = _check_break(c, y, LH * 2)
+    c.setFont(hfont, fsize); c.setFillColor(DARK)
+    c.drawString(ML, y, prefix)
+
+    words = body.split()
+    line = ''; first = True
+    for word in words:
+        test = (line + ' ' + word).strip()
+        avail = max_w - hw if first else max_w
+        if c.stringWidth(test, bfont, fsize) <= avail:
+            line = test
+        else:
+            if line:
+                c.setFont(bfont, fsize); c.setFillColor(DARK)
+                c.drawString(ML + hw if first else ML, y, line)
+                y -= LH; first = False
+                y = _check_break(c, y, LH)
+                c.setFont(bfont, fsize); c.setFillColor(DARK)
+            line = word
+    if line:
+        c.setFont(bfont, fsize); c.setFillColor(DARK)
+        c.drawString(ML + hw if first else ML, y, line)
+        y -= LH
+    return y
+
+
 def _body_appointment(c, fields):
     emp       = fields["employee_name"]
     desig     = fields["designation"]
@@ -469,15 +504,15 @@ def _body_appointment(c, fields):
     c.drawString(ML, y, "Your employment with us will be governed by the following terms and conditions:")
     y -= LH + PG
 
-    # Point 1
-    y = _check_break(c, y, 20*mm)
+    # 1. Employment Details
+    y = _check_break(c, y, 18*mm)
     c.setFont(_HF_SEMI, _fsize()); c.drawString(ML, y, "1. Employment Details"); y -= LH
     c.setFont(_font(), _fsize())
     c.drawString(ML + 5*mm, y, f"Designation:  {desig}"); y -= LH
-    c.drawString(ML + 5*mm, y, f"Department:   {dept or chr(8212)}"); y -= LH + PG
+    c.drawString(ML + 5*mm, y, f"Department:   {dept or chr(8212)}"); y -= LH + PG/2
 
-    # Point 2a - Probation Period
-    y = _check_break(c, y, 20*mm)
+    # 2. Probation Period
+    y = _check_break(c, y, 18*mm)
     c.setFont(_HF_SEMI, _fsize()); c.drawString(ML, y, "2. Probation Period"); y -= LH
     c.setFont(_font(), _fsize())
     y = _wrap(c, (
@@ -485,47 +520,47 @@ def _body_appointment(c, fields):
         "During the probation period, your performance and conduct will be evaluated."
     ), ML, y); y -= PG/2
     y = _wrap(c, (
-        "The company reserves the right to extend the probation period or terminate employment during "
-        "probation with notice if performance or conduct is found unsatisfactory."
-    ), ML, y); y -= PG
+        "The company reserves the right to extend the probation period or terminate employment "
+        "during probation with notice if performance or conduct is found unsatisfactory."
+    ), ML, y); y -= PG/2
 
-    # Point 2b - Confirmation of Employment
-    y = _check_break(c, y, 15*mm)
+    # 3. Confirmation of Employment
+    y = _check_break(c, y, 12*mm)
     c.setFont(_HF_SEMI, _fsize()); c.drawString(ML, y, "3. Confirmation of Employment"); y -= LH
     c.setFont(_font(), _fsize())
     y = _wrap(c, (
         f"Having successfully completed your probation for three months, your services are hereby "
         f"confirmed with AR Tech Solutions, effective from {conf_date}."
-    ), ML, y); y -= PG
+    ), ML, y); y -= PG/2
 
-    # Point 4
-    y = _check_break(c, y, 15*mm)
+    # 4. Compensation
+    y = _check_break(c, y, 12*mm)
     c.setFont(_HF_SEMI, _fsize()); c.drawString(ML, y, "4. Compensation"); y -= LH
     c.setFont(_font(), _fsize())
     y = _wrap(c, (
         "Your Compensation will be as per company norms. Your detailed salary structure is enclosed as "
         "Annexure A – Compensation Structure, which forms an integral part of this Appointment Letter."
-    ), ML, y); y -= PG
+    ), ML, y); y -= PG/2
 
-    # Point 5
-    y = _check_break(c, y, 15*mm)
+    # 5. Leave Entitlement
+    y = _check_break(c, y, 12*mm)
     c.setFont(_HF_SEMI, _fsize()); c.drawString(ML, y, "5. Leave Entitlement"); y -= LH
     c.setFont(_font(), _fsize())
     y = _wrap(c, (
         "Details regarding leave entitlement, leave structure, and leave approval procedures "
         "shall be governed as per the policies mentioned in the company handbook."
-    ), ML, y); y -= PG
+    ), ML, y); y -= PG/2
 
-    # Point 6
-    y = _check_break(c, y, 15*mm)
+    # 6. Notice Period
+    y = _check_break(c, y, 12*mm)
     c.setFont(_HF_SEMI, _fsize()); c.drawString(ML, y, "6. Notice Period"); y -= LH
     c.setFont(_font(), _fsize())
     y = _wrap(c, (
         "Notice period of 60 days applicable from either side for termination of employment, "
         "unless otherwise decided by the management."
-    ), ML, y); y -= PG
+    ), ML, y); y -= PG/2
 
-    # Points 7–12 inline (bold heading: body on same line)
+    # 7–12: compact inline sections (bold heading: normal body on same line)
     for heading, body in [
         ("7. Termination of Services",
          "Services may be terminated for invalid documents, failed background verification, medical "
@@ -537,38 +572,34 @@ def _body_appointment(c, fields):
         ("9. Job & Location Changes",
          "Designation, duties, or location may change as per business needs without affecting compensation."),
         ("10. Final Settlement",
-         "The Full and Final settlement of dues shall be processed within 30 days from the employee's "
-         "last working day, subject to successful completion of the notice period and proper handover "
-         "of all company assets."),
+         "Full and Final settlement of dues shall be processed within 30 days from the last working day, "
+         "subject to successful completion of the notice period and proper handover of all company assets."),
         ("11. Address & Communication",
          "Inform the company within 24 hours of any address change."),
         ("12. Dispute Resolution",
          "Hyderabad will be considered the legal jurisdiction for any disputes."),
     ]:
-        y = _check_break(c, y, LH * 2)
-        c.setFont(_HF_SEMI, _fsize()); c.setFillColor(DARK)
-        c.drawString(ML, y, heading); y -= LH
-        c.setFont(_font(), _fsize())
-        y = _wrap(c, body, ML + 5*mm, y); y -= PG/2
+        y = _inline_section(c, heading, body, y)
+        y -= PG / 4
 
-    y -= PG/2
+    y -= PG / 2
 
     y = _wrap(c, (
         "All other Terms and Conditions of your employment remain the same as set out in your offer "
         "letter and the Company Handbook, as amended from time to time."
-    ), ML, y); y -= PG
+    ), ML, y); y -= PG/2
 
     y = _wrap(c, (
         "We look forward to your continued contributions and commitment toward the growth of "
         "AR Tech Solutions."
-    ), ML, y); y -= PG
+    ), ML, y); y -= PG/2
 
     c.setFont(_font(), _fsize()); c.setFillColor(DARK)
     c.drawString(ML, y, "Kindly sign and return a copy of this letter as a token of your acceptance.")
     y -= LH + PG * 2
 
     y = _signoff(c, y, _t("hr_signatory", HR_SIGNATORY))
-    y -= LH * 3   # clear visual gap between sign-off and acknowledgment
+    y -= LH * 3
 
     # Acknowledgment section
     y = _check_break(c, y, 22*mm)

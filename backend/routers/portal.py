@@ -364,14 +364,20 @@ def portal_request_leave_edit(leave_id: int, data: EditRequestIn, request: Reque
 
 # ── Attendance ─────────────────────────────────────────────────
 @router.get("/attendance")
-def portal_attendance(request: Request, db: Session = Depends(get_db)):
+def portal_attendance(request: Request, db: Session = Depends(get_db),
+                      year: Optional[int] = None, month: Optional[int] = None):
     emp = _get_employee(request, db)
-    records = db.query(Attendance).filter(
-        Attendance.employee_id == emp.id
-    ).order_by(Attendance.date.desc()).limit(90).all()
+    q = db.query(Attendance).filter(Attendance.employee_id == emp.id)
+    if year and month:
+        from sqlalchemy import extract
+        q = q.filter(extract('year', Attendance.date) == year,
+                     extract('month', Attendance.date) == month)
+    else:
+        q = q.order_by(Attendance.date.desc()).limit(90)
+    records = q.order_by(Attendance.date.desc()).all()
     return [
         {"id": a.id, "date": str(a.date), "status": a.status,
-         "in_time": a.in_time, "out_time": a.out_time, "hours": a.working_hours}
+         "in_time": a.in_time, "out_time": a.out_time, "working_hours": a.working_hours}
         for a in records
     ]
 

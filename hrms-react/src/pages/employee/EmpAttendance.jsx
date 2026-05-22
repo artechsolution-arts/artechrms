@@ -1,46 +1,65 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api';
-import Badge from '../../components/Badge';
-
-const STATUS_BG = {
-  Present:    'bg-green-100 border-green-200 text-green-700',
-  Absent:     'bg-red-100 border-red-200 text-red-700',
-  'Half Day': 'bg-yellow-100 border-yellow-200 text-yellow-700',
-  'On Leave': 'bg-blue-100 border-blue-200 text-blue-700',
-  WFH:        'bg-purple-100 border-purple-200 text-purple-700',
-};
+import AttendanceCalendar from '../../components/AttendanceCalendar';
 
 export default function EmpAttendance({ toast }) {
-  const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const today = new Date();
+  const [year, setYear]   = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth() + 1);
 
-  useEffect(() => {
-    api('GET', '/api/portal/attendance')
-      .then(setRecords)
-      .catch(e => toast(e.message, 'error'))
-      .finally(() => setLoading(false));
+  const [records, setRecords]     = useState([]);
+  const [holidays, setHolidays]   = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [selected, setSelected]   = useState(null);
+
+  const load = useCallback(async (y, m) => {
+    setLoading(true);
+    setSelected(null);
+    try {
+      const [att, hols] = await Promise.all([
+        api('GET', `/api/portal/attendance?year=${y}&month=${m}`),
+        api('GET', `/api/hrm/holidays?year=${y}`),
+      ]);
+      setRecords(att);
+      setHolidays(hols);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setLoading(false); }
   }, []);
+
+  useEffect(() => { load(year, month); }, [year, month, load]);
+
+  const prev = () => {
+    const ny = month === 1 ? year - 1 : year;
+    const nm = month === 1 ? 12 : month - 1;
+    setYear(ny); setMonth(nm);
+  };
+  const next = () => {
+    const ny = month === 12 ? year + 1 : year;
+    const nm = month === 12 ? 1 : month + 1;
+    setYear(ny); setMonth(nm);
+  };
 
   const present = records.filter(r => r.status === 'Present').length;
   const absent  = records.filter(r => r.status === 'Absent').length;
   const wfh     = records.filter(r => r.status === 'WFH').length;
-  const rate    = records.length ? Math.round(present / records.length * 100) : 0;
+  const onLeave = records.filter(r => r.status === 'On Leave').length;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const rate = daysInMonth ? Math.round((present + wfh) / daysInMonth * 100) : 0;
 
   return (
     <>
       <div className="page-head">
         <h1 className="page-title">My Attendance</h1>
-        <span className="text-xs text-gray-400">Last 90 days</span>
       </div>
 
       <div className="page-content space-y-4">
         {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: 'Total Days',        value: records.length, color: 'text-gray-800' },
-            { label: 'Present',           value: present,        color: 'text-green-600' },
-            { label: 'Absent',            value: absent,         color: 'text-red-500' },
-            { label: 'Attendance Rate',   value: `${rate}%`,     color: rate >= 90 ? 'text-green-600' : rate >= 75 ? 'text-amber-600' : 'text-red-500' },
+            { label: 'Present',      value: present,   color: 'text-green-600' },
+            { label: 'WFH',          value: wfh,       color: 'text-purple-600' },
+            { label: 'On Leave',     value: onLeave,   color: 'text-amber-600' },
+            { label: 'Absent',       value: absent,    color: 'text-red-500' },
           ].map(({ label, value, color }) => (
             <div key={label} className="card p-4 text-center">
               <div className={`text-2xl font-bold ${color}`}>{value}</div>
@@ -49,8 +68,8 @@ export default function EmpAttendance({ toast }) {
           ))}
         </div>
 
-        {/* Rate bar */}
-        {records.length > 0 && (
+        {/* Attendance rate bar */}
+        {daysInMonth > 0 && (
           <div className="card p-4">
             <div className="flex items-center justify-between mb-2 text-sm">
               <span className="text-gray-600 font-medium">Attendance Rate</span>
@@ -70,37 +89,19 @@ export default function EmpAttendance({ toast }) {
           </div>
         )}
 
-        {/* Records table */}
-        <div className="card">
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr><th>Date</th><th>Status</th><th>In Time</th><th>Out Time</th><th>Hours</th></tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={5} className="text-center py-10 text-gray-400">Loading…</td></tr>
-                ) : records.length === 0 ? (
-                  <tr><td colSpan={5}>
-                    <div className="empty-state">
-                      <div className="empty-state-icon">⏰</div>
-                      <p className="text-sm text-gray-500">No attendance records</p>
-                    </div>
-                  </td></tr>
-                ) : records.map(r => (
-                  <tr key={r.id}>
-                    <td className="font-medium text-gray-800">
-                      {new Date(r.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td><Badge text={r.status} /></td>
-                    <td className="text-gray-600">{r.in_time || '—'}</td>
-                    <td className="text-gray-600">{r.out_time || '—'}</td>
-                    <td className="text-gray-600">{r.hours ? `${r.hours}h` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* Calendar */}
+        <div className="card p-4">
+          <AttendanceCalendar
+            records={records}
+            holidays={holidays}
+            year={year}
+            month={month}
+            loading={loading}
+            onPrev={prev}
+            onNext={next}
+            selected={selected}
+            onSelect={setSelected}
+          />
         </div>
       </div>
     </>

@@ -328,6 +328,7 @@ def list_attendance(
     for a in records:
         result.append({
             "id": a.id,
+            "employee_id": a.employee_id,
             "employee_name": a.employee_rel.full_name if a.employee_rel else "",
             "date": str(a.date),
             "status": a.status,
