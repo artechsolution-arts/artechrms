@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import { fmtDate } from '../../utils/date';
 import Badge from '../../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import DatePicker from '../../components/DatePicker';
@@ -168,18 +169,18 @@ export default function EmpLeaves({ toast }) {
                       <td className="text-gray-600">
                         {lv.status === 'Edit Requested' && lv.pending_from_date ? (
                           <span>
-                            <span className="line-through text-gray-400">{lv.from_date}</span>
-                            <span className="block text-blue-600 font-medium">{lv.pending_from_date}</span>
+                            <span className="line-through text-gray-400">{fmtDate(lv.from_date)}</span>
+                            <span className="block text-blue-600 font-medium">{fmtDate(lv.pending_from_date)}</span>
                           </span>
-                        ) : lv.from_date}
+                        ) : fmtDate(lv.from_date)}
                       </td>
                       <td className="text-gray-600">
                         {lv.status === 'Edit Requested' && lv.pending_to_date ? (
                           <span>
-                            <span className="line-through text-gray-400">{lv.half_day ? lv.from_date : lv.to_date}</span>
-                            <span className="block text-blue-600 font-medium">{lv.pending_to_date}</span>
+                            <span className="line-through text-gray-400">{fmtDate(lv.half_day ? lv.from_date : lv.to_date)}</span>
+                            <span className="block text-blue-600 font-medium">{fmtDate(lv.pending_to_date)}</span>
                           </span>
-                        ) : (lv.half_day ? lv.from_date : lv.to_date)}
+                        ) : fmtDate(lv.half_day ? lv.from_date : lv.to_date)}
                       </td>
                       <td className="text-gray-600">
                         {lv.status === 'Edit Requested' && lv.pending_total_days != null ? (
@@ -274,7 +275,7 @@ export default function EmpLeaves({ toast }) {
           <div className="mb-3 px-1">
             <p className="text-xs text-gray-500">
               Current approved dates:&nbsp;
-              <span className="font-medium text-gray-700">{editLeave?.from_date} – {editLeave?.half_day ? editLeave?.from_date : editLeave?.to_date}</span>
+              <span className="font-medium text-gray-700">{fmtDate(editLeave?.from_date)} – {fmtDate(editLeave?.half_day ? editLeave?.from_date : editLeave?.to_date)}</span>
               &nbsp;({editLeave?.total_days} day{editLeave?.total_days !== 1 ? 's' : ''})
             </p>
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { fmtDate } from '../utils/date';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
@@ -233,19 +234,19 @@ export default function Resignations({ toast }) {
                       <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[r.status] || ''}`}>
                         {r.status}
                       </span>
-                      <span className="text-xs text-gray-400">{r.created_at}</span>
+                      <span className="text-xs text-gray-400">{fmtDate(r.created_at)}</span>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
                     {r.last_working_date && (
                       <span className="text-xs text-gray-500">
-                        <span className="text-gray-400">Requested LWD:</span> <span className="font-medium">{r.last_working_date}</span>
+                        <span className="text-gray-400">Requested LWD:</span> <span className="font-medium">{fmtDate(r.last_working_date)}</span>
                       </span>
                     )}
                     {r.approved_last_working_date && r.status === 'Approved' && (
                       <span className="text-xs text-green-600">
-                        <span className="text-gray-400">Confirmed LWD:</span> <span className="font-medium">{r.approved_last_working_date}</span>
+                        <span className="text-gray-400">Confirmed LWD:</span> <span className="font-medium">{fmtDate(r.approved_last_working_date)}</span>
                       </span>
                     )}
                     {r.notice_period_days && (

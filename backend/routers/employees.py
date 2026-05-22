@@ -25,6 +25,7 @@ class DesigIn(BaseModel):
 class EmployeeIn(BaseModel):
     first_name: str
     last_name: Optional[str] = None
+    employee_id: Optional[str] = None
     email: Optional[str] = None
     mobile: Optional[str] = None
     gender: Optional[str] = None
@@ -253,6 +254,7 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
         "pt_state": emp.pt_state or "Karnataka",
         "education": emp.education or [],
         "experience": emp.experience or [],
+        "profile_photo": emp.profile_photo,
     }
 
 
@@ -276,12 +278,21 @@ def create_employee(data: EmployeeCreateIn, db: Session = Depends(get_db)):
         raise HTTPException(400, "Username already taken by a different account")
 
     max_id = db.query(func.max(Employee.id)).scalar() or 0
-    emp_id = f"EMP-{max_id + 1:04d}"
     full = f"{data.first_name} {data.last_name or ''}".strip()
 
     dump = data.model_dump(exclude={"username", "password"})
     dump["pf_applicable"] = 1 if dump.get("pf_applicable", True) else 0
     dump["esi_applicable"] = 1 if dump.get("esi_applicable", True) else 0
+
+    provided_id = dump.pop("employee_id", None)
+    if provided_id:
+        conflict = db.query(Employee).filter(Employee.employee_id == provided_id).first()
+        if conflict:
+            raise HTTPException(400, f"Employee ID '{provided_id}' is already in use")
+        emp_id = provided_id
+    else:
+        emp_id = f"EMP-{max_id + 1:04d}"
+
     emp = Employee(**dump, full_name=full, employee_id=emp_id)
     db.add(emp)
 
@@ -313,6 +324,13 @@ def update_employee(emp_id: int, data: EmployeeIn, db: Session = Depends(get_db)
     if not emp:
         raise HTTPException(404, "Employee not found")
     dump = data.model_dump(exclude_unset=True)
+    if "employee_id" in dump and dump["employee_id"]:
+        conflict = db.query(Employee).filter(
+            Employee.employee_id == dump["employee_id"],
+            Employee.id != emp_id,
+        ).first()
+        if conflict:
+            raise HTTPException(400, f"Employee ID '{dump['employee_id']}' is already in use")
     if "pf_applicable" in dump:
         dump["pf_applicable"] = 1 if dump["pf_applicable"] else 0
     if "esi_applicable" in dump:

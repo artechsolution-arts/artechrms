@@ -85,8 +85,8 @@ function GridView({ year, month, leaves, today }) {
     <div className="card overflow-hidden">
       {/* Day-of-week header */}
       <div className="grid grid-cols-7 border-b border-gray-100 dark:border-gray-800">
-        {DAY_NAMES.map(d => (
-          <div key={d} className="py-2 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+        {DAY_NAMES.map((d, idx) => (
+          <div key={d} className={`py-2 text-center text-[11px] font-semibold uppercase tracking-wide ${idx === 0 || idx === 6 ? 'text-red-400' : 'text-gray-400'}`}>
             {d}
           </div>
         ))}
@@ -110,11 +110,11 @@ function GridView({ year, month, leaves, today }) {
               key={d}
               onClick={() => setSelected(isSelected ? null : ds)}
               className={`min-h-[80px] p-1.5 text-left transition-colors border-b border-gray-100 dark:border-gray-800
-                ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : isWeekend ? 'bg-gray-50/60 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}
+                ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : isWeekend ? 'bg-red-50/40 dark:bg-red-900/10 hover:bg-red-50/70 dark:hover:bg-red-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}
             >
               {/* Date number */}
               <div className={`w-6 h-6 mb-1 flex items-center justify-center rounded-full text-xs font-semibold
-                ${isToday ? 'text-white' : isWeekend ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}
+                ${isToday ? 'text-white' : isWeekend ? 'text-red-400' : 'text-gray-700 dark:text-gray-300'}`}
                 style={isToday ? { backgroundColor: 'var(--accent)' } : {}}>
                 {d}
               </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import { fmtDate } from '../utils/date';
 import { Users, CalendarDays, Briefcase, Clock, RefreshCw } from 'lucide-react';
 import EmpAvatar from '../components/EmpAvatar';
 import {
@@ -303,7 +304,7 @@ export default function Dashboard({ onNavigate, toast }) {
                         </div>
                       </td>
                       <td className="text-gray-500 text-sm">{e.department || '—'}</td>
-                      <td className="text-gray-500 text-sm">{e.joined}</td>
+                      <td className="text-gray-500 text-sm">{fmtDate(e.joined)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -318,7 +318,12 @@ def list_attendance(
     q = db.query(Attendance)
     if employee_id:
         q = q.filter(Attendance.employee_id == employee_id)
-    records = q.order_by(Attendance.date.desc()).limit(200).all()
+    if year and month:
+        import calendar as _cal
+        last_day = _cal.monthrange(year, month)[1]
+        from datetime import date as _date
+        q = q.filter(Attendance.date >= _date(year, month, 1), Attendance.date <= _date(year, month, last_day))
+    records = q.order_by(Attendance.date.asc()).limit(400).all()
     result = []
     for a in records:
         result.append({

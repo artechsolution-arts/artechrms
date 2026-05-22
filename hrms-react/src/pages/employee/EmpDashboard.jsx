@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import { fmtDate } from '../../utils/date';
 import Badge from '../../components/Badge';
 import { CalendarDays, Clock, ClipboardList, Megaphone, Gift, CalendarCheck2, ChevronRight } from 'lucide-react';
 
@@ -82,7 +83,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
         <div>
           <div className="text-lg font-bold mb-0.5">Hello, {emp.full_name.split(' ')[0]}! 👋</div>
           <div className="text-white/70 text-sm">{emp.designation || 'Employee'} · {emp.department || 'Artech Solutions'}</div>
-          <div className="text-white/50 text-xs mt-1">Employee ID: {emp.employee_id} · Joined {emp.date_of_joining}</div>
+          <div className="text-white/50 text-xs mt-1">Employee ID: {emp.employee_id} · Joined {fmtDate(emp.date_of_joining)}</div>
         </div>
         <div className="w-[104px] h-[104px] rounded-full bg-white/15 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-white/40">
           {emp.profile_photo
@@ -150,7 +151,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-tight">{a.title}</p>
                     {a.content && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{a.content}</p>}
-                    <p className="text-[11px] text-gray-400 mt-1">{a.created_at?.slice(0,10)}</p>
+                    <p className="text-[11px] text-gray-400 mt-1">{fmtDate(a.created_at)}</p>
                   </div>
                 </div>
               ))}

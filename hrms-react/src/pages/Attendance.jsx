@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
+import { fmtDate } from '../utils/date';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
@@ -105,7 +106,7 @@ export default function Attendance({ toast }) {
                 ) : rows.map(a => (
                   <tr key={a.id}>
                     <td className="font-semibold text-gray-900">{a.employee_name}</td>
-                    <td className="text-gray-600">{a.date}</td>
+                    <td className="text-gray-600">{fmtDate(a.date)}</td>
                     <td><Badge text={a.status} /></td>
                     <td className="text-gray-600">{a.in_time || '—'}</td>
                     <td className="text-gray-600">{a.out_time || '—'}</td>

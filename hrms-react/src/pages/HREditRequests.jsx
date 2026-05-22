@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import { fmtDate } from '../utils/date';
 import Badge from '../components/Badge';
 import { FilePenLine, Check, X, RefreshCw } from 'lucide-react';
 
@@ -144,7 +145,7 @@ export default function HREditRequests({ toast }) {
                     <p className="text-xs text-gray-500 mt-0.5">
                       <span className="font-medium">Reason:</span> {r.reason}
                     </p>
-                    <p className="text-[11px] text-gray-400 mt-1">Raised on {r.created_at}</p>
+                    <p className="text-[11px] text-gray-400 mt-1">Raised on {fmtDate(r.created_at)}</p>
 
                     {/* HR remarks if already resolved */}
                     {r.status !== 'Pending' && r.hr_remarks && (

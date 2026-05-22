@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
+import { fmtDate } from '../utils/date';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
@@ -235,18 +236,18 @@ export default function Leaves({ toast }) {
                     <td className="text-gray-600 dark:text-gray-400">
                       {l.status === 'Edit Requested' && l.pending_from_date ? (
                         <span>
-                          <span className="line-through text-gray-400 text-xs">{l.from_date}</span>
-                          <span className="block text-blue-600 font-medium">{l.pending_from_date}</span>
+                          <span className="line-through text-gray-400 text-xs">{fmtDate(l.from_date)}</span>
+                          <span className="block text-blue-600 font-medium">{fmtDate(l.pending_from_date)}</span>
                         </span>
-                      ) : l.from_date}
+                      ) : fmtDate(l.from_date)}
                     </td>
                     <td className="text-gray-600 dark:text-gray-400">
                       {l.status === 'Edit Requested' && l.pending_to_date ? (
                         <span>
-                          <span className="line-through text-gray-400 text-xs">{l.to_date}</span>
-                          <span className="block text-blue-600 font-medium">{l.pending_to_date}</span>
+                          <span className="line-through text-gray-400 text-xs">{fmtDate(l.to_date)}</span>
+                          <span className="block text-blue-600 font-medium">{fmtDate(l.pending_to_date)}</span>
                         </span>
-                      ) : l.to_date}
+                      ) : fmtDate(l.to_date)}
                     </td>
                     <td className="text-gray-600 dark:text-gray-400">
                       {l.status === 'Edit Requested' && l.pending_total_days != null ? (

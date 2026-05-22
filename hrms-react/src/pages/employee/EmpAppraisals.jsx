@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import { fmtDate } from '../../utils/date';
 import { Star, Target, ClipboardCheck, Briefcase, Crown,
          ChevronDown, CheckCircle2, Clock, Lock } from 'lucide-react';
 import Select from '../../components/Select';
@@ -204,7 +205,7 @@ function AppraisalCard({ appraisal, onSelfEval }) {
               {appraisal.status}
             </span>
           </div>
-          <p className="text-xs text-gray-400 mt-1">{(appraisal.goals || []).length} goals · {appraisal.created_at}</p>
+          <p className="text-xs text-gray-400 mt-1">{(appraisal.goals || []).length} goals · {fmtDate(appraisal.created_at)}</p>
 
           {/* Stage progress */}
           <div className="flex items-center gap-1 mt-2">

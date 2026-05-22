@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import { fmtDate } from '../../utils/date';
 import { FileText, AlertTriangle, CheckCircle2, XCircle, Clock, Undo2 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -111,7 +112,7 @@ export default function EmpResignation({ toast }) {
                 <Icon size={20} className={`${cfg.color} flex-shrink-0 mt-0.5`} />
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-bold ${cfg.color}`}>{cfg.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Submitted on {existing.created_at}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Submitted on {fmtDate(existing.created_at)}</p>
 
                   <div className="mt-3 space-y-2">
                     <div>

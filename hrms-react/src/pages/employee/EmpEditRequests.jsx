@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import { fmtDate } from '../../utils/date';
 import Badge from '../../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import DatePicker from '../../components/DatePicker';
@@ -130,7 +131,7 @@ export default function EmpEditRequests({ toast }) {
                     <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                       {r.target_date}
                     </span>
-                    <span className="text-xs text-gray-400">· Raised {r.created_at}</span>
+                    <span className="text-xs text-gray-400">· Raised {fmtDate(r.created_at)}</span>
                   </div>
                   <p className="text-sm text-gray-800 dark:text-gray-200 mt-1">{r.description}</p>
                   <p className="text-xs text-gray-500 mt-0.5">

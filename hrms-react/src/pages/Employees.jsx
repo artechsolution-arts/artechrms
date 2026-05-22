@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { fmtDate } from '../utils/date';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
 import {
   Plus, RefreshCw, Search, Pencil, Trash2, Eye, EyeOff,
-  Monitor, Undo2, ChevronDown, ChevronUp,
+  Monitor, Undo2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   LayoutList, LayoutGrid, X,
   Phone, Mail, Calendar, Building2, Briefcase, CreditCard,
   User, AlertCircle, Clock, TrendingUp, Star, AlertTriangle,
   LogOut, CheckCircle2, ArrowRightLeft, History,
   GraduationCap, Briefcase as BriefcaseIcon, Plus as PlusIcon,
+  Upload, Download, FileText, CalendarDays,
 } from 'lucide-react';
 
 function Avatar({ name, photo, size = 'sm' }) {
@@ -231,7 +233,7 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ev.change_type}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">{ev.effective_date}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{fmtDate(ev.effective_date)}</p>
                         {(ev.from_designation || ev.to_designation) && (
                           <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1 flex-wrap">
                             {ev.from_designation && <span className="line-through text-gray-400">{ev.from_designation}</span>}
@@ -551,12 +553,26 @@ export default function Employees({ toast }) {
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('emp-view-mode') || 'list');
   const [detailEmp, setDetailEmp] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [detailTab, setDetailTab] = useState('details');
+  const [detailTab, setDetailTab] = useState('overview');
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistoryForm, setShowHistoryForm] = useState(false);
   const [historyForm, setHistoryForm] = useState({});
   const [historySaving, setHistorySaving] = useState(false);
+  const [empDocs, setEmpDocs] = useState([]);
+  const [empDocsLoading, setEmpDocsLoading] = useState(false);
+  const [empDocUpload, setEmpDocUpload] = useState(false);
+  const [empDocForm, setEmpDocForm] = useState({ document_type: '', document_name: '' });
+  const [empDocFile, setEmpDocFile] = useState(null);
+  const [empDocSaving, setEmpDocSaving] = useState(false);
+  const [empLeaves, setEmpLeaves] = useState([]);
+  const [empLeaveBalances, setEmpLeaveBalances] = useState([]);
+  const [empLeavesLoading, setEmpLeavesLoading] = useState(false);
+  const [empAtt, setEmpAtt] = useState([]);
+  const [empAttLoading, setEmpAttLoading] = useState(false);
+  const [attCalYear, setAttCalYear] = useState(() => new Date().getFullYear());
+  const [attCalMonth, setAttCalMonth] = useState(() => new Date().getMonth() + 1);
+  const [attCalSelected, setAttCalSelected] = useState(null);
   const [eduExpSaving, setEduExpSaving] = useState(false);
   const [joinedMonthFilter, setJoinedMonthFilter] = useState('');
   const [joinedMonthLabel, setJoinedMonthLabel] = useState('');
@@ -620,10 +636,14 @@ export default function Employees({ toast }) {
   const openDetail = async (id) => {
     setDetailLoading(true);
     setDetailEmp({ id, _loading: true });
-    setDetailTab('details');
+    setDetailTab('overview');
     setHistory([]);
     setShowHistoryForm(false);
     setHistoryForm({});
+    setEmpDocs([]); setEmpLeaves([]); setEmpLeaveBalances([]); setEmpAtt([]);
+    setEmpDocUpload(false); setEmpDocForm({ document_type: '', document_name: '' }); setEmpDocFile(null);
+    setAttCalSelected(null);
+    const now = new Date(); setAttCalYear(now.getFullYear()); setAttCalMonth(now.getMonth() + 1);
     try {
       const [emp, contacts, assets] = await Promise.all([
         api('GET', `/api/employees/${id}`),
@@ -645,9 +665,75 @@ export default function Employees({ toast }) {
     finally { setHistoryLoading(false); }
   };
 
+  const loadEmpDocs = async (id) => {
+    setEmpDocsLoading(true);
+    try { setEmpDocs(await api('GET', `/api/hrm/employees/${id}/documents`)); }
+    catch (e) { toast(e.message, 'error'); }
+    finally { setEmpDocsLoading(false); }
+  };
+
+  const loadEmpLeaves = async (id) => {
+    setEmpLeavesLoading(true);
+    try {
+      const [leaves, balances] = await Promise.all([
+        api('GET', `/api/leaves?employee_id=${id}`),
+        api('GET', `/api/hrm/leave-balances/employee/${id}`).catch(() => []),
+      ]);
+      setEmpLeaves(leaves);
+      setEmpLeaveBalances(balances);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setEmpLeavesLoading(false); }
+  };
+
+  const loadEmpAtt = async (id, year, month) => {
+    setEmpAttLoading(true);
+    setAttCalSelected(null);
+    try { setEmpAtt(await api('GET', `/api/leaves/attendance?employee_id=${id}&year=${year}&month=${month}`)); }
+    catch (e) { toast(e.message, 'error'); }
+    finally { setEmpAttLoading(false); }
+  };
+
+  const uploadEmpDoc = async () => {
+    if (!empDocForm.document_type) return toast('Select a document type', 'warning');
+    if (!empDocFile) return toast('Choose a file to upload', 'warning');
+    setEmpDocSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', empDocFile);
+      const token = localStorage.getItem('artech_hrms_token');
+      const name = encodeURIComponent(empDocForm.document_name || empDocFile.name);
+      const type = encodeURIComponent(empDocForm.document_type);
+      const res = await fetch(`/api/hrm/employees/${detailEmp.id}/documents?document_type=${type}&document_name=${name}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Upload failed');
+      toast('Document uploaded', 'success');
+      setEmpDocUpload(false);
+      setEmpDocForm({ document_type: '', document_name: '' });
+      setEmpDocFile(null);
+      loadEmpDocs(detailEmp.id);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setEmpDocSaving(false); }
+  };
+
+  const deleteEmpDoc = async (docId) => {
+    if (!confirm('Delete this document?')) return;
+    try {
+      await api('DELETE', `/api/hrm/documents/${docId}`);
+      setEmpDocs(d => d.filter(x => x.id !== docId));
+      toast('Deleted', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
   const switchDetailTab = (tab, emp) => {
     setDetailTab(tab);
-    if (tab === 'history' && emp?.id) loadHistory(emp.id);
+    if (!emp?.id) return;
+    if (tab === 'history')    loadHistory(emp.id);
+    if (tab === 'documents')  loadEmpDocs(emp.id);
+    if (tab === 'leaves')     loadEmpLeaves(emp.id);
+    if (tab === 'attendance') loadEmpAtt(emp.id, attCalYear, attCalMonth);
   };
 
   const saveHistoryEvent = async () => {
@@ -772,6 +858,7 @@ export default function Employees({ toast }) {
   const save = async () => {
     if (!form.first_name?.trim()) return toast('First name is required', 'warning');
     if (!form.date_of_joining) return toast('Date of joining is required', 'warning');
+    if (form.mobile && form.mobile.replace(/^\+91/, '').length !== 10) return toast('Mobile number must be 10 digits', 'warning');
     if (modal.mode === 'add') {
       if (!form.username?.trim()) return toast('Username is required', 'warning');
       if (!form.email?.trim()) return toast('Email is required', 'warning');
@@ -801,6 +888,7 @@ export default function Employees({ toast }) {
           email: form.email, mobile: form.mobile || null,
           gender: form.gender || null, date_of_joining: form.date_of_joining,
           date_of_birth: form.date_of_birth || null,
+          employee_id: form.employee_id || null,
           department_id: form.department_id ? parseInt(form.department_id) : null,
           designation_id: form.designation_id ? parseInt(form.designation_id) : null,
           reports_to_id: form.reports_to_id ? parseInt(form.reports_to_id) : null,
@@ -824,6 +912,7 @@ export default function Employees({ toast }) {
           email: form.email || null, mobile: form.mobile || null,
           gender: form.gender || null, date_of_joining: form.date_of_joining,
           date_of_birth: form.date_of_birth || null, status: form.status,
+          employee_id: form.employee_id || null,
           department_id: form.department_id ? parseInt(form.department_id) : null,
           designation_id: form.designation_id ? parseInt(form.designation_id) : null,
           reports_to_id: form.reports_to_id ? parseInt(form.reports_to_id) : null,
@@ -983,7 +1072,7 @@ export default function Employees({ toast }) {
                       </td>
                       <td className="text-gray-600">{e.department || <span className="text-gray-300">—</span>}</td>
                       <td className="text-gray-600">{e.designation || <span className="text-gray-300">—</span>}</td>
-                      <td className="text-gray-600">{e.date_of_joining || '—'}</td>
+                      <td className="text-gray-600">{fmtDate(e.date_of_joining)}</td>
                       <td className="text-gray-700 font-medium">
                         {e.basic_salary ? `₹${Number(e.basic_salary).toLocaleString()}` : <span className="text-gray-300">—</span>}
                       </td>
@@ -1092,153 +1181,587 @@ export default function Employees({ toast }) {
       {/* ── EMPLOYEE DETAIL MODAL ── */}
       {detailEmp && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={() => setDetailEmp(null)} />
+          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => setDetailEmp(null)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col pointer-events-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col pointer-events-auto">
 
-            {/* Header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <Avatar name={detailEmp.full_name} photo={detailEmp.profile_photo} size="md" />
-              <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                  {detailLoading ? 'Loading…' : detailEmp.full_name}
-                </h2>
-                {!detailLoading && (
-                  <p className="text-xs text-gray-500 truncate">
-                    {detailEmp.designation || 'No designation'}{detailEmp.department ? ` · ${detailEmp.department}` : ''}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                {!detailLoading && (
-                  <>
-                    <button onClick={() => { setDetailEmp(null); openEdit(detailEmp.id); }} className="btn btn-secondary btn-sm gap-1">
-                      <Pencil size={12} /> Edit
-                    </button>
-                    <button onClick={() => del(detailEmp.id, detailEmp.full_name)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors" title="Delete employee">
-                      <Trash2 size={14} />
-                    </button>
-                  </>
-                )}
-                <button onClick={() => setDetailEmp(null)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
-                  <X size={16} />
-                </button>
+            {/* ── Profile header ── */}
+            <div className="px-6 pt-6 pb-5 flex-shrink-0">
+              <div className="flex items-start justify-between gap-4">
+                {/* Avatar + name block */}
+                <div className="flex items-center gap-5">
+                  <div className="relative flex-shrink-0">
+                    {detailEmp.profile_photo ? (
+                      <img src={detailEmp.profile_photo} alt={detailEmp.full_name}
+                        className="w-20 h-20 rounded-full object-cover ring-4 ring-gray-100 dark:ring-gray-800" />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full ring-4 ring-gray-100 dark:ring-gray-800 bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center text-white text-2xl font-bold">
+                        {detailEmp.full_name?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 mb-1">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                        {detailEmp.full_name}
+                      </h2>
+                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                        detailEmp.status === 'Active'
+                          ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
+                          : 'bg-gray-100 text-gray-500 border-gray-200'
+                      }`}>{detailEmp.status}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                      {detailEmp.designation || 'No designation'}
+                    </p>
+                    <p className="text-sm font-semibold text-[var(--accent)]">
+                      {detailEmp.employee_id}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Contact info grid */}
+                <div className="hidden sm:grid grid-cols-1 gap-2 flex-1 max-w-xs ml-auto">
+                  {detailEmp.email && (
+                    <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                        <Mail size={13} className="text-blue-500" />
+                      </div>
+                      <span className="truncate text-xs">{detailEmp.email}</span>
+                    </div>
+                  )}
+                  {detailEmp.mobile && (
+                    <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                      <div className="w-7 h-7 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+                        <Phone size={13} className="text-green-500" />
+                      </div>
+                      <span className="text-xs">{detailEmp.mobile}</span>
+                    </div>
+                  )}
+                  {(detailEmp.office_address || detailEmp.residential_address) && (
+                    <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                      <div className="w-7 h-7 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0">
+                        <Building2 size={13} className="text-orange-500" />
+                      </div>
+                      <span className="text-xs truncate">{detailEmp.office_address || detailEmp.residential_address}</span>
+                    </div>
+                  )}
+                  {detailEmp.date_of_joining && (
+                    <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                      <div className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
+                        <Calendar size={13} className="text-purple-500" />
+                      </div>
+                      <span className="text-xs">Joined on {fmtDate(detailEmp.date_of_joining)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons + close */}
+                <div className="flex items-start gap-1.5 flex-shrink-0">
+                  {!detailLoading && (
+                    <>
+                      <button onClick={() => { setDetailEmp(null); openEdit(detailEmp.id); }}
+                        className="btn btn-secondary btn-sm gap-1">
+                        <Pencil size={12} /> Edit
+                      </button>
+                      <button onClick={() => del(detailEmp.id, detailEmp.full_name)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
+                  <button onClick={() => setDetailEmp(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Tabs */}
+            {/* ── Tab bar ── */}
             {!detailLoading && (
-              <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 px-5">
+              <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 px-6 overflow-x-auto">
                 {[
-                  { key: 'details', label: 'Details' },
-                  { key: 'edu-exp', label: 'Education & Experience', icon: GraduationCap },
-                  { key: 'history', label: 'History', icon: History },
+                  { key: 'overview',    label: 'Overview' },
+                  { key: 'personal',    label: 'Personal Info' },
+                  { key: 'documents',   label: 'Documents' },
+                  { key: 'attendance',  label: 'Attendance' },
+                  { key: 'leaves',      label: 'Leave' },
+                  { key: 'edu-exp',     label: 'Education', icon: GraduationCap },
+                  { key: 'history',     label: 'History', icon: History },
+                  { key: 'payroll',     label: 'Payroll' },
+                  { key: 'assets',      label: 'Assets' },
                 ].map(tab => (
                   <button
                     key={tab.key}
                     onClick={() => switchDetailTab(tab.key, detailEmp)}
-                    className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px
+                    className={`flex items-center gap-1.5 px-3 py-3 text-xs font-medium border-b-2 whitespace-nowrap transition-colors -mb-px
                       ${detailTab === tab.key
                         ? 'border-[var(--accent)] text-[var(--accent)]'
                         : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                   >
-                    {tab.icon && <tab.icon size={13} />}
+                    {tab.icon && <tab.icon size={12} />}
                     {tab.label}
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto py-4">
+            {/* ── Body ── */}
+            <div className="flex-1 overflow-y-auto">
               {detailLoading ? (
-                <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Loading details…</div>
-              ) : detailTab === 'details' ? (
-                <>
-                  <div className="flex flex-wrap gap-2 px-5 mb-4">
-                    <code className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-xs font-mono">{detailEmp.employee_id}</code>
-                    <Badge text={detailEmp.status} />
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">{detailEmp.employment_type}</span>
+                <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+                  <div className="animate-spin w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full mr-2.5" />
+                  Loading details…
+                </div>
+
+              ) : detailTab === 'overview' ? (
+                /* ── OVERVIEW: two-column Personal + Job info ── */
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Personal Information */}
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Personal Information</h3>
+                    <div className="space-y-0 divide-y divide-gray-100 dark:divide-gray-800">
+                      {[
+                        { label: 'Date of Birth',   value: fmtDate(detailEmp.date_of_birth) },
+                        { label: 'Gender',           value: detailEmp.gender },
+                        { label: 'Marital Status',   value: detailEmp.marital_status },
+                        { label: 'Nationality',      value: detailEmp.nationality },
+                        { label: 'Email',            value: detailEmp.email },
+                        { label: 'Mobile',           value: detailEmp.mobile },
+                      ].map(({ label, value }) => value && value !== '—' ? (
+                        <div key={label} className="flex items-start py-3 gap-3">
+                          <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                          <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex-1">{value}</span>
+                        </div>
+                      ) : null)}
+                    </div>
                   </div>
-                  <DetailSection title="Personal">
-                    <DetailRow label="Full Name" value={detailEmp.full_name} />
-                    <DetailRow label="Gender" value={detailEmp.gender} />
-                    <DetailRow label="Date of Birth" value={detailEmp.date_of_birth} />
-                    <DetailRow label="Email" value={detailEmp.email} />
-                    <DetailRow label="Mobile" value={detailEmp.mobile} />
-                  </DetailSection>
-                  <DetailSection title="Employment">
-                    <DetailRow label="Department" value={detailEmp.department} />
-                    <DetailRow label="Designation" value={detailEmp.designation} />
-                    <DetailRow label="Employment Type" value={detailEmp.employment_type} />
-                    <DetailRow label="Date of Joining" value={detailEmp.date_of_joining} />
-                    <DetailRow label="Reporting Manager" value={detailEmp.reporting_manager} />
-                    <DetailRow label="Notice Period" value={detailEmp.notice_period_days ? `${detailEmp.notice_period_days} days` : null} />
-                    <DetailRow label="Probation Period" value={detailEmp.probation_period_days ? `${detailEmp.probation_period_days} days` : null} />
-                    <DetailRow label="Office Address" value={detailEmp.office_address} />
-                    <DetailRow label="Residential Address" value={detailEmp.residential_address} />
-                    <DetailRow label="Status" value={detailEmp.status} />
-                  </DetailSection>
-                  {detailEmp.basic_salary && (
-                    <DetailSection title="Payroll">
-                      <DetailRow label="Basic Salary" value={`₹${Number(detailEmp.basic_salary).toLocaleString('en-IN')}/mo`} />
-                      <DetailRow label="HRA %" value={detailEmp.hra_percent ? `${detailEmp.hra_percent}%` : null} />
-                      <DetailRow label="Special Allow." value={detailEmp.special_allowance ? `₹${Number(detailEmp.special_allowance).toLocaleString('en-IN')}` : null} />
-                      <DetailRow label="PF" value={detailEmp.pf_applicable ? 'Applicable' : 'Not applicable'} />
-                      <DetailRow label="ESI" value={detailEmp.esi_applicable ? 'Applicable (if gross ≤ ₹21,000)' : 'Not applicable'} />
-                      <DetailRow label="PT State" value={detailEmp.pt_state} />
-                    </DetailSection>
-                  )}
-                  {(detailEmp.bank_name || detailEmp.bank_account_no) && (
-                    <DetailSection title="Bank Details">
-                      <DetailRow label="Bank" value={detailEmp.bank_name} />
-                      <DetailRow label="Account No." value={detailEmp.bank_account_no} />
-                      <DetailRow label="IFSC" value={detailEmp.bank_ifsc} />
-                      <DetailRow label="Branch" value={detailEmp.bank_branch} />
-                    </DetailSection>
-                  )}
-                  {(detailEmp.aadhar_no || detailEmp.pan_no) && (
-                    <DetailSection title="Identity">
-                      <DetailRow label="Aadhaar" value={detailEmp.aadhar_no} />
-                      <DetailRow label="PAN" value={detailEmp.pan_no} />
-                    </DetailSection>
-                  )}
-                  {detailEmp._ec?.name && (
-                    <DetailSection title="Emergency Contact">
-                      <DetailRow label="Name" value={detailEmp._ec.name} />
-                      <DetailRow label="Relationship" value={detailEmp._ec.relationship_type} />
-                      <DetailRow label="Phone" value={detailEmp._ec.phone} />
-                    </DetailSection>
-                  )}
-                  {detailEmp._assets?.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 px-5">Allocated Assets</h4>
-                      <div className="px-5 space-y-1.5">
-                        {detailEmp._assets.map(a => (
-                          <div key={a.id} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
-                            <div>
-                              <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{a.asset_name}</p>
-                              <p className="text-[11px] text-gray-400">{a.asset_type}{a.serial_number ? ` · ${a.serial_number}` : ''}</p>
-                            </div>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${a.status === 'Allocated' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-500'}`}>
-                              {a.status}
+
+                  {/* Job Information */}
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Job Information</h3>
+                    <div className="space-y-0 divide-y divide-gray-100 dark:divide-gray-800">
+                      {[
+                        { label: 'Department',        value: detailEmp.department },
+                        { label: 'Designation',        value: detailEmp.designation },
+                        { label: 'Reporting Manager',  value: detailEmp.reporting_manager },
+                        { label: 'Employment Type',    value: detailEmp.employment_type },
+                        { label: 'Date of Joining',    value: fmtDate(detailEmp.date_of_joining) },
+                        { label: 'Notice Period',      value: detailEmp.notice_period_days ? `${detailEmp.notice_period_days} days` : null },
+                      ].map(({ label, value }) => value ? (
+                        <div key={label} className="flex items-start py-3 gap-3">
+                          <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                          <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex-1">{value}</span>
+                        </div>
+                      ) : null)}
+                    </div>
+                  </div>
+                </div>
+
+              ) : detailTab === 'personal' ? (
+                /* ── PERSONAL INFO: two-column layout ── */
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* LEFT: Personal Details + Address */}
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Personal Details</h3>
+                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {[
+                          { label: 'Full Name',      value: detailEmp.full_name },
+                          { label: 'Date of Birth',  value: fmtDate(detailEmp.date_of_birth) },
+                          { label: 'Gender',         value: detailEmp.gender },
+                          { label: 'Marital Status', value: detailEmp.marital_status },
+                          { label: 'Nationality',    value: detailEmp.nationality },
+                          { label: 'Email',          value: detailEmp.email },
+                          { label: 'Mobile',         value: detailEmp.mobile },
+                        ].map(({ label, value }) => value ? (
+                          <div key={label} className="flex items-start py-2.5 gap-3">
+                            <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex-1">{value}</span>
+                          </div>
+                        ) : null)}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Address</h3>
+                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {[
+                          { label: 'Residential', value: detailEmp.residential_address },
+                          { label: 'Office',      value: detailEmp.office_address },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-start py-2.5 gap-3">
+                            <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className={`text-xs font-semibold flex-1 ${value ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-600 italic'}`}>
+                              {value || '—'}
                             </span>
                           </div>
                         ))}
                       </div>
                     </div>
+                  </div>
+
+                  {/* RIGHT: Bank Details + Identity + Emergency Contact */}
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Bank Details</h3>
+                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {[
+                          { label: 'Bank Name',      value: detailEmp.bank_name },
+                          { label: 'Account No.',    value: detailEmp.bank_account_no },
+                          { label: 'IFSC Code',      value: detailEmp.bank_ifsc },
+                          { label: 'Branch',         value: detailEmp.bank_branch },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-start py-2.5 gap-3">
+                            <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className={`text-xs font-semibold flex-1 ${value ? 'text-gray-800 dark:text-gray-200 font-mono' : 'text-gray-400 dark:text-gray-600 italic'}`}>
+                              {value || '—'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {(detailEmp.aadhar_no || detailEmp.pan_no) && (
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Identity Documents</h3>
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                          {[
+                            { label: 'Aadhaar', value: detailEmp.aadhar_no },
+                            { label: 'PAN',     value: detailEmp.pan_no },
+                          ].map(({ label, value }) => value ? (
+                            <div key={label} className="flex items-start py-2.5 gap-3">
+                              <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                              <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 font-mono flex-1">{value}</span>
+                            </div>
+                          ) : null)}
+                        </div>
+                      </div>
+                    )}
+                    {detailEmp._ec?.name && (
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Emergency Contact</h3>
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                          {[
+                            { label: 'Name',         value: detailEmp._ec.name },
+                            { label: 'Relationship', value: detailEmp._ec.relationship_type },
+                            { label: 'Phone',        value: detailEmp._ec.phone },
+                          ].map(({ label, value }) => value ? (
+                            <div key={label} className="flex items-start py-2.5 gap-3">
+                              <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                              <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex-1">{value}</span>
+                            </div>
+                          ) : null)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              ) : detailTab === 'documents' ? (
+                /* ── DOCUMENTS ── */
+                <div className="p-6 space-y-4">
+                  {/* Upload bar */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">Employee Documents</h3>
+                    <button
+                      onClick={() => setEmpDocUpload(v => !v)}
+                      className="btn btn-primary btn-sm gap-1.5"
+                    >
+                      <Plus size={13} /> Upload
+                    </button>
+                  </div>
+
+                  {/* Upload form */}
+                  {empDocUpload && (
+                    <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Document Type</label>
+                          <Select
+                            value={empDocForm.document_type}
+                            onChange={v => setEmpDocForm(p => ({ ...p, document_type: v }))}
+                            options={['Aadhaar', 'PAN', 'Passport', 'Offer Letter', 'Experience Letter', 'Education Certificate', 'Other']}
+                            placeholder="Select type"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Document Name</label>
+                          <input
+                            className="form-input text-sm"
+                            placeholder="e.g. Aadhaar Card"
+                            value={empDocForm.document_name}
+                            onChange={e => setEmpDocForm(p => ({ ...p, document_name: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">File</label>
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          className="block w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[var(--accent)] file:text-white cursor-pointer"
+                          onChange={e => setEmpDocFile(e.target.files?.[0] || null)}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={uploadEmpDoc}
+                          disabled={empDocSaving}
+                          className="btn btn-primary btn-sm gap-1.5 disabled:opacity-60"
+                        >
+                          <Upload size={12} /> {empDocSaving ? 'Uploading…' : 'Upload'}
+                        </button>
+                        <button
+                          onClick={() => { setEmpDocUpload(false); setEmpDocFile(null); setEmpDocForm({ document_type: '', document_name: '' }); }}
+                          className="btn btn-secondary btn-sm"
+                        >Cancel</button>
+                      </div>
+                    </div>
                   )}
-                </>
+
+                  {/* Doc list */}
+                  {empDocsLoading ? (
+                    <div className="text-center py-8 text-sm text-gray-400">Loading documents…</div>
+                  ) : empDocs.length === 0 ? (
+                    <div className="empty-state py-8">
+                      <FileText size={28} className="mx-auto mb-2 text-gray-200" />
+                      <p className="text-sm text-gray-400">No documents uploaded yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {empDocs.map(d => (
+                        <div key={d.id} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
+                          <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-700 flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <FileText size={14} className="text-[var(--accent)]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{d.document_name || d.document_type}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{d.document_type}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <a href={d.file_url} download={d.document_name || 'document'}
+                              className="btn btn-secondary btn-xs gap-1">
+                              <Download size={11} /> Download
+                            </a>
+                            <button onClick={() => deleteEmpDoc(d.id)}
+                              className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              ) : detailTab === 'attendance' ? (
+                /* ── ATTENDANCE CALENDAR ── */
+                (() => {
+                  const ATT_MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                  const ATT_DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+                  const STATUS_CELL = {
+                    Present:    'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 hover:bg-green-200',
+                    Absent:     'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200',
+                    'On Leave': 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200',
+                    'Half Day': 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200',
+                    WFH:        'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200',
+                  };
+                  const STATUS_BADGE = {
+                    Present:    'bg-green-50 text-green-700 border-green-200',
+                    Absent:     'bg-red-50 text-red-700 border-red-200',
+                    'On Leave': 'bg-amber-50 text-amber-700 border-amber-200',
+                    'Half Day': 'bg-blue-50 text-blue-700 border-blue-200',
+                    WFH:        'bg-purple-50 text-purple-700 border-purple-200',
+                  };
+                  const prevAttMonth = () => {
+                    const ny = attCalMonth === 1 ? attCalYear - 1 : attCalYear;
+                    const nm = attCalMonth === 1 ? 12 : attCalMonth - 1;
+                    setAttCalYear(ny); setAttCalMonth(nm); setAttCalSelected(null);
+                    if (detailEmp?.id) loadEmpAtt(detailEmp.id, ny, nm);
+                  };
+                  const nextAttMonth = () => {
+                    const ny = attCalMonth === 12 ? attCalYear + 1 : attCalYear;
+                    const nm = attCalMonth === 12 ? 1 : attCalMonth + 1;
+                    setAttCalYear(ny); setAttCalMonth(nm); setAttCalSelected(null);
+                    if (detailEmp?.id) loadEmpAtt(detailEmp.id, ny, nm);
+                  };
+                  const firstDay    = new Date(attCalYear, attCalMonth - 1, 1).getDay();
+                  const daysInMonth = new Date(attCalYear, attCalMonth, 0).getDate();
+                  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+                  const ds = d => `${attCalYear}-${String(attCalMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                  const attByDate = empAtt.reduce((m, a) => { m[a.date] = a; return m; }, {});
+                  const todayStr  = new Date().toISOString().slice(0, 10);
+                  const selRec    = attCalSelected ? attByDate[attCalSelected] : null;
+                  const summary   = empAtt.reduce((acc, a) => { acc[a.status] = (acc[a.status] || 0) + 1; return acc; }, {});
+
+                  return (
+                    <div className="p-4 space-y-3">
+                      {/* Month navigator */}
+                      <div className="flex items-center justify-between">
+                        <button onClick={prevAttMonth} className="btn btn-secondary btn-sm p-1.5"><ChevronLeft size={14} /></button>
+                        <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                          {ATT_MONTH_NAMES[attCalMonth - 1]} {attCalYear}
+                        </span>
+                        <button onClick={nextAttMonth} className="btn btn-secondary btn-sm p-1.5"><ChevronRight size={14} /></button>
+                      </div>
+
+                      {/* Summary chips */}
+                      {Object.keys(summary).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(summary).map(([s, c]) => (
+                            <span key={s} className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${STATUS_BADGE[s] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                              {s}: {c}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Calendar grid */}
+                      <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                        {/* Day headers */}
+                        <div className="grid grid-cols-7 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                          {ATT_DAY_NAMES.map((d, idx) => (
+                            <div key={d} className={`py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider ${idx === 0 || idx === 6 ? 'text-red-400' : 'text-gray-400'}`}>{d}</div>
+                          ))}
+                        </div>
+
+                        {empAttLoading ? (
+                          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+                        ) : (
+                          <div className="grid grid-cols-7 divide-x divide-gray-100 dark:divide-gray-800">
+                            {cells.map((d, i) => {
+                              if (!d) return <div key={`e-${i}`} className="min-h-[56px] bg-gray-50/40 dark:bg-gray-900/20" />;
+                              const dateKey  = ds(d);
+                              const rec      = attByDate[dateKey];
+                              const isToday  = dateKey === todayStr;
+                              const isWknd   = (i % 7 === 0 || i % 7 === 6);
+                              const isSel    = attCalSelected === dateKey;
+                              return (
+                                <button
+                                  key={d}
+                                  onClick={() => setAttCalSelected(isSel ? null : dateKey)}
+                                  className={`min-h-[68px] p-1.5 text-left border-b border-gray-100 dark:border-gray-800 transition-colors
+                                    ${isSel ? 'ring-2 ring-inset ring-[var(--accent)]' : ''}
+                                    ${rec ? STATUS_CELL[rec.status] || 'bg-gray-100 hover:bg-gray-200' : isWknd ? 'bg-red-50/40 dark:bg-red-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}
+                                >
+                                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-bold mb-0.5
+                                    ${isToday ? 'text-white' : rec ? '' : isWknd ? 'text-red-400' : 'text-gray-500 dark:text-gray-400'}`}
+                                    style={isToday ? { backgroundColor: 'var(--accent)' } : {}}>
+                                    {d}
+                                  </span>
+                                  {rec && (
+                                    <div className="text-[9px] font-semibold leading-tight truncate opacity-80">
+                                      {rec.status === 'On Leave' ? 'Leave' : rec.status}
+                                    </div>
+                                  )}
+                                  {(rec?.in_time || rec?.out_time || rec?.working_hours) && (
+                                    <div className="text-[9px] opacity-70 leading-snug mt-0.5 space-y-px">
+                                      {rec.in_time  && <div>▲ {rec.in_time}</div>}
+                                      {rec.out_time && <div>▼ {rec.out_time}</div>}
+                                      {rec.working_hours ? <div className="opacity-80 font-semibold">{rec.working_hours}h</div> : null}
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Selected day detail */}
+                      {selRec && (
+                        <div className={`rounded-xl border p-3.5 ${STATUS_BADGE[selRec.status] || 'bg-gray-50 border-gray-200'}`}>
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div>
+                              <p className="text-xs font-bold">{fmtDate(selRec.date)} — <span>{selRec.status}</span></p>
+                              {(selRec.in_time || selRec.out_time) && (
+                                <p className="text-xs mt-0.5 opacity-80">
+                                  Login: {selRec.in_time || '—'} &nbsp;·&nbsp; Logout: {selRec.out_time || '—'}
+                                  {selRec.working_hours ? ` · ${selRec.working_hours}h worked` : ''}
+                                </p>
+                              )}
+                            </div>
+                            <button onClick={() => setAttCalSelected(null)} className="opacity-50 hover:opacity-100"><X size={13} /></button>
+                          </div>
+                        </div>
+                      )}
+                      {attCalSelected && !selRec && !empAttLoading && (
+                        <p className="text-xs text-center text-gray-400 py-1">No record for this day</p>
+                      )}
+                    </div>
+                  );
+                })()
+
+              ) : detailTab === 'leaves' ? (
+                /* ── LEAVES ── */
+                <div className="p-6 space-y-5">
+                  {empLeavesLoading ? (
+                    <div className="text-center py-8 text-sm text-gray-400">Loading leave data…</div>
+                  ) : (
+                    <>
+                      {/* Leave balances */}
+                      {empLeaveBalances.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Leave Balances</h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {empLeaveBalances.map(b => {
+                              const usedPct = b.allocated ? Math.min((b.used / b.allocated) * 100, 100) : 0;
+                              return (
+                                <div key={b.id} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2.5">
+                                  <p className="text-[11px] text-gray-500 truncate mb-1">{b.leave_type}</p>
+                                  <div className="flex items-end justify-between">
+                                    <span className={`text-base font-bold ${b.available === 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'}`}>{b.available}</span>
+                                    <span className="text-[11px] text-gray-400">/ {b.allocated}</span>
+                                  </div>
+                                  <div className="h-1 mt-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full ${usedPct >= 90 ? 'bg-red-500' : usedPct >= 60 ? 'bg-amber-400' : 'bg-emerald-500'}`} style={{ width: `${usedPct}%` }} />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Leave applications */}
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Leave History</h3>
+                        {empLeaves.length === 0 ? (
+                          <div className="empty-state py-6">
+                            <CalendarDays size={28} className="mx-auto mb-2 text-gray-200" />
+                            <p className="text-sm text-gray-400">No leave applications</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                            {empLeaves.map(lv => {
+                              const statusColor = { Pending: 'bg-amber-50 text-amber-700 border-amber-200', Approved: 'bg-green-50 text-green-700 border-green-200', Rejected: 'bg-red-50 text-red-700 border-red-200' };
+                              return (
+                                <div key={lv.id} className="flex items-center gap-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 px-3 py-2.5">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{lv.leave_type}</p>
+                                    <p className="text-[11px] text-gray-400 mt-0.5">{lv.from_date} → {lv.to_date} · {lv.total_days} day{lv.total_days !== 1 ? 's' : ''}</p>
+                                  </div>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold flex-shrink-0 ${statusColor[lv.status] || 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                                    {lv.status}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
               ) : detailTab === 'edu-exp' ? (
                 <EmployeeEduExpTab
                   emp={detailEmp}
                   onSave={saveEduExp}
                   saving={eduExpSaving}
                 />
-              ) : (
-                /* ── HISTORY TAB ── */
+
+              ) : detailTab === 'history' ? (
                 <EmployeeHistoryTab
                   emp={detailEmp}
                   history={history}
@@ -1251,7 +1774,106 @@ export default function Employees({ toast }) {
                   onSave={saveHistoryEvent}
                   onDelete={deleteHistoryEvent}
                 />
-              )}
+
+              ) : detailTab === 'payroll' ? (
+                /* ── PAYROLL ── */
+                <div className="p-6 space-y-6">
+                  {detailEmp.basic_salary ? (
+                    <>
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Salary Structure</h3>
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                          {[
+                            { label: 'Basic Salary',       value: `₹${Number(detailEmp.basic_salary).toLocaleString('en-IN')} / month` },
+                            { label: 'HRA',                value: detailEmp.hra_percent ? `${detailEmp.hra_percent}% of basic` : null },
+                            { label: 'Special Allowance',  value: detailEmp.special_allowance ? `₹${Number(detailEmp.special_allowance).toLocaleString('en-IN')}` : null },
+                            { label: 'LTA',                value: detailEmp.lta ? `₹${Number(detailEmp.lta).toLocaleString('en-IN')}` : null },
+                            { label: 'Other Allowance',    value: detailEmp.other_allowance ? `₹${Number(detailEmp.other_allowance).toLocaleString('en-IN')}` : null },
+                            { label: 'PF',                 value: detailEmp.pf_applicable ? 'Applicable' : 'Not applicable' },
+                            { label: 'ESI',                value: detailEmp.esi_applicable ? 'Applicable (gross ≤ ₹21,000)' : 'Not applicable' },
+                          ].map(({ label, value }) => value ? (
+                            <div key={label} className="flex items-start py-2.5 gap-3">
+                              <span className="text-xs text-gray-400 w-40 flex-shrink-0 pt-0.5">{label}</span>
+                              <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex-1">{value}</span>
+                            </div>
+                          ) : null)}
+                        </div>
+                      </div>
+                      {(() => {
+                        const calc = calcLivePayroll(detailEmp);
+                        if (!calc) return null;
+                        return (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-center">
+                              <p className="text-lg font-bold text-blue-700 dark:text-blue-300">₹{calc.gross.toLocaleString('en-IN')}</p>
+                              <p className="text-xs text-blue-500 mt-0.5">Gross / month</p>
+                            </div>
+                            <div className="rounded-xl bg-green-50 dark:bg-green-900/20 px-4 py-3 text-center">
+                              <p className="text-lg font-bold text-green-700 dark:text-green-300">₹{calc.net.toLocaleString('en-IN')}</p>
+                              <p className="text-xs text-green-500 mt-0.5">Net / month (est.)</p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {(detailEmp.bank_name || detailEmp.bank_account_no) && (
+                        <div>
+                          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Bank Details</h3>
+                          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {[
+                              { label: 'Bank',        value: detailEmp.bank_name },
+                              { label: 'Account No.', value: detailEmp.bank_account_no },
+                              { label: 'IFSC',        value: detailEmp.bank_ifsc },
+                              { label: 'Branch',      value: detailEmp.bank_branch },
+                            ].map(({ label, value }) => value ? (
+                              <div key={label} className="flex items-start py-2.5 gap-3">
+                                <span className="text-xs text-gray-400 w-40 flex-shrink-0 pt-0.5">{label}</span>
+                                <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 font-mono flex-1">{value}</span>
+                              </div>
+                            ) : null)}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="empty-state py-10">
+                      <CreditCard size={32} className="mx-auto mb-2 text-gray-200" />
+                      <p className="text-sm text-gray-400">No payroll information added yet</p>
+                      <button onClick={() => { setDetailEmp(null); openEdit(detailEmp.id); }}
+                        className="btn btn-secondary btn-sm mt-3 gap-1"><Pencil size={12} /> Add via Edit</button>
+                    </div>
+                  )}
+                </div>
+
+              ) : detailTab === 'assets' ? (
+                /* ── ASSETS ── */
+                <div className="p-6">
+                  {detailEmp._assets?.length > 0 ? (
+                    <div className="space-y-2">
+                      {detailEmp._assets.map(a => (
+                        <div key={a.id} className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-700 flex items-center justify-center flex-shrink-0 shadow-sm">
+                              <Monitor size={14} className="text-gray-500" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{a.asset_name}</p>
+                              <p className="text-[11px] text-gray-400 mt-0.5">{a.asset_type}{a.serial_number ? ` · ${a.serial_number}` : ''}</p>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${
+                            a.status === 'Allocated' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-200 text-gray-500'
+                          }`}>{a.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state py-10">
+                      <Monitor size={32} className="mx-auto mb-2 text-gray-200" />
+                      <p className="text-sm text-gray-400">No assets allocated to this employee</p>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>
           </div>
@@ -1302,6 +1924,9 @@ export default function Employees({ toast }) {
                 />
               </Field>
             )}
+            <Field label="Employee ID">
+              <input className="form-input font-mono" value={form.employee_id || ''} onChange={e => f({ employee_id: e.target.value })} placeholder="e.g. EMP-0004" />
+            </Field>
             <Field label="Department">
               <Select
                 value={form.department_id || ''}
@@ -1390,7 +2015,23 @@ export default function Employees({ toast }) {
               </Field>
             )}
             <Field label="Mobile">
-              <input className="form-input" value={form.mobile || ''} onChange={e => f({ mobile: e.target.value })} placeholder="Mobile" />
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 select-none">+91</span>
+                <input
+                  className="form-input rounded-l-none flex-1"
+                  value={(form.mobile || '').replace(/^\+91/, '')}
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    f({ mobile: digits ? `+91${digits}` : '' });
+                  }}
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
+                  inputMode="numeric"
+                />
+              </div>
+              {form.mobile && form.mobile.replace(/^\+91/, '').length > 0 && form.mobile.replace(/^\+91/, '').length < 10 && (
+                <p className="text-xs text-red-500 mt-1">Must be 10 digits</p>
+              )}
             </Field>
             <Field label="Gender">
               <Select

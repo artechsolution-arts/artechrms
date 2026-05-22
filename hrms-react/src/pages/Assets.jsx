@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { fmtDate } from '../utils/date';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
@@ -109,7 +110,7 @@ export default function Assets({ toast }) {
                     <td>{r.asset_name}</td>
                     <td>{r.asset_type}</td>
                     <td className="text-gray-500 font-mono text-xs">{r.serial_number || '—'}</td>
-                    <td>{r.allocated_date}</td>
+                    <td>{fmtDate(r.allocated_date)}</td>
                     <td>{r.condition}</td>
                     <td>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.status] || 'bg-gray-100 text-gray-600'}`}>

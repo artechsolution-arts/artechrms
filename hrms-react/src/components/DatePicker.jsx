@@ -166,8 +166,8 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
           </div>
 
           <div className="grid grid-cols-7 mb-1">
-            {DAYS.map(d => (
-              <div key={d} className="text-center text-[11px] font-semibold text-gray-400 py-1">{d}</div>
+            {DAYS.map((d, idx) => (
+              <div key={d} className={`text-center text-[11px] font-semibold py-1 ${idx === 0 || idx === 6 ? 'text-red-400' : 'text-gray-400'}`}>{d}</div>
             ))}
           </div>
 
@@ -177,6 +177,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
               const sel = isSelected(d);
               const dis = isDayDisabled(d);
               const tod = isToday(d);
+              const wknd = (i % 7 === 0 || i % 7 === 6);
               return (
                 <button
                   key={d} type="button" disabled={dis} onClick={() => selectDay(d)}
@@ -185,6 +186,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
                     ${sel ? 'text-white font-semibold'
                       : tod ? 'font-bold'
                       : dis ? ''
+                      : wknd ? 'text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   style={sel ? { backgroundColor: 'var(--accent)' } : tod && !sel ? { color: 'var(--accent)', border: '1.5px solid var(--accent)' } : {}}
                 >

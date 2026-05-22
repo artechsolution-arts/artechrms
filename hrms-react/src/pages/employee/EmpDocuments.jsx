@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import { fmtDate } from '../../utils/date';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import Select from '../../components/Select';
 import { Plus, Download, FileText, CheckCircle2, Clock, RefreshCw, X, FileCheck } from 'lucide-react';
@@ -50,7 +51,7 @@ function RequestCard({ r, onDownload }) {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">{r.doc_type}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Requested {r.requested_at}</p>
+            <p className="text-xs text-gray-400 mt-0.5">Requested {fmtDate(r.requested_at)}</p>
           </div>
         </div>
         <StatusChip status={r.status} />
@@ -75,7 +76,7 @@ function RequestCard({ r, onDownload }) {
           </a>
         ) : isFulfilled ? (
           <div className="flex items-center justify-center gap-1.5 py-2 text-xs text-green-600 font-medium">
-            <CheckCircle2 size={13} /> Fulfilled {r.fulfilled_at}
+            <CheckCircle2 size={13} /> Fulfilled {fmtDate(r.fulfilled_at)}
           </div>
         ) : (
           <div className="flex items-center gap-1.5 py-1.5 text-xs text-amber-600 dark:text-amber-400">

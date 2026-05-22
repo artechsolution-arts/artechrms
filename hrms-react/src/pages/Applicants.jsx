@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { fmtDate } from '../utils/date';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import { Plus, RefreshCw } from 'lucide-react';
@@ -95,7 +96,7 @@ export default function Applicants({ toast }) {
                     </td>
                     <td className="text-gray-600">{a.job_title}</td>
                     <td><Badge text={a.status} /></td>
-                    <td className="text-gray-500">{a.created_at}</td>
+                    <td className="text-gray-500">{fmtDate(a.created_at)}</td>
                     <td>
                       <Select
                         value={a.status}

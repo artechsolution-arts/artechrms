@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import { fmtDate } from '../utils/date';
 import EmpAvatar from '../components/EmpAvatar';
 import { Upload, Download, FileText, RefreshCw, Search, CheckCircle2, Clock, FileCheck } from 'lucide-react';
 
@@ -57,8 +58,8 @@ function RequestCard({ r, onUpload, uploading }) {
 
       {/* Dates */}
       <div className="flex items-center justify-between text-[11px] text-gray-400 px-0.5">
-        <span>Requested {r.requested_at}</span>
-        {r.fulfilled_at && <span className="text-green-600">Fulfilled {r.fulfilled_at}</span>}
+        <span>Requested {fmtDate(r.requested_at)}</span>
+        {r.fulfilled_at && <span className="text-green-600">Fulfilled {fmtDate(r.fulfilled_at)}</span>}
       </div>
 
       {/* Action */}

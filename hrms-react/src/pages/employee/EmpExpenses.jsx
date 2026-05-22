@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import { fmtDate } from '../../utils/date';
 import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import DatePicker from '../../components/DatePicker';
 import Select from '../../components/Select';
@@ -93,7 +94,7 @@ export default function EmpExpenses({ toast }) {
                   {rows.map(r => (
                     <tr key={r.id}>
                       <td className="font-medium text-gray-900">{r.expense_type}</td>
-                      <td>{r.claim_date}</td>
+                      <td>{fmtDate(r.claim_date)}</td>
                       <td className="font-semibold">₹{(+r.amount).toLocaleString('en-IN')}</td>
                       <td className="max-w-[160px] truncate text-gray-500">{r.description || '—'}</td>
                       <td>
