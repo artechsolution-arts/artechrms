@@ -996,3 +996,421 @@ def hr_reject_edit_request(req_id: int, data: _ResolveIn = _ResolveIn(), db: Ses
     req.resolved_at = _er_dt.utcnow()
     db.commit()
     return {"ok": True}
+
+
+# ── Company Documents ──────────────────────────────────────────
+import os as _os
+from fastapi.responses import FileResponse as _FileResponse
+
+COMPANY_DOCS_DIR = "/app/company_docs"
+
+@router.get("/company-docs")
+def list_company_docs():
+    if not _os.path.isdir(COMPANY_DOCS_DIR):
+        return []
+    files = sorted([
+        f for f in _os.listdir(COMPANY_DOCS_DIR)
+        if f.lower().endswith(".pdf") and not f.startswith(".")
+    ])
+    return [{"name": f, "url": f"/api/hrm/company-docs/{f}"} for f in files]
+
+
+@router.get("/company-docs/{filename}")
+def get_company_doc(filename: str):
+    path = _os.path.join(COMPANY_DOCS_DIR, filename)
+    if not _os.path.isfile(path):
+        raise HTTPException(404, "File not found")
+    return _FileResponse(path, media_type="application/pdf", filename=filename)
+
+
+@router.post("/company-docs/upload", status_code=201)
+async def upload_company_doc(file: UploadFile = File(...)):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "Only PDF files are allowed")
+    safe_name = _os.path.basename(file.filename)
+    if not safe_name:
+        raise HTTPException(400, "Invalid filename")
+    _os.makedirs(COMPANY_DOCS_DIR, exist_ok=True)
+    dest = _os.path.join(COMPANY_DOCS_DIR, safe_name)
+    contents = await file.read()
+    with open(dest, "wb") as f:
+        f.write(contents)
+    return {"name": safe_name, "url": f"/api/hrm/company-docs/{safe_name}"}
+
+
+@router.delete("/company-docs/{filename}", status_code=204)
+def delete_company_doc(filename: str):
+    safe_name = _os.path.basename(filename)
+    path = _os.path.join(COMPANY_DOCS_DIR, safe_name)
+    if not _os.path.isfile(path):
+        raise HTTPException(404, "File not found")
+    _os.remove(path)
+
+
+# ── Letter generation ───────────────────────────────────────────────────────
+
+from backend.utils.letter_generator import generate_letter, LETTER_FIELDS
+from backend.models.employee import Employee as _Employee
+from datetime import datetime as _dt
+from fastapi.responses import Response as _Response
+from pydantic import BaseModel as _BM
+from typing import Any as _Any
+
+GENERATED_DOCS_DIR = "/app/generated_docs"
+
+
+class LetterGenerateRequest(_BM):
+    letter_type: str
+    employee_id: int
+    fields: dict[str, _Any]
+
+
+@router.get("/letter-fields")
+def get_letter_fields():
+    """Return field definitions for each letter type."""
+    return LETTER_FIELDS
+
+
+@router.post("/letters/generate")
+def generate_employee_letter(
+    body: LetterGenerateRequest,
+    db: Session = Depends(get_db),
+):
+    emp = db.query(_Employee).filter(_Employee.id == body.employee_id).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+
+    # Merge employee data into fields
+    fields = dict(body.fields)
+    fields["employee_name"] = emp.full_name
+    fields["designation"]   = fields.get("designation") or (emp.designation_rel.name if emp.designation_rel else "")
+    fields["employee_code"] = emp.employee_id or ""
+    if not fields.get("department") and emp.department_rel:
+        fields["department"] = emp.department_rel.name
+
+    # Load active letterhead template config
+    from backend.models.hrm import LetterheadTemplate as _LT
+    tpl_row = db.query(_LT).filter(_LT.id == 1).first()
+    tpl_cfg = {
+        c.key: getattr(tpl_row, c.key)
+        for c in _LT.__table__.columns
+        if c.key not in ("id", "updated_at")
+    } if tpl_row else {}
+
+    try:
+        pdf_bytes = generate_letter(body.letter_type, fields, template=tpl_cfg)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    # Save generated PDF so it's available for download + employee record
+    _os.makedirs(GENERATED_DOCS_DIR, exist_ok=True)
+    safe_type = body.letter_type.replace(" ", "_").replace("/", "_")
+    timestamp = _dt.utcnow().strftime("%Y%m%d_%H%M%S")
+    filename = f"{emp.employee_id}_{safe_type}_{timestamp}.pdf"
+    dest = _os.path.join(GENERATED_DOCS_DIR, filename)
+    with open(dest, "wb") as f:
+        f.write(pdf_bytes)
+
+    # Create a fulfilled DocumentRequest so employee sees it in My Documents
+    from backend.models.document_request import DocumentRequest as _DR
+    doc_req = _DR(
+        employee_id=body.employee_id,
+        doc_type=body.letter_type,
+        status="Fulfilled",
+        requested_at=_dt.utcnow(),
+        fulfilled_at=_dt.utcnow(),
+        file_url=f"/api/hrm/letters/download/{filename}",
+        file_name=filename,
+    )
+    db.add(doc_req)
+    db.commit()
+
+    return _Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/letters/download/{filename}")
+def download_generated_letter(filename: str):
+    safe_name = _os.path.basename(filename)
+    path = _os.path.join(GENERATED_DOCS_DIR, safe_name)
+    if not _os.path.isfile(path):
+        raise HTTPException(404, "File not found")
+    with open(path, "rb") as f:
+        data = f.read()
+    return _Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+    )
+
+
+# ── Letterhead Template ──────────────────────────────────────────────────────
+from backend.models.hrm import LetterheadTemplate as _LetterheadTemplate
+
+_LOGO_UPLOADS_DIR = "/app/letterhead_logos"
+
+_LH_FIELDS = [
+    "company_name", "tagline", "logo_filename",
+    "logo_x_mm", "logo_y_mm", "logo_w_mm", "logo_h_mm",
+    "footer_image_filename",
+    "footer_x_mm", "footer_y_mm", "footer_w_mm", "footer_h_mm",
+    "signature_filename", "sig_x_mm", "sig_w_mm", "sig_h_mm",
+    "addr1", "addr2", "addr3", "addr4",
+    "phone1", "phone2", "email", "website",
+    "header_color", "accent_color",
+    "hr_signatory", "hr_role",
+    "content_top_mm", "body_font", "body_font_size", "body_bold", "body_italic",
+    "watermark_filename", "watermark_opacity",
+    "watermark_x_mm", "watermark_y_mm", "watermark_w_mm", "watermark_h_mm",
+]
+_FOOTER_UPLOADS_DIR = "/app/letterhead_logos"
+
+
+def _get_or_create_template(db):
+    row = db.query(_LetterheadTemplate).filter(_LetterheadTemplate.id == 1).first()
+    if not row:
+        row = _LetterheadTemplate(id=1)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    return row
+
+
+@router.get("/letterhead-template")
+def get_letterhead_template(db: Session = Depends(get_db)):
+    row = _get_or_create_template(db)
+    return {f: getattr(row, f) for f in _LH_FIELDS}
+
+
+class _LHUpdate(_BM):
+    company_name: str | None = None
+    tagline: str | None = None
+    logo_x_mm: float | None = None
+    logo_y_mm: float | None = None
+    logo_w_mm: float | None = None
+    logo_h_mm: float | None = None
+    footer_x_mm: float | None = None
+    footer_y_mm: float | None = None
+    footer_w_mm: float | None = None
+    footer_h_mm: float | None = None
+    sig_x_mm: float | None = None
+    sig_w_mm: float | None = None
+    sig_h_mm: float | None = None
+    addr1: str | None = None
+    addr2: str | None = None
+    addr3: str | None = None
+    addr4: str | None = None
+    phone1: str | None = None
+    phone2: str | None = None
+    email: str | None = None
+    website: str | None = None
+    header_color: str | None = None
+    accent_color: str | None = None
+    hr_signatory: str | None = None
+    hr_role: str | None = None
+    content_top_mm: float | None = None
+    body_font: str | None = None
+    body_font_size: float | None = None
+    body_bold: bool | None = None
+    body_italic: bool | None = None
+    watermark_opacity: float | None = None
+    watermark_x_mm: float | None = None
+    watermark_y_mm: float | None = None
+    watermark_w_mm: float | None = None
+    watermark_h_mm: float | None = None
+
+
+@router.put("/letterhead-template")
+def update_letterhead_template(body: _LHUpdate, db: Session = Depends(get_db)):
+    row = _get_or_create_template(db)
+    for field, val in body.model_dump(exclude_none=True).items():
+        setattr(row, field, val)
+    db.commit()
+    db.refresh(row)
+    return {f: getattr(row, f) for f in _LH_FIELDS}
+
+
+@router.post("/letterhead-template/logo")
+async def upload_letterhead_logo(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    allowed = ('.png', '.jpg', '.jpeg', '.webp')
+    ext = _os.path.splitext(file.filename or '')[1].lower()
+    if ext not in allowed:
+        raise HTTPException(400, "Only PNG/JPG/WEBP images are allowed")
+    _os.makedirs(_LOGO_UPLOADS_DIR, exist_ok=True)
+    filename = f"logo{ext}"
+    dest = _os.path.join(_LOGO_UPLOADS_DIR, filename)
+    contents = await file.read()
+    with open(dest, "wb") as f:
+        f.write(contents)
+    row = _get_or_create_template(db)
+    row.logo_filename = filename
+    db.commit()
+    return {"logo_filename": filename, "url": f"/api/hrm/letterhead-template/logo/{filename}"}
+
+
+@router.get("/letterhead-template/logo/{filename}")
+def get_letterhead_logo(filename: str):
+    safe = _os.path.basename(filename)
+    path = _os.path.join(_LOGO_UPLOADS_DIR, safe)
+    if not _os.path.isfile(path):
+        raise HTTPException(404, "Logo not found")
+    ext = _os.path.splitext(safe)[1].lower()
+    mt = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext.lstrip('.'), "application/octet-stream")
+    return _FileResponse(path, media_type=mt)
+
+
+@router.delete("/letterhead-template/logo", status_code=200)
+def delete_letterhead_logo(db: Session = Depends(get_db)):
+    row = _get_or_create_template(db)
+    if row.logo_filename:
+        path = _os.path.join(_LOGO_UPLOADS_DIR, row.logo_filename)
+        if _os.path.isfile(path):
+            _os.remove(path)
+        row.logo_filename = None
+        db.commit()
+    return {"ok": True}
+
+
+@router.post("/letterhead-template/footer-image")
+async def upload_footer_image(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    allowed = ('.png', '.jpg', '.jpeg', '.webp')
+    ext = _os.path.splitext(file.filename or '')[1].lower()
+    if ext not in allowed:
+        raise HTTPException(400, "Only PNG/JPG/WEBP images are allowed")
+    _os.makedirs(_FOOTER_UPLOADS_DIR, exist_ok=True)
+    filename = f"footer{ext}"
+    dest = _os.path.join(_FOOTER_UPLOADS_DIR, filename)
+    contents = await file.read()
+    with open(dest, "wb") as f:
+        f.write(contents)
+    row = _get_or_create_template(db)
+    row.footer_image_filename = filename
+    db.commit()
+    return {"footer_image_filename": filename, "url": f"/api/hrm/letterhead-template/footer-image/{filename}"}
+
+
+@router.get("/letterhead-template/footer-image/{filename}")
+def get_footer_image(filename: str):
+    safe = _os.path.basename(filename)
+    path = _os.path.join(_FOOTER_UPLOADS_DIR, safe)
+    if not _os.path.isfile(path):
+        raise HTTPException(404, "Footer image not found")
+    ext = _os.path.splitext(safe)[1].lower()
+    mt = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext.lstrip('.'), "application/octet-stream")
+    return _FileResponse(path, media_type=mt)
+
+
+@router.delete("/letterhead-template/footer-image", status_code=200)
+def delete_footer_image(db: Session = Depends(get_db)):
+    row = _get_or_create_template(db)
+    if row.footer_image_filename:
+        path = _os.path.join(_FOOTER_UPLOADS_DIR, row.footer_image_filename)
+        if _os.path.isfile(path):
+            _os.remove(path)
+        row.footer_image_filename = None
+        db.commit()
+    return {"ok": True}
+
+
+@router.post("/letterhead-template/signature")
+async def upload_signature(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    allowed = ('.png', '.jpg', '.jpeg', '.webp')
+    ext = _os.path.splitext(file.filename or '')[1].lower()
+    if ext not in allowed:
+        raise HTTPException(400, "Only PNG/JPG/WEBP images are allowed")
+    _os.makedirs(_LOGO_UPLOADS_DIR, exist_ok=True)
+    filename = f"signature{ext}"
+    dest = _os.path.join(_LOGO_UPLOADS_DIR, filename)
+    with open(dest, "wb") as f:
+        f.write(await file.read())
+    row = _get_or_create_template(db)
+    row.signature_filename = filename
+    db.commit()
+    return {"signature_filename": filename, "url": f"/api/hrm/letterhead-template/signature/{filename}"}
+
+
+@router.get("/letterhead-template/signature/{filename}")
+def get_signature(filename: str):
+    safe = _os.path.basename(filename)
+    path = _os.path.join(_LOGO_UPLOADS_DIR, safe)
+    if not _os.path.isfile(path):
+        raise HTTPException(404, "Signature not found")
+    ext = _os.path.splitext(safe)[1].lower()
+    mt = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext.lstrip('.'), "application/octet-stream")
+    return _FileResponse(path, media_type=mt)
+
+
+@router.delete("/letterhead-template/signature", status_code=200)
+def delete_signature(db: Session = Depends(get_db)):
+    row = _get_or_create_template(db)
+    if row.signature_filename:
+        path = _os.path.join(_LOGO_UPLOADS_DIR, row.signature_filename)
+        if _os.path.isfile(path):
+            _os.remove(path)
+        row.signature_filename = None
+        db.commit()
+    return {"ok": True}
+
+
+@router.post("/letterhead-template/watermark")
+async def upload_watermark(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    allowed = ('.png', '.jpg', '.jpeg', '.webp')
+    ext = _os.path.splitext(file.filename or '')[1].lower()
+    if ext not in allowed:
+        raise HTTPException(400, "Only PNG/JPG/WEBP images are allowed")
+    _os.makedirs(_LOGO_UPLOADS_DIR, exist_ok=True)
+    filename = f"watermark{ext}"
+    dest = _os.path.join(_LOGO_UPLOADS_DIR, filename)
+    with open(dest, "wb") as f:
+        f.write(await file.read())
+    row = _get_or_create_template(db)
+    row.watermark_filename = filename
+    db.commit()
+    return {"watermark_filename": filename, "url": f"/api/hrm/letterhead-template/watermark/{filename}"}
+
+
+@router.get("/letterhead-template/watermark/{filename}")
+def get_watermark(filename: str):
+    safe = _os.path.basename(filename)
+    path = _os.path.join(_LOGO_UPLOADS_DIR, safe)
+    if not _os.path.isfile(path):
+        raise HTTPException(404, "Watermark not found")
+    ext = _os.path.splitext(safe)[1].lower()
+    mt = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext.lstrip('.'), "application/octet-stream")
+    return _FileResponse(path, media_type=mt)
+
+
+@router.delete("/letterhead-template/watermark", status_code=200)
+def delete_watermark(db: Session = Depends(get_db)):
+    row = _get_or_create_template(db)
+    if row.watermark_filename:
+        path = _os.path.join(_LOGO_UPLOADS_DIR, row.watermark_filename)
+        if _os.path.isfile(path):
+            _os.remove(path)
+        row.watermark_filename = None
+        db.commit()
+    return {"ok": True}
+
+
+@router.post("/letterhead-template/preview")
+def preview_letterhead_template(db: Session = Depends(get_db)):
+    """Generate a sample Appointment Letter using the saved template settings."""
+    row = _get_or_create_template(db)
+    tpl_cfg = {f: getattr(row, f) for f in _LH_FIELDS}
+    sample_fields = {
+        "employee_name":   "Ravi Kumar",
+        "designation":     "Software Engineer",
+        "department":      "Engineering",
+        "letter_date":     "2025-01-15",
+        "joining_date":    "2024-10-01",
+        "confirmation_date": "2025-01-01",
+    }
+    pdf_bytes = generate_letter("Appointment Letter", sample_fields, template=tpl_cfg)
+    return _Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="template-preview.pdf"'},
+    )

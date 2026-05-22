@@ -21,6 +21,22 @@ function StatusChip({ status }) {
   );
 }
 
+async function downloadFile(url, name) {
+  const token = localStorage.getItem('artech_hrms_token');
+  const headers = url.startsWith('/api/') ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error('Download failed');
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = name || 'document';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+}
+
 function RequestCard({ r, onUpload, uploading }) {
   const isFulfilled = r.status === 'Fulfilled';
   return (
@@ -73,13 +89,12 @@ function RequestCard({ r, onUpload, uploading }) {
           {uploading === r.id ? 'Uploading…' : 'Upload Document'}
         </button>
       ) : r.file_url ? (
-        <a
-          href={r.file_url}
-          download={r.file_name || 'document'}
+        <button
+          onClick={() => downloadFile(r.file_url, r.file_name || 'document')}
           className="flex items-center justify-center gap-1.5 w-full py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-lg transition-colors"
         >
           <Download size={13} /> Download
-        </a>
+        </button>
       ) : (
         <div className="flex items-center justify-center gap-1.5 py-2 text-xs text-green-600 font-medium">
           <CheckCircle2 size={13} /> Document fulfilled

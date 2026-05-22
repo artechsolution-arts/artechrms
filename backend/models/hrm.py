@@ -4,6 +4,52 @@ from sqlalchemy.sql import func
 from backend.database import Base
 
 
+class LetterheadTemplate(Base):
+    """Singleton row (id=1) — HR-configurable letterhead for all generated letters."""
+    __tablename__ = "letterhead_template"
+    id             = Column(Integer, primary_key=True, default=1)
+    company_name   = Column(String, default="AR TECH SOLUTIONS")
+    tagline        = Column(String, default="Driven By Innovation")
+    logo_filename  = Column(String, nullable=True)
+    logo_x_mm      = Column(Float, default=16.0)
+    logo_y_mm      = Column(Float, default=10.0)
+    logo_w_mm      = Column(Float, default=32.0)
+    logo_h_mm      = Column(Float, default=32.0)
+    footer_image_filename = Column(String, nullable=True)
+    footer_x_mm  = Column(Float, default=0.0)
+    signature_filename = Column(String, nullable=True)
+    sig_x_mm     = Column(Float, default=18.0)
+    sig_w_mm     = Column(Float, default=40.0)
+    sig_h_mm     = Column(Float, default=20.0)
+    footer_y_mm  = Column(Float, default=0.0)
+    footer_w_mm  = Column(Float, default=210.0)
+    footer_h_mm  = Column(Float, default=62.0)
+    content_top_mm = Column(Float, default=58.92)
+    body_font      = Column(String, default="Source Sans 3")
+    body_font_size = Column(Float, default=10.5)
+    body_bold      = Column(Boolean, default=False)
+    body_italic    = Column(Boolean, default=False)
+    watermark_filename = Column(String, nullable=True)
+    watermark_opacity  = Column(Float, default=0.08)
+    watermark_x_mm     = Column(Float, default=45.0)
+    watermark_y_mm     = Column(Float, default=88.5)
+    watermark_w_mm     = Column(Float, default=120.0)
+    watermark_h_mm     = Column(Float, default=120.0)
+    addr1          = Column(String, default="Flat: 402, 4th Floor, 1-11-254 & 255")
+    addr2          = Column(String, default="Naiks's Vijayasri Nivas, Prakash Nagar,")
+    addr3          = Column(String, default="Begumpet, Hyderabad,")
+    addr4          = Column(String, default="Telangana – 500016")
+    phone1         = Column(String, default="+91 7993013344")
+    phone2         = Column(String, default="+91 7993013355")
+    email          = Column(String, default="info@artechsolution.co.in")
+    website        = Column(String, default="www.artechsolution.co.in")
+    header_color   = Column(String, default="#1764B4")
+    accent_color   = Column(String, default="#01BEB0")
+    hr_signatory   = Column(String, default="Radhika Yalamanchili")
+    hr_role        = Column(String, default="Human Resource Executive")
+    updated_at     = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class EmergencyContact(Base):
     __tablename__ = "emergency_contacts"
 

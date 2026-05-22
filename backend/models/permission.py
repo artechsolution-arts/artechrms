@@ -11,7 +11,7 @@ HR_FEATURES = [
     "attendance", "holidays", "announcements", "assets",
     "salary-slips", "payroll-entry", "payroll-rules",
     "job-openings", "applicants", "appraisals",
-    "edit-requests", "resignations", "document-requests", "status-sheets",
+    "edit-requests", "resignations", "document-requests", "status-sheets", "company-docs",
     # My Portal section visible inside HR shell
     "my-profile", "my-leaves", "my-salary", "my-attendance",
     "my-documents", "my-status", "my-work-mode",
@@ -33,7 +33,7 @@ DEFAULT_PERMISSIONS = {
     "CEO": [
         "dashboard", "employees", "leaves", "work-mode-sheet",
         "leave-balances", "attendance", "holidays", "announcements",
-        "document-requests", "appraisals", "status-sheets",
+        "document-requests", "appraisals", "status-sheets", "company-docs",
     ],
     "Employee": EMP_FEATURES,
 }

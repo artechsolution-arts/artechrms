@@ -190,8 +190,10 @@ export default function SalarySlips({ toast }) {
       const a = document.createElement('a');
       a.href = url;
       a.download = `Payslip_${slipRef || slipId}.pdf`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (e) { toast(e.message, 'error'); }
   };
 

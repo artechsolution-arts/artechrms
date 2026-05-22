@@ -22,4 +22,5 @@ from .hrm import (  # noqa: F401
     ExpenseClaim,
     EmployeeAsset,
     EmployeeHistory,
+    LetterheadTemplate,
 )

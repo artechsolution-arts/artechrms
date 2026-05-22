@@ -41,6 +41,7 @@ import EmpStatus       from './pages/employee/EmpStatus';
 import EmpWorkMode     from './pages/employee/EmpWorkMode';
 import HRStatusSheet   from './pages/HRStatusSheet';
 import HRWorkMode      from './pages/HRWorkMode';
+import CompanyDocs     from './pages/CompanyDocs';
 import PortalGate      from './components/PortalGate';
 
 const PAGES = {
@@ -65,6 +66,7 @@ const PAGES = {
   'resignations':       Resignations,
   'document-requests':  DocumentRequests,
   'status-sheets':      HRStatusSheet,
+  'company-docs':       CompanyDocs,
   'work-mode-sheet':    HRWorkMode,
   'my-profile':         EmpProfile,
   'my-leaves':          EmpLeaves,
