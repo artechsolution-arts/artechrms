@@ -573,6 +573,7 @@ export default function Employees({ toast }) {
   const [attCalYear, setAttCalYear] = useState(() => new Date().getFullYear());
   const [attCalMonth, setAttCalMonth] = useState(() => new Date().getMonth() + 1);
   const [attCalSelected, setAttCalSelected] = useState(null);
+  const [attHolidays, setAttHolidays] = useState([]);
   const [eduExpSaving, setEduExpSaving] = useState(false);
   const [joinedMonthFilter, setJoinedMonthFilter] = useState('');
   const [joinedMonthLabel, setJoinedMonthLabel] = useState('');
@@ -688,7 +689,14 @@ export default function Employees({ toast }) {
   const loadEmpAtt = async (id, year, month) => {
     setEmpAttLoading(true);
     setAttCalSelected(null);
-    try { setEmpAtt(await api('GET', `/api/leaves/attendance?employee_id=${id}&year=${year}&month=${month}`)); }
+    try {
+      const [att, holidays] = await Promise.all([
+        api('GET', `/api/leaves/attendance?employee_id=${id}&year=${year}&month=${month}`),
+        api('GET', `/api/hrm/holidays?year=${year}`),
+      ]);
+      setEmpAtt(att);
+      setAttHolidays(holidays);
+    }
     catch (e) { toast(e.message, 'error'); }
     finally { setEmpAttLoading(false); }
   };
@@ -1589,9 +1597,11 @@ export default function Employees({ toast }) {
                   const daysInMonth = new Date(attCalYear, attCalMonth, 0).getDate();
                   const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
                   const ds = d => `${attCalYear}-${String(attCalMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                  const attByDate = empAtt.reduce((m, a) => { m[a.date] = a; return m; }, {});
+                  const attByDate     = empAtt.reduce((m, a) => { m[a.date] = a; return m; }, {});
+                  const holidayByDate = attHolidays.reduce((m, h) => { m[h.date] = h; return m; }, {});
                   const todayStr  = new Date().toISOString().slice(0, 10);
                   const selRec    = attCalSelected ? attByDate[attCalSelected] : null;
+                  const selHol    = attCalSelected ? holidayByDate[attCalSelected] : null;
                   const summary   = empAtt.reduce((acc, a) => { acc[a.status] = (acc[a.status] || 0) + 1; return acc; }, {});
 
                   return (
@@ -1630,9 +1640,10 @@ export default function Employees({ toast }) {
                         ) : (
                           <div className="grid grid-cols-7 divide-x divide-gray-100 dark:divide-gray-800">
                             {cells.map((d, i) => {
-                              if (!d) return <div key={`e-${i}`} className="min-h-[56px] bg-gray-50/40 dark:bg-gray-900/20" />;
+                              if (!d) return <div key={`e-${i}`} className="min-h-[68px] bg-gray-50/40 dark:bg-gray-900/20" />;
                               const dateKey  = ds(d);
                               const rec      = attByDate[dateKey];
+                              const hol      = holidayByDate[dateKey];
                               const isToday  = dateKey === todayStr;
                               const isWknd   = (i % 7 === 0 || i % 7 === 6);
                               const isSel    = attCalSelected === dateKey;
@@ -1642,16 +1653,24 @@ export default function Employees({ toast }) {
                                   onClick={() => setAttCalSelected(isSel ? null : dateKey)}
                                   className={`min-h-[68px] p-1.5 text-left border-b border-gray-100 dark:border-gray-800 transition-colors
                                     ${isSel ? 'ring-2 ring-inset ring-[var(--accent)]' : ''}
-                                    ${rec ? STATUS_CELL[rec.status] || 'bg-gray-100 hover:bg-gray-200' : isWknd ? 'bg-red-50/40 dark:bg-red-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}
+                                    ${rec ? STATUS_CELL[rec.status] || 'bg-gray-100 hover:bg-gray-200'
+                                      : hol ? 'bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30'
+                                      : isWknd ? 'bg-red-50/40 dark:bg-red-900/10'
+                                      : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}
                                 >
                                   <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-bold mb-0.5
-                                    ${isToday ? 'text-white' : rec ? '' : isWknd ? 'text-red-400' : 'text-gray-500 dark:text-gray-400'}`}
+                                    ${isToday ? 'text-white' : rec ? '' : hol ? 'text-green-600 dark:text-green-400' : isWknd ? 'text-red-400' : 'text-gray-500 dark:text-gray-400'}`}
                                     style={isToday ? { backgroundColor: 'var(--accent)' } : {}}>
                                     {d}
                                   </span>
                                   {rec && (
                                     <div className="text-[9px] font-semibold leading-tight truncate opacity-80">
                                       {rec.status === 'On Leave' ? 'Leave' : rec.status}
+                                    </div>
+                                  )}
+                                  {hol && !rec && (
+                                    <div className="text-[9px] font-semibold leading-tight truncate text-green-600 dark:text-green-400">
+                                      {hol.name}
                                     </div>
                                   )}
                                   {(rec?.in_time || rec?.out_time || rec?.working_hours) && (
@@ -1685,7 +1704,16 @@ export default function Employees({ toast }) {
                           </div>
                         </div>
                       )}
-                      {attCalSelected && !selRec && !empAttLoading && (
+                      {selHol && (
+                        <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3.5 flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-bold text-green-700 dark:text-green-400">{fmtDate(selHol.date)} — Holiday</p>
+                            <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">{selHol.name}{selHol.holiday_type ? ` · ${selHol.holiday_type}` : ''}</p>
+                          </div>
+                          <button onClick={() => setAttCalSelected(null)} className="opacity-50 hover:opacity-100 text-green-700"><X size={13} /></button>
+                        </div>
+                      )}
+                      {attCalSelected && !selRec && !selHol && !empAttLoading && (
                         <p className="text-xs text-center text-gray-400 py-1">No record for this day</p>
                       )}
                     </div>
