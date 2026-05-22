@@ -212,7 +212,7 @@ export default function PayrollRules({ toast }) {
                 onChange={v => f({ lop_basis: v })}
                 options={[
                   { value: 'calendar', label: 'Calendar days in month' },
-                  { value: 'working', label: 'Working days (~26 days)' },
+                  { value: 'working', label: 'Working days (Mon–Fri, 20–22 days)' },
                 ]}
                 className="w-48"
               />

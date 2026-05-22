@@ -336,7 +336,11 @@ def run_payroll(data: PayrollRunIn, db: Session = Depends(get_db)):
             absent_days = sum(1 for a in att_rows if a.status == "Absent")
             if absent_days > 0:
                 if rules.get("lop_basis", "calendar") == "working":
-                    divisor = max(days_in_month - 8, 20)  # approx working days
+                    # Count actual Mon–Fri days in the payroll month
+                    divisor = sum(
+                        1 for d in range(1, days_in_month + 1)
+                        if date(data.year, data.month, d).weekday() < 5
+                    )
                 else:
                     divisor = days_in_month
                 lop_amt = round(calc["basic"] / divisor * absent_days, 2)
