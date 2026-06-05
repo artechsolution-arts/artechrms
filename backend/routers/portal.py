@@ -1037,3 +1037,269 @@ def portal_withdraw_resignation(resignation_id: int, request: Request, db: Sessi
     r.status = "Withdrawn"
     db.commit()
     return {"ok": True}
+
+
+# ── Start Journey (Employee Onboarding Self-Service) ───────────
+
+import json as _json
+from backend.models.onboarding import OnboardingChecklist
+
+JOURNEY_STEPS = [
+    # group, key, label, has_upload, has_fields
+    ("Documents to Sign",    "offer_letter",       "Offer Letter",                       True,  True),
+    ("Documents to Sign",    "employment_agreement","Employment Agreement",               True,  False),
+    ("Documents to Sign",    "nda",                "NDA / Confidentiality Agreement",    True,  False),
+    ("Documents to Sign",    "hr_policy",          "HR Policy Handbook",                 False, True),
+    ("Documents to Sign",    "code_of_conduct",    "Code of Conduct",                    False, True),
+    ("Documents to Sign",    "it_policy",          "IT Security Policy",                 False, True),
+    ("Personal Documents",   "aadhaar",            "Aadhaar Card",                       True,  True),
+    ("Personal Documents",   "pan",                "PAN Card",                           True,  True),
+    ("Personal Documents",   "passport",           "Passport Copy",                      True,  True),
+    ("Personal Documents",   "education_certs",    "Educational Certificates",           True,  False),
+    ("Personal Documents",   "prev_employment",    "Previous Employment Letter",         True,  False),
+    ("Personal Documents",   "salary_slips",       "Last 3 Months Salary Slips",         True,  False),
+    ("Bank & Statutory",     "bank_details",       "Bank Account Details",               False, True),
+    ("Bank & Statutory",     "pf_form",            "PF Nomination Form",                 True,  False),
+    ("Personal Information", "emergency_contact",  "Emergency Contact Details",          False, True),
+    ("Personal Information", "personal_info",      "Personal & Address Details",         False, True),
+]
+
+
+def _get_journey(emp_id: int, db: Session):
+    checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == emp_id).first()
+    if not checklist:
+        return {}
+    payload = _json.loads(checklist.items)
+    return payload.get("__journey__", {})
+
+
+def _save_journey(emp_id: int, journey: dict, db: Session):
+    checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == emp_id).first()
+    if not checklist:
+        checklist = OnboardingChecklist(employee_id=emp_id, items=_json.dumps({"__journey__": journey}))
+        db.add(checklist)
+    else:
+        payload = _json.loads(checklist.items)
+        payload["__journey__"] = journey
+        checklist.items = _json.dumps(payload)
+    db.commit()
+
+
+@router.get("/start-journey")
+def get_start_journey(request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    journey = _get_journey(emp.id, db)
+    steps = []
+    for group, key, label, has_upload, has_fields in JOURNEY_STEPS:
+        step_data = journey.get(key, {})
+        steps.append({
+            "group": group,
+            "key": key,
+            "label": label,
+            "has_upload": has_upload,
+            "has_fields": has_fields,
+            "status": step_data.get("status", "pending"),
+            "data": step_data.get("data", {}),
+            "file_url": step_data.get("file_url"),
+            "file_name": step_data.get("file_name"),
+            "submitted_at": step_data.get("submitted_at"),
+        })
+    completed = sum(1 for s in steps if s["status"] in ("submitted", "verified"))
+    return {
+        "employee": {
+            "id": emp.id,
+            "full_name": emp.full_name,
+            "employee_id": emp.employee_id,
+            "designation": emp.designation_rel.name if emp.designation_rel else None,
+            "department": emp.department_rel.name if emp.department_rel else None,
+            "date_of_joining": str(emp.date_of_joining) if emp.date_of_joining else None,
+            "profile_photo": emp.profile_photo,
+        },
+        "steps": steps,
+        "completed": completed,
+        "total": len(steps),
+    }
+
+
+class JourneyStepData(BaseModel):
+    key: str
+    data: dict = {}
+
+
+@router.put("/start-journey/step")
+def save_journey_step(body: JourneyStepData, request: Request, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    journey = _get_journey(emp.id, db)
+    step = journey.get(body.key, {})
+    step["data"] = body.data
+    step["status"] = "submitted"
+    step["submitted_at"] = _datetime.utcnow().isoformat()
+    journey[body.key] = step
+    _save_journey(emp.id, journey, db)
+    return {"ok": True, "status": "submitted"}
+
+
+@router.post("/start-journey/upload/{step_key}")
+async def upload_journey_doc(step_key: str, file: UploadFile = File(...), request: Request = None, db: Session = Depends(get_db)):
+    emp = _get_employee(request, db)
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if ext not in ("pdf", "jpg", "jpeg", "png", "doc", "docx"):
+        raise HTTPException(400, "Allowed: PDF, JPG, PNG, DOC, DOCX")
+    fname = f"journey_{emp.id}_{step_key}_{int(time.time())}.{ext}"
+    url = storage.upload_file(await file.read(), "documents", fname)
+    journey = _get_journey(emp.id, db)
+    step = journey.get(step_key, {})
+    step["file_url"] = url
+    step["file_name"] = file.filename
+    step["status"] = "submitted"
+    step["submitted_at"] = _datetime.utcnow().isoformat()
+    journey[step_key] = step
+    _save_journey(emp.id, journey, db)
+    return {"ok": True, "file_url": url, "file_name": file.filename}
+
+
+@router.get("/start-journey/download/{step_key}")
+def download_journey_template(step_key: str, request: Request, db: Session = Depends(get_db)):
+    """Return a downloadable template — serve HR's uploaded file if available, else auto-generate."""
+    from fastapi.responses import HTMLResponse, RedirectResponse
+    from backend.models.onboarding import OnboardingChecklist
+    emp = _get_employee(request, db)
+
+    # ── Check if HR uploaded a custom document for this employee ──
+    checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == emp.id).first()
+    if checklist:
+        try:
+            payload = _json.loads(checklist.items)
+            hr_docs = payload.get("__hr_docs__", {})
+            if step_key in hr_docs and hr_docs[step_key].get("file_url"):
+                return RedirectResponse(url=hr_docs[step_key]["file_url"], status_code=302)
+        except Exception:
+            pass
+    if step_key == "offer_letter":
+        html = f"""<!DOCTYPE html><html><head><title>Offer Letter</title>
+<style>body{{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:40px;border:1px solid #ccc}}
+h1{{color:#0D1F4E}}p{{line-height:1.8}}.sig{{margin-top:60px}}</style></head>
+<body>
+<h2>ARTECH SOLUTIONS</h2>
+<h1>Offer Letter</h1>
+<p>Date: {_datetime.utcnow().strftime('%d %B %Y')}</p>
+<p>Dear <strong>{emp.full_name}</strong>,</p>
+<p>We are pleased to offer you the position of <strong>{emp.designation_rel.name if emp.designation_rel else 'Associate'}</strong>
+in our <strong>{emp.department_rel.name if emp.department_rel else ''}</strong> department,
+effective from <strong>{emp.date_of_joining}</strong>.</p>
+<p>This offer is subject to the terms and conditions of employment as communicated by HR.
+Please sign and return this letter as your acceptance.</p>
+<p>We look forward to having you on board.</p>
+<p>Warm regards,<br><strong>HR Team</strong><br>Artech Solutions</p>
+<div class="sig">
+<p>I, <strong>{emp.full_name}</strong>, accept the terms of this offer.</p>
+<p>Signature: _____________________________ &nbsp;&nbsp;&nbsp; Date: _______________</p>
+</div></body></html>"""
+        return HTMLResponse(content=html, headers={"Content-Disposition": f"attachment; filename=Offer_Letter_{emp.employee_id}.html"})
+    elif step_key == "pf_form":
+        html = f"""<!DOCTYPE html><html><head><title>PF Nomination Form</title>
+<style>body{{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:40px;border:1px solid #ccc}}table{{width:100%;border-collapse:collapse}}td,th{{border:1px solid #ccc;padding:8px}}</style></head>
+<body><h2>PF Nomination Form - Form 2</h2>
+<p>Employee Name: {emp.full_name} &nbsp;&nbsp; Employee ID: {emp.employee_id}</p>
+<table><tr><th>Nominee Name</th><th>Relationship</th><th>Date of Birth</th><th>Share %</th></tr>
+<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table>
+<p style="margin-top:40px">Signature: _____________________________ Date: _______________</p>
+</body></html>"""
+        return HTMLResponse(content=html, headers={"Content-Disposition": "attachment; filename=PF_Nomination_Form.html"})
+
+    elif step_key == "employment_agreement":
+        html = f"""<!DOCTYPE html><html><head><title>Employment Agreement</title>
+<style>body{{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:40px;border:1px solid #ccc}}h1{{color:#0D1F4E}}p{{line-height:1.8}}ol li{{margin-bottom:10px}}</style></head>
+<body><h2>ARTECH SOLUTIONS</h2><h1>Employment Agreement</h1>
+<p>This Employment Agreement is entered into between <strong>Artech Solutions</strong> and <strong>{emp.full_name}</strong> (Employee ID: {emp.employee_id}), effective <strong>{emp.date_of_joining}</strong>.</p>
+<ol>
+<li><b>Position:</b> {emp.designation_rel.name if emp.designation_rel else 'Associate'} in {emp.department_rel.name if emp.department_rel else 'the Company'}.</li>
+<li><b>Employment Type:</b> {emp.employment_type or 'Full-time'}. The employment is subject to a probation period as communicated by HR.</li>
+<li><b>Confidentiality:</b> The Employee agrees to maintain strict confidentiality of all proprietary information.</li>
+<li><b>Compliance:</b> The Employee agrees to comply with all company policies, codes of conduct, and applicable laws.</li>
+<li><b>Termination:</b> Either party may terminate this agreement as per the notice period policy communicated separately.</li>
+<li><b>Intellectual Property:</b> All work produced during employment remains the property of Artech Solutions.</li>
+</ol>
+<p>By signing below, the Employee acknowledges and agrees to the terms of this Employment Agreement.</p>
+<div style="margin-top:50px;display:grid;grid-template-columns:1fr 1fr;gap:40px">
+<div><p>Employee Signature:</p><p>_______________________</p><p>{emp.full_name}</p><p>Date: _______________</p></div>
+<div><p>HR Authorized Signatory:</p><p>_______________________</p><p>HR Manager, Artech Solutions</p><p>Date: _______________</p></div>
+</div></body></html>"""
+        return HTMLResponse(content=html, headers={"Content-Disposition": f"attachment; filename=Employment_Agreement_{emp.employee_id}.html"})
+
+    elif step_key == "nda":
+        html = f"""<!DOCTYPE html><html><head><title>NDA</title>
+<style>body{{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:40px;border:1px solid #ccc}}h1{{color:#0D1F4E}}p{{line-height:1.8}}</style></head>
+<body><h2>ARTECH SOLUTIONS</h2><h1>Non-Disclosure Agreement (NDA)</h1>
+<p>This Non-Disclosure and Confidentiality Agreement is made between <strong>Artech Solutions</strong> and <strong>{emp.full_name}</strong> (Employee ID: {emp.employee_id}), effective <strong>{emp.date_of_joining}</strong>.</p>
+<p><b>1. Confidential Information:</b> The Employee shall not disclose, share, or use any proprietary, confidential, or sensitive information of Artech Solutions for any purpose other than the performance of their duties.</p>
+<p><b>2. Scope:</b> This agreement covers all business strategies, client data, technical information, financial data, personnel records, and any other information marked or reasonably understood to be confidential.</p>
+<p><b>3. Duration:</b> This obligation continues for a period of 2 (two) years after the termination of employment.</p>
+<p><b>4. Exceptions:</b> Information that is publicly available or disclosed by court order is excluded.</p>
+<p><b>5. Consequences of Breach:</b> Any breach of this agreement may result in disciplinary action, termination, and legal proceedings.</p>
+<p>By signing below, the Employee acknowledges receipt of and agreement to this NDA.</p>
+<div style="margin-top:50px">
+<p>Employee Signature: _______________________&nbsp;&nbsp;&nbsp;&nbsp; Date: _______________</p>
+<p>Name: {emp.full_name}</p>
+</div></body></html>"""
+        return HTMLResponse(content=html, headers={"Content-Disposition": f"attachment; filename=NDA_{emp.employee_id}.html"})
+
+    elif step_key == "hr_policy":
+        html = """<!DOCTYPE html><html><head><title>HR Policy Handbook</title>
+<style>body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:40px;border:1px solid #ccc}h1,h2{color:#0D1F4E}p{line-height:1.8}</style></head>
+<body><h2>ARTECH SOLUTIONS</h2><h1>HR Policy Handbook</h1>
+<h2>1. Leave Policy</h2><p>Employees are entitled to earned leave, casual leave, and sick leave as per the schedule communicated at the time of joining. Leave must be applied in advance via the HRMS portal.</p>
+<h2>2. Working Hours</h2><p>Standard working hours are 9:00 AM to 6:00 PM, Monday to Friday. Flexible arrangements may be agreed with the reporting manager.</p>
+<h2>3. Code of Conduct</h2><p>Employees are expected to maintain professional conduct, respect colleagues, and uphold the values of Artech Solutions at all times.</p>
+<h2>4. Anti-Harassment Policy</h2><p>Artech Solutions maintains a zero-tolerance policy toward any form of harassment, discrimination, or bullying in the workplace.</p>
+<h2>5. Grievance Redressal</h2><p>Employees with grievances should first approach their reporting manager. Unresolved issues may be escalated to HR.</p>
+<h2>6. Performance Reviews</h2><p>Performance appraisals are conducted annually. Continuous feedback is encouraged throughout the year.</p>
+<p style="margin-top:40px"><i>Please read this handbook fully and acknowledge your understanding via the HRMS portal.</i></p></body></html>"""
+        return HTMLResponse(content=html, headers={"Content-Disposition": "attachment; filename=HR_Policy_Handbook.html"})
+
+    elif step_key == "code_of_conduct":
+        html = """<!DOCTYPE html><html><head><title>Code of Conduct</title>
+<style>body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:40px;border:1px solid #ccc}h1,h2{color:#0D1F4E}p{line-height:1.8}ul li{margin-bottom:8px}</style></head>
+<body><h2>ARTECH SOLUTIONS</h2><h1>Code of Conduct</h1>
+<p>All Artech Solutions employees are expected to uphold the following standards of professional conduct:</p>
+<h2>Professional Behaviour</h2>
+<ul><li>Treat every colleague, client, and partner with respect and dignity.</li>
+<li>Maintain professionalism in communication — verbal, written, and digital.</li>
+<li>Arrive on time and meet deadlines with commitment.</li></ul>
+<h2>Integrity & Ethics</h2>
+<ul><li>Act honestly and transparently in all business dealings.</li>
+<li>Avoid conflicts of interest and disclose any that arise.</li>
+<li>Do not accept bribes, gifts, or favours that could influence business decisions.</li></ul>
+<h2>Data & Information Security</h2>
+<ul><li>Handle all company and client data with utmost confidentiality.</li>
+<li>Do not share login credentials or access company systems from unauthorized devices.</li></ul>
+<h2>Consequences of Violation</h2>
+<p>Violations of this Code of Conduct may result in disciplinary action up to and including termination.</p>
+<p style="margin-top:40px"><i>By acknowledging this document, you confirm that you have read, understood, and agreed to abide by this Code of Conduct.</i></p></body></html>"""
+        return HTMLResponse(content=html, headers={"Content-Disposition": "attachment; filename=Code_of_Conduct.html"})
+
+    elif step_key == "it_policy":
+        html = """<!DOCTYPE html><html><head><title>IT Security Policy</title>
+<style>body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:40px;border:1px solid #ccc}h1,h2{color:#0D1F4E}p{line-height:1.8}ul li{margin-bottom:8px}</style></head>
+<body><h2>ARTECH SOLUTIONS</h2><h1>IT Security Policy</h1>
+<h2>1. Password Policy</h2>
+<ul><li>Use strong passwords (min. 8 chars, mix of letters, numbers, symbols).</li>
+<li>Never share your password with anyone, including IT support.</li>
+<li>Change passwords every 90 days.</li></ul>
+<h2>2. Device & Access</h2>
+<ul><li>Use only company-approved devices for work tasks.</li>
+<li>Lock your computer when leaving your desk.</li>
+<li>Do not install unauthorized software on company devices.</li></ul>
+<h2>3. Internet & Email</h2>
+<ul><li>Use the internet responsibly for work-related purposes.</li>
+<li>Do not click on suspicious links or open unknown email attachments.</li>
+<li>Report phishing attempts immediately to IT support.</li></ul>
+<h2>4. Data Protection</h2>
+<ul><li>Do not store sensitive data on personal drives or cloud accounts.</li>
+<li>Encrypt files containing confidential information before sharing.</li></ul>
+<h2>5. Incident Reporting</h2>
+<p>Report any suspected security breach, lost device, or unauthorized access immediately to the IT team.</p>
+<p style="margin-top:40px"><i>By acknowledging this policy, you confirm you have read and will comply with all IT security requirements.</i></p></body></html>"""
+        return HTMLResponse(content=html, headers={"Content-Disposition": "attachment; filename=IT_Security_Policy.html"})
+
+    raise HTTPException(404, "No template for this step")

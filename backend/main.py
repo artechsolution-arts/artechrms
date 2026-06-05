@@ -20,6 +20,8 @@ from backend.routers import admin_panel as admin_router
 from backend.routers import notifications as notifications_router
 from backend.routers import resignations as resignations_router
 from backend.routers import notice_period_config as notice_period_config_router
+from backend.routers import onboarding as onboarding_router
+from backend.models import onboarding as _onboarding_models  # ensure tables created
 from backend.auth_utils import decode_token
 from backend.database import SessionLocal
 from backend.models.auth import User
@@ -37,7 +39,16 @@ with engine.connect() as _conn:
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS basic_salary FLOAT",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS hra_percent FLOAT DEFAULT 40",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS special_allowance FLOAT DEFAULT 0",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS ca_allowance FLOAT DEFAULT 0",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS lta FLOAT DEFAULT 0",
+        "ALTER TABLE payroll_rules ADD COLUMN IF NOT EXISTS pf_enabled BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE payroll_rules ADD COLUMN IF NOT EXISTS esi_enabled BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE payroll_rules ADD COLUMN IF NOT EXISTS hra_enabled BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE payroll_rules ADD COLUMN IF NOT EXISTS use_salary_structure BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE payroll_rules ADD COLUMN IF NOT EXISTS basic_pct FLOAT DEFAULT 50.0",
+        "ALTER TABLE payroll_rules ADD COLUMN IF NOT EXISTS hra_pct FLOAT DEFAULT 20.0",
+        "ALTER TABLE payroll_rules ADD COLUMN IF NOT EXISTS ca_pct FLOAT DEFAULT 12.33",
+        "ALTER TABLE payroll_rules ADD COLUMN IF NOT EXISTS others_pct FLOAT DEFAULT 17.67",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS other_allowance FLOAT DEFAULT 0",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pf_applicable INTEGER DEFAULT 1",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS esi_applicable INTEGER DEFAULT 1",
@@ -55,6 +66,11 @@ with engine.connect() as _conn:
         "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS manager_score FLOAT",
         "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS business_score FLOAT",
         "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS biz_head_score FLOAT",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS hr_eval JSONB",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS hr_score FLOAT",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS ceo_eval JSONB",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS ceo_score FLOAT",
+        "ALTER TABLE appraisals ADD COLUMN IF NOT EXISTS perf_documents JSONB DEFAULT '[]'::jsonb",
         "ALTER TABLE appraisals ALTER COLUMN status TYPE VARCHAR(30)",
         # Migrate old status values to new flow
         "UPDATE appraisals SET status = 'Goals Set' WHERE status IN ('Draft')",
@@ -210,6 +226,7 @@ app.include_router(social_router.router)
 app.include_router(admin_router.router)
 app.include_router(notifications_router.router)
 app.include_router(resignations_router.router)
+app.include_router(onboarding_router.router)
 app.include_router(notice_period_config_router.router)
 
 # Serve uploaded profile photos

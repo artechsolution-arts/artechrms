@@ -59,6 +59,7 @@ class Employee(Base):
     basic_salary = Column(Float, nullable=True)
     hra_percent = Column(Float, default=40.0)
     special_allowance = Column(Float, default=0.0)
+    ca_allowance  = Column(Float, default=0.0)   # Conveyance Allowance
     lta = Column(Float, default=0.0)
     other_allowance = Column(Float, default=0.0)
     pf_applicable = Column(Integer, default=1)

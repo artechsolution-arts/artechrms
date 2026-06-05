@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import Select from '../components/Select';
 import { Plus, RefreshCw, Trash2, ChevronDown, Target, Star, ClipboardCheck,
-         Briefcase, Crown, Eye, X } from 'lucide-react';
+         Briefcase, Crown, Eye, X, FileText, Upload, Download, Lock } from 'lucide-react';
 
 // ── Constants ──────────────────────────────────────────────────
 const STATUS_ORDER = ['Goals Set', 'Self Evaluated', 'Manager Evaluated', 'Business Evaluated', 'Completed'];
@@ -16,11 +16,14 @@ const STATUS_STYLE = {
   'Completed':           'bg-green-50 text-green-700 border-green-200',
 };
 
+// All evaluation stages (in display order)
 const STAGE_META = [
-  { key: 'self_eval',     scoreKey: 'self_score',     label: 'Self Evaluation',           icon: Star,          who: 'Employee',       action: null },
-  { key: 'manager_eval',  scoreKey: 'manager_score',  label: 'Manager Evaluation',        icon: ClipboardCheck, who: 'Manager/HR',    action: 'manager-eval' },
-  { key: 'business_eval', scoreKey: 'business_score', label: 'Business Evaluation',       icon: Briefcase,     who: 'Business Reviewer', action: 'business-eval' },
-  { key: 'biz_head_eval', scoreKey: 'biz_head_score', label: 'Business Head Approval',    icon: Crown,         who: 'Business Head',  action: 'biz-head-eval' },
+  { key: 'self_eval',     scoreKey: 'self_score',     label: 'Self Evaluation',        icon: Star,           who: 'Employee',          action: null },
+  { key: 'hr_eval',       scoreKey: 'hr_score',       label: 'HR Evaluation',          icon: ClipboardCheck, who: 'HR',                 action: 'hr-eval', roles: ['HR','SuperAdmin'] },
+  { key: 'manager_eval',  scoreKey: 'manager_score',  label: 'Manager Evaluation',     icon: ClipboardCheck, who: 'Manager/HR',         action: 'manager-eval' },
+  { key: 'ceo_eval',      scoreKey: 'ceo_score',      label: 'CEO Evaluation',         icon: Crown,          who: 'CEO',                action: 'ceo-eval', roles: ['CEO','SuperAdmin'] },
+  { key: 'business_eval', scoreKey: 'business_score', label: 'Business Evaluation',    icon: Briefcase,      who: 'Business Reviewer',  action: 'business-eval' },
+  { key: 'biz_head_eval', scoreKey: 'biz_head_score', label: 'Business Head Approval', icon: Crown,          who: 'Business Head',      action: 'biz-head-eval' },
 ];
 
 function statusIndex(status) {
@@ -161,49 +164,129 @@ function EvalForm({ goals, onSubmit, submitting }) {
   );
 }
 
+// ── Performance Documents Tab ───────────────────────────────────
+function PerfDocuments({ appraisalId, documents, onRefresh, toast }) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('artech_hrms_token');
+      const fd = new FormData(); fd.append('file', file);
+      const res = await fetch(`/api/appraisals/${appraisalId}/documents/upload`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Upload failed');
+      toast('Document uploaded', 'success');
+      onRefresh();
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setUploading(false); }
+  };
+
+  const handleDelete = async (docId) => {
+    if (!confirm('Remove this document?')) return;
+    try {
+      await api('DELETE', `/api/appraisals/${appraisalId}/documents/${docId}`);
+      toast('Document removed', 'success');
+      onRefresh();
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const docs = documents || [];
+  const fmt = iso => { try { return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return iso; } };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{docs.length} Document{docs.length !== 1 ? 's' : ''}</p>
+        <button onClick={() => fileRef.current?.click()} disabled={uploading}
+          className="btn btn-primary btn-xs gap-1.5">
+          <Upload size={11} /> {uploading ? 'Uploading…' : 'Upload'}
+        </button>
+        <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.jpg,.png,.xlsx,.pptx" className="hidden" onChange={handleUpload} />
+      </div>
+
+      {docs.length === 0 ? (
+        <div className="text-center py-10 text-sm text-gray-400">
+          <FileText size={32} className="mx-auto mb-2 opacity-30" />
+          No performance documents yet. Upload PDFs, Word docs, or images.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {docs.map(doc => (
+            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                <FileText size={14} className="text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{doc.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{doc.type} · {doc.uploaded_by} · {fmt(doc.uploaded_at)}</p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <a href={doc.url} download target="_blank" rel="noreferrer"
+                  className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 transition-colors">
+                  <Download size={13} />
+                </a>
+                <button onClick={() => handleDelete(doc.id)}
+                  className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Detail Modal ────────────────────────────────────────────────
 function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
   const [detail, setDetail] = useState(null);
   const [activeTab, setActiveTab] = useState('goals');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    api('GET', `/api/appraisals/${appraisal.id}`)
-      .then(setDetail)
-      .catch(e => toast(e.message, 'error'));
+  // Get current user role from localStorage
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('artech_hrms_user') || '{}'); } catch { return {}; } })();
+  const userRole = currentUser.role || '';
+
+  const loadDetail = useCallback(async () => {
+    try {
+      const d = await api('GET', `/api/appraisals/${appraisal.id}`);
+      setDetail(d);
+    } catch (e) { toast(e.message, 'error'); }
   }, [appraisal.id]);
 
-  const currentStageIdx = statusIndex(appraisal.status);
+  useEffect(() => { loadDetail(); }, [loadDetail]);
 
   const submitEval = async (stageAction, evalData) => {
     setSubmitting(true);
     try {
       await api('PUT', `/api/appraisals/${appraisal.id}/${stageAction}`, evalData);
-      toast('Evaluation submitted', 'success');
-      const updated = await api('GET', `/api/appraisals/${appraisal.id}`);
-      setDetail(updated);
+      toast('Evaluation submitted successfully', 'success');
+      await loadDetail();
       onRefresh();
     } catch (e) { toast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const tabs = [
-    { key: 'goals', label: 'Goals', icon: Target },
-    ...STAGE_META.map(s => ({ key: s.key, label: s.label, icon: s.icon })),
+    { key: 'goals',     label: 'Goals',                icon: Target },
+    { key: 'perf-docs', label: 'Performance Docs',     icon: FileText },
+    { key: 'evaluation',label: 'Evaluation',            icon: ClipboardCheck },
   ];
 
-  // Which HR stage is actionable right now?
-  const actionableStage = STAGE_META.find((s, i) => {
-    const requiredStatuses = ['Self Evaluated', 'Manager Evaluated', 'Business Evaluated'];
-    return s.action && appraisal.status === requiredStatuses[i - 1 + 1] || false;
-  });
-  // Simpler: map status → actionable
-  const actionMap = {
-    'Self Evaluated':     STAGE_META[1],
-    'Manager Evaluated':  STAGE_META[2],
-    'Business Evaluated': STAGE_META[3],
+  // Status-based action map for sequential stages
+  const sequentialActionMap = {
+    'Self Evaluated':     STAGE_META.find(s => s.key === 'manager_eval'),
+    'Manager Evaluated':  STAGE_META.find(s => s.key === 'business_eval'),
+    'Business Evaluated': STAGE_META.find(s => s.key === 'biz_head_eval'),
   };
-  const currentAction = actionMap[appraisal.status];
+  const currentSequentialAction = sequentialActionMap[appraisal.status];
 
   if (!detail) {
     return (
@@ -232,29 +315,26 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
           </div>
         </div>
 
-        {/* Score summary bar */}
-        <div className="grid grid-cols-4 divide-x divide-gray-100 dark:divide-gray-800 bg-gray-50 dark:bg-gray-800/50">
+        {/* Score summary bar — 6 stages */}
+        <div className="grid grid-cols-6 divide-x divide-gray-100 dark:divide-gray-800 bg-gray-50 dark:bg-gray-800/50">
           {STAGE_META.map(s => (
-            <div key={s.key} className="px-3 py-2 text-center">
-              <p className="text-[10px] text-gray-400 mb-0.5">{s.label.split(' ')[0]}</p>
+            <div key={s.key} className="px-2 py-2 text-center">
+              <p className="text-[9px] text-gray-400 mb-0.5 truncate">{s.label.replace(' Evaluation','').replace(' Approval','')}</p>
               <ScorePill score={detail[s.scoreKey]} />
             </div>
           ))}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-0 border-b border-gray-100 dark:border-gray-800 overflow-x-auto px-1">
+        {/* 3 main tabs */}
+        <div className="flex gap-0 border-b border-gray-100 dark:border-gray-800 px-1">
           {tabs.map(t => {
             const Icon = t.icon;
             return (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors
+              <button key={t.key} onClick={() => setActiveTab(t.key)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors
                   ${activeTab === t.key
                     ? 'border-[var(--accent)] text-[var(--accent)]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-              >
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
                 <Icon size={12} /> {t.label}
               </button>
             );
@@ -263,55 +343,104 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
 
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto p-5">
+
+          {/* ── GOALS TAB ── */}
           {activeTab === 'goals' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  {(detail.goals || []).length} Goals Defined
+                  {(detail.goals || []).length} Goals · Total weight: {(detail.goals || []).reduce((s, g) => s + (g.weight || 0), 0)}%
                 </p>
-                <div className="text-xs text-gray-400">
-                  Total weight: {(detail.goals || []).reduce((s, g) => s + (g.weight || 0), 0)}%
-                </div>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${STATUS_STYLE[appraisal.status] || ''}`}>
+                  {appraisal.status}
+                </span>
               </div>
               {(detail.goals || []).length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">No goals set yet</p>
+                <p className="text-sm text-gray-400 text-center py-8">No goals set yet</p>
               ) : (
                 detail.goals.map((g, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800">
-                    <div className="w-6 h-6 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] text-xs font-bold flex items-center justify-center flex-shrink-0">
+                  <div key={i} className="flex items-start gap-3 p-3.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                    <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] text-xs font-bold flex items-center justify-center flex-shrink-0">
                       {i + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{g.title}</p>
-                      {g.target && <p className="text-xs text-gray-500 mt-0.5">Target: {g.target}</p>}
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{g.title}</p>
+                      {g.target && <p className="text-xs text-gray-500 mt-1">🎯 Target: {g.target}</p>}
                     </div>
-                    <span className="text-xs font-semibold text-gray-500 flex-shrink-0">{g.weight}%</span>
+                    <div className="text-right flex-shrink-0">
+                      <span className="text-xs font-bold text-[var(--accent)]">{g.weight}%</span>
+                      <p className="text-[10px] text-gray-400">weight</p>
+                    </div>
                   </div>
                 ))
               )}
             </div>
           )}
 
-          {STAGE_META.map((stage, si) => activeTab === stage.key && (
-            <div key={stage.key}>
-              <div className="flex items-center gap-2 mb-4">
-                <stage.icon size={14} className="text-[var(--accent)]" />
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{stage.label}</h3>
-                <span className="text-xs text-gray-400">— by {stage.who}</span>
-              </div>
+          {/* ── PERFORMANCE DOCS TAB ── */}
+          {activeTab === 'perf-docs' && (
+            <PerfDocuments
+              appraisalId={appraisal.id}
+              documents={detail.perf_documents}
+              onRefresh={loadDetail}
+              toast={toast}
+            />
+          )}
 
-              {/* Current actionable HR stage */}
-              {currentAction?.key === stage.key ? (
-                <EvalForm
-                  goals={detail.goals}
-                  submitting={submitting}
-                  onSubmit={evalData => submitEval(stage.action, evalData)}
-                />
-              ) : (
-                <EvalView evalData={detail[stage.key]} goals={detail.goals} />
-              )}
+          {/* ── EVALUATION TAB ── */}
+          {activeTab === 'evaluation' && (
+            <div className="space-y-5">
+              {STAGE_META.map(stage => {
+                const evalData    = detail[stage.key];
+                const isSubmitted = !!evalData;
+                // Can this user submit this stage?
+                const canSubmit   = stage.action && (
+                  stage.roles
+                    ? stage.roles.some(r => userRole.includes(r) || r === userRole)
+                    : appraisal.status === { 'manager-eval': 'Self Evaluated', 'business-eval': 'Manager Evaluated', 'biz-head-eval': 'Business Evaluated' }[stage.action]
+                );
+
+                return (
+                  <div key={stage.key} className={`rounded-xl border overflow-hidden ${isSubmitted ? 'border-green-100 dark:border-green-900/30' : 'border-gray-100 dark:border-gray-800'}`}>
+                    {/* Stage header */}
+                    <div className={`flex items-center justify-between px-4 py-3 ${isSubmitted ? 'bg-green-50 dark:bg-green-900/10' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
+                      <div className="flex items-center gap-2">
+                        <stage.icon size={13} className={isSubmitted ? 'text-green-600' : 'text-gray-400'} />
+                        <span className={`text-xs font-semibold ${isSubmitted ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>{stage.label}</span>
+                        <span className="text-[10px] text-gray-400">— {stage.who}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isSubmitted && <ScorePill score={detail[stage.scoreKey]} />}
+                        {stage.roles && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                            {stage.roles.filter(r => r !== 'SuperAdmin').join(' / ')} only
+                          </span>
+                        )}
+                        {!canSubmit && !isSubmitted && !stage.roles && (
+                          <span className="text-[10px] text-gray-300 flex items-center gap-1"><Lock size={9} /> Pending</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stage content */}
+                    <div className="p-4">
+                      {isSubmitted ? (
+                        <EvalView evalData={evalData} goals={detail.goals} />
+                      ) : canSubmit ? (
+                        <EvalForm
+                          goals={detail.goals}
+                          submitting={submitting}
+                          onSubmit={evalData => submitEval(stage.action, evalData)}
+                        />
+                      ) : (
+                        <p className="text-xs text-gray-400 italic py-2">Not submitted yet</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

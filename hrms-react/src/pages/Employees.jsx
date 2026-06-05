@@ -548,6 +548,8 @@ export default function Employees({ toast }) {
   const [saving, setSaving] = useState(false);
   const [empAssets, setEmpAssets] = useState([]);
   const [showAssetForm, setShowAssetForm] = useState(false);
+  const [joinDocs, setJoinDocs]   = useState({});
+  const [docUploading, setDocUploading] = useState(null);
   const [assetForm, setAssetForm] = useState({ asset_name: '', asset_type: '', serial_number: '', condition: 'Good', allocated_date: new Date().toISOString().slice(0, 10), notes: '' });
 
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('emp-view-mode') || 'list');
@@ -812,7 +814,38 @@ export default function Employees({ toast }) {
     });
     setEmpAssets([]);
     setShowAssetForm(false);
+    setJoinDocs({});
     setModal({ mode: 'add' });
+  };
+
+  const loadJoinDocs = async (empId) => {
+    try {
+      const d = await api('GET', `/api/onboarding/${empId}/hr-docs`);
+      setJoinDocs(d.docs || {});
+    } catch { setJoinDocs({}); }
+  };
+
+  const uploadJoinDoc = async (empId, docKey, file) => {
+    setDocUploading(docKey);
+    try {
+      const token = localStorage.getItem('artech_hrms_token');
+      const fd = new FormData(); fd.append('file', file);
+      const res = await fetch(`/api/onboarding/${empId}/hr-docs/upload/${docKey}`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Upload failed');
+      await loadJoinDocs(empId);
+      toast('Document uploaded', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setDocUploading(null); }
+  };
+
+  const removeJoinDoc = async (empId, docKey) => {
+    try {
+      await api('DELETE', `/api/onboarding/${empId}/hr-docs/${docKey}`);
+      await loadJoinDocs(empId);
+      toast('Document removed', 'success');
+    } catch (e) { toast(e.message, 'error'); }
   };
 
   const openEdit = async (id) => {
@@ -839,6 +872,7 @@ export default function Employees({ toast }) {
       setShowAssetForm(false);
       setAssetForm({ asset_name: '', asset_type: '', serial_number: '', condition: 'Good', allocated_date: new Date().toISOString().slice(0, 10), notes: '' });
       setModal({ mode: 'edit', id });
+      loadJoinDocs(id);
     } catch (e) { toast(e.message, 'error'); }
   };
 
@@ -1291,6 +1325,7 @@ export default function Employees({ toast }) {
               <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 px-6 overflow-x-auto">
                 {[
                   { key: 'overview',    label: 'Overview' },
+                  { key: 'job-info',    label: 'Job Info', icon: Briefcase },
                   { key: 'personal',    label: 'Personal Info' },
                   { key: 'documents',   label: 'Documents' },
                   { key: 'attendance',  label: 'Attendance' },
@@ -1364,6 +1399,119 @@ export default function Employees({ toast }) {
                         </div>
                       ) : null)}
                     </div>
+                  </div>
+                </div>
+
+              ) : detailTab === 'job-info' ? (
+                /* ── JOB INFORMATION ── */
+                <div className="p-6 space-y-6">
+                  {/* Edit shortcut */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">Job Information</h3>
+                    <button onClick={() => openEdit(detailEmp.id)} className="btn btn-secondary btn-xs gap-1.5">
+                      <Pencil size={11} /> Edit
+                    </button>
+                  </div>
+
+                  {/* Grid of info cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    {/* Employment Details */}
+                    <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                      <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Employment Details</span>
+                      </div>
+                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {[
+                          { label: 'Employee ID',      value: detailEmp.employee_id },
+                          { label: 'Department',       value: detailEmp.department },
+                          { label: 'Designation',      value: detailEmp.designation },
+                          { label: 'Employment Type',  value: detailEmp.employment_type },
+                          { label: 'Reporting Manager',value: detailEmp.reporting_manager },
+                          { label: 'Work Location',    value: detailEmp.office_address?.split(',')[0] || '—' },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-start px-4 py-3 gap-3">
+                            <span className="text-xs text-gray-400 dark:text-gray-500 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className={`text-xs font-semibold flex-1 ${value && value !== '—' ? 'text-gray-800 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600 italic'}`}>{value || '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Dates & Periods */}
+                    <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                      <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Dates & Periods</span>
+                      </div>
+                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {[
+                          { label: 'Date of Joining',   value: fmtDate(detailEmp.date_of_joining) },
+                          { label: 'Date of Birth',     value: fmtDate(detailEmp.date_of_birth) },
+                          { label: 'Notice Period',     value: detailEmp.notice_period_days ? `${detailEmp.notice_period_days} days` : '—' },
+                          { label: 'Probation Period',  value: detailEmp.probation_period_days ? `${detailEmp.probation_period_days} days` : '—' },
+                          { label: 'Tenure',            value: (() => { if (!detailEmp.date_of_joining) return '—'; const d = new Date(detailEmp.date_of_joining); const now = new Date(); const months = (now.getFullYear()-d.getFullYear())*12 + now.getMonth()-d.getMonth(); const y = Math.floor(months/12), m = months%12; return y > 0 ? `${y}y ${m}m` : `${m} months`; })() },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-start px-4 py-3 gap-3">
+                            <span className="text-xs text-gray-400 dark:text-gray-500 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className={`text-xs font-semibold flex-1 ${value && value !== '—' ? 'text-gray-800 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600 italic'}`}>{value || '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Statutory & Compliance */}
+                    <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                      <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Statutory & Compliance</span>
+                      </div>
+                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {[
+                          { label: 'Aadhaar No.',      value: detailEmp.aadhar_no ? `****${detailEmp.aadhar_no.slice(-4)}` : '—' },
+                          { label: 'PAN No.',          value: detailEmp.pan_no || '—' },
+                          { label: 'PF Applicable',    value: detailEmp.pf_applicable ? 'Yes' : 'No' },
+                          { label: 'ESI Applicable',   value: detailEmp.esi_applicable ? 'Yes (if eligible)' : 'No' },
+                          { label: 'PT State',         value: detailEmp.pt_state || '—' },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-start px-4 py-3 gap-3">
+                            <span className="text-xs text-gray-400 dark:text-gray-500 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className={`text-xs font-semibold flex-1 ${value && value !== '—' ? 'text-gray-800 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600 italic'}`}>{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bank Details */}
+                    <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                      <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Bank Details</span>
+                      </div>
+                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {[
+                          { label: 'Bank Name',        value: detailEmp.bank_name || '—' },
+                          { label: 'Account No.',      value: detailEmp.bank_account_no ? `****${detailEmp.bank_account_no.slice(-4)}` : '—' },
+                          { label: 'IFSC Code',        value: detailEmp.bank_ifsc || '—' },
+                          { label: 'Branch',           value: detailEmp.bank_branch || '—' },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-start px-4 py-3 gap-3">
+                            <span className="text-xs text-gray-400 dark:text-gray-500 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className={`text-xs font-semibold flex-1 ${value && value !== '—' ? 'text-gray-800 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600 italic'}`}>{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Status badge row */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                    {[
+                      { label: detailEmp.status || 'Active',        color: detailEmp.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200' },
+                      { label: detailEmp.employment_type,           color: 'bg-blue-50 text-blue-700 border-blue-200' },
+                      detailEmp.pf_applicable  && { label: 'PF Enrolled',   color: 'bg-purple-50 text-purple-700 border-purple-200' },
+                      detailEmp.esi_applicable && { label: 'ESI Eligible',  color: 'bg-amber-50 text-amber-700 border-amber-200' },
+                    ].filter(Boolean).map(({ label, color }) => label && (
+                      <span key={label} className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold ${color}`}>{label}</span>
+                    ))}
                   </div>
                 </div>
 
@@ -2155,6 +2303,62 @@ export default function Employees({ toast }) {
             </Field>
             <Field label="Phone"><input className="form-input" value={form.ec_phone || ''} onChange={e => f({ ec_phone: e.target.value })} placeholder="Mobile number" /></Field>
           </FormGrid>
+        </FormSection>
+
+        {/* ── Joining Documents — visible in both add and edit ── */}
+        <FormSection title="Joining Documents">
+          <p className="text-xs text-gray-500 mb-4 -mt-1">
+            Upload the documents the employee needs to sign. These will appear as downloadable files on their <strong>Start Journey</strong> page.
+            {modal?.mode === 'add' && <span className="text-amber-600 ml-1">Save the employee first, then come back to upload documents.</span>}
+          </p>
+          {[
+            { key: 'offer_letter',        label: 'Offer Letter',             icon: '📄' },
+            { key: 'employment_agreement', label: 'Employment Agreement',     icon: '📝' },
+            { key: 'nda',                  label: 'NDA / Confidentiality',    icon: '🔒' },
+            { key: 'hr_policy',            label: 'HR Policy Handbook',       icon: '📚' },
+            { key: 'code_of_conduct',      label: 'Code of Conduct',          icon: '🛡️' },
+            { key: 'it_policy',            label: 'IT Security Policy',       icon: '💻' },
+          ].map(({ key, label, icon }) => {
+            const doc = joinDocs[key];
+            const empId = modal?.id;
+            const isUploading = docUploading === key;
+            const fileRef = { current: null };
+            return (
+              <div key={key} className="flex items-center gap-3 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                <span className="text-base flex-shrink-0">{icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</div>
+                  {doc ? (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[11px] text-green-600 font-medium">✓ Uploaded</span>
+                      <a href={doc.file_url} target="_blank" rel="noreferrer"
+                        className="text-[11px] text-blue-600 hover:underline truncate max-w-[200px]">
+                        {doc.file_name || 'View file'}
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-gray-400 mt-0.5">No document uploaded</div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {doc && empId && (
+                    <button type="button"
+                      onClick={() => removeJoinDoc(empId, key)}
+                      className="text-xs text-red-500 hover:text-red-700 transition-colors">
+                      Remove
+                    </button>
+                  )}
+                  {empId && (
+                    <label className={`btn btn-secondary btn-xs gap-1 cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <input type="file" accept=".pdf,.doc,.docx,.jpg,.png" className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) { uploadJoinDoc(empId, key, f); e.target.value = ''; }}} />
+                      {isUploading ? 'Uploading…' : doc ? 'Replace' : 'Upload'}
+                    </label>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </FormSection>
 
         {modal?.mode === 'edit' && (

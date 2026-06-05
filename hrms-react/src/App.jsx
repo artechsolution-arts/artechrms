@@ -30,9 +30,11 @@ import JobOpenings from './pages/JobOpenings';
 import Applicants from './pages/Applicants';
 import Appraisals from './pages/Appraisals';
 import DocumentRequests from './pages/DocumentRequests';
+import Onboarding       from './pages/Onboarding';
 import HREditRequests   from './pages/HREditRequests';
 import Resignations     from './pages/Resignations';
-import EmpProfile      from './pages/employee/EmpProfile';
+import EmpProfile        from './pages/employee/EmpProfile';
+import EmpStartJourney   from './pages/employee/EmpStartJourney';
 import EmpLeaves       from './pages/employee/EmpLeaves';
 import EmpSalary       from './pages/employee/EmpSalary';
 import EmpAttendance   from './pages/employee/EmpAttendance';
@@ -64,10 +66,12 @@ const PAGES = {
   'appraisals':         Appraisals,
   'edit-requests':      HREditRequests,
   'resignations':       Resignations,
+  'onboarding':         Onboarding,
   'document-requests':  DocumentRequests,
   'status-sheets':      HRStatusSheet,
   'company-docs':       CompanyDocs,
   'work-mode-sheet':    HRWorkMode,
+  'start-journey':      EmpStartJourney,
   'my-profile':         EmpProfile,
   'my-leaves':          EmpLeaves,
   'my-salary':          EmpSalary,
@@ -116,7 +120,7 @@ export default function App() {
   const isPortalPage = effectivePage.startsWith('my-');
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar
         current={effectivePage}
         onNavigate={navigate}
@@ -127,7 +131,7 @@ export default function App() {
         allowedFeatures={allowed === '*' ? null : allowed}
       />
 
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden lg:ml-[220px]">
+      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-all duration-200 ${sidebarOpen ? 'lg:ml-[220px]' : 'lg:ml-0'}`}>
         <Topbar
           current={page}
           onNavigate={navigate}

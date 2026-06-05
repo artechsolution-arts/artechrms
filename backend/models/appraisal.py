@@ -17,18 +17,25 @@ class Appraisal(Base):
     # Per-stage evaluations
     # {scores: [{idx, score, comments}], overall_comments, submitted_at, submitted_by}
     self_eval     = Column(JSON, nullable=True)
+    hr_eval       = Column(JSON, nullable=True)   # HR evaluation
     manager_eval  = Column(JSON, nullable=True)
+    ceo_eval      = Column(JSON, nullable=True)   # CEO evaluation
     business_eval = Column(JSON, nullable=True)
     biz_head_eval = Column(JSON, nullable=True)
 
     # Weighted average per stage (1-5 scale)
     self_score     = Column(Float, nullable=True)
+    hr_score       = Column(Float, nullable=True)
     manager_score  = Column(Float, nullable=True)
+    ceo_score      = Column(Float, nullable=True)
     business_score = Column(Float, nullable=True)
     biz_head_score = Column(Float, nullable=True)
     total_score    = Column(Float, default=0)
 
-    # Goals Set → Self Evaluated → Manager Evaluated → Business Evaluated → Completed
+    # Performance documents: [{id, name, url, uploaded_by, uploaded_at}]
+    perf_documents = Column(JSON, default=list, nullable=True)
+
+    # Goals Set → Self Evaluated → HR Evaluated → Manager Evaluated → CEO Evaluated → Completed
     status = Column(String(30), default="Goals Set")
 
     reviewer_comments = Column(Text, nullable=True)  # legacy field

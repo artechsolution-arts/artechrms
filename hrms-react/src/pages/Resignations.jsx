@@ -7,7 +7,7 @@ import DatePicker from '../components/DatePicker';
 import EmpAvatar from '../components/EmpAvatar';
 import { FileText, CheckCircle2, XCircle, Clock, RefreshCw, ChevronDown, Settings2, Save } from 'lucide-react';
 
-const EMP_TYPES = ['Full-time', 'Part-time', 'Contract', 'Intern'];
+const EMP_TYPES = ['Full-time', 'Probation'];
 
 function NoticePeriodSettings({ toast }) {
   const [open,    setOpen]    = useState(false);

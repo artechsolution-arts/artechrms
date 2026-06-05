@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime
+import time, uuid
 from backend.database import get_db
 from backend.models.appraisal import Appraisal
 from backend.auth_utils import decode_token
 from backend.models.auth import User
+from backend import storage
 
 router = APIRouter(prefix="/api/appraisals", tags=["Appraisals"])
 
@@ -36,7 +38,7 @@ def _weighted_score(goals: list, eval_data: dict) -> Optional[float]:
 
 
 def _total(a: Appraisal) -> float:
-    scores = [s for s in [a.self_score, a.manager_score, a.business_score, a.biz_head_score]
+    scores = [s for s in [a.self_score, a.hr_score, a.manager_score, a.ceo_score, a.business_score, a.biz_head_score]
               if s is not None]
     return round(sum(scores) / len(scores), 2) if scores else 0.0
 
@@ -52,7 +54,9 @@ def _ser(a: Appraisal, detail=False) -> dict:
         "period": a.period,
         "status": a.status,
         "self_score":     a.self_score,
+        "hr_score":       a.hr_score,
         "manager_score":  a.manager_score,
+        "ceo_score":      a.ceo_score,
         "business_score": a.business_score,
         "biz_head_score": a.biz_head_score,
         "total_score": a.total_score,
@@ -60,11 +64,14 @@ def _ser(a: Appraisal, detail=False) -> dict:
     }
     if detail:
         out.update({
-            "goals":         a.goals or [],
-            "self_eval":     a.self_eval,
-            "manager_eval":  a.manager_eval,
-            "business_eval": a.business_eval,
-            "biz_head_eval": a.biz_head_eval,
+            "goals":          a.goals or [],
+            "self_eval":      a.self_eval,
+            "hr_eval":        a.hr_eval,
+            "manager_eval":   a.manager_eval,
+            "ceo_eval":       a.ceo_eval,
+            "business_eval":  a.business_eval,
+            "biz_head_eval":  a.biz_head_eval,
+            "perf_documents": a.perf_documents or [],
         })
     return out
 
@@ -185,6 +192,84 @@ def submit_biz_head_eval(appraisal_id: int, data: EvalIn, request: Request, db: 
     if a.status != "Business Evaluated":
         raise HTTPException(400, f"Expected status 'Business Evaluated', got '{a.status}'")
     _do_eval(a, "biz_head_eval", "biz_head_score", data, _username(request), "Completed", db)
+    return {"ok": True}
+
+
+@router.put("/{appraisal_id}/hr-eval")
+def submit_hr_eval(appraisal_id: int, data: EvalIn, request: Request, db: Session = Depends(get_db)):
+    """HR can submit evaluation at any stage after Goals Set."""
+    a = db.query(Appraisal).filter(Appraisal.id == appraisal_id).first()
+    if not a:
+        raise HTTPException(404, "Not found")
+    payload = {
+        "scores": data.scores,
+        "overall_comments": data.overall_comments,
+        "submitted_at": datetime.utcnow().isoformat(),
+        "submitted_by": _username(request),
+    }
+    a.hr_eval = payload
+    a.hr_score = _weighted_score(a.goals or [], payload)
+    a.total_score = _total(a)
+    db.commit()
+    return {"ok": True}
+
+
+@router.put("/{appraisal_id}/ceo-eval")
+def submit_ceo_eval(appraisal_id: int, data: EvalIn, request: Request, db: Session = Depends(get_db)):
+    """CEO can submit evaluation at any stage after Goals Set."""
+    a = db.query(Appraisal).filter(Appraisal.id == appraisal_id).first()
+    if not a:
+        raise HTTPException(404, "Not found")
+    payload = {
+        "scores": data.scores,
+        "overall_comments": data.overall_comments,
+        "submitted_at": datetime.utcnow().isoformat(),
+        "submitted_by": _username(request),
+    }
+    a.ceo_eval = payload
+    a.ceo_score = _weighted_score(a.goals or [], payload)
+    a.total_score = _total(a)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/{appraisal_id}/documents/upload")
+async def upload_perf_document(
+    appraisal_id: int,
+    file: UploadFile = File(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    a = db.query(Appraisal).filter(Appraisal.id == appraisal_id).first()
+    if not a:
+        raise HTTPException(404, "Not found")
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if ext not in ("pdf", "doc", "docx", "jpg", "jpeg", "png", "xlsx", "pptx"):
+        raise HTTPException(400, "Unsupported file type")
+    fname = f"appraisal_{appraisal_id}_{int(time.time())}.{ext}"
+    url = storage.upload_file(await file.read(), "documents", fname)
+    docs = list(a.perf_documents or [])
+    doc_entry = {
+        "id": str(uuid.uuid4())[:8],
+        "name": file.filename,
+        "url": url,
+        "uploaded_by": _username(request),
+        "uploaded_at": datetime.utcnow().isoformat(),
+        "type": ext.upper(),
+    }
+    docs.append(doc_entry)
+    a.perf_documents = docs
+    db.commit()
+    return {"ok": True, "document": doc_entry}
+
+
+@router.delete("/{appraisal_id}/documents/{doc_id}")
+def delete_perf_document(appraisal_id: int, doc_id: str, db: Session = Depends(get_db)):
+    a = db.query(Appraisal).filter(Appraisal.id == appraisal_id).first()
+    if not a:
+        raise HTTPException(404, "Not found")
+    a.perf_documents = [d for d in (a.perf_documents or []) if d.get("id") != doc_id]
+    db.commit()
     return {"ok": True}
 
 

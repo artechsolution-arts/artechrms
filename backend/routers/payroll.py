@@ -58,10 +58,18 @@ class PayrollRulesIn(BaseModel):
     lop_basis: str = "calendar"
     gratuity_enabled: bool = False
     gratuity_rate: float = 4.81
+    pf_enabled: bool = True
+    esi_enabled: bool = True
+    hra_enabled: bool = True
     bonus_enabled: bool = False
     bonus_rate: float = 8.33
     bonus_wage_ceil: float = 7000.0
     custom_components: List[dict] = []
+    use_salary_structure: bool = True
+    basic_pct: float = 50.0
+    hra_pct: float = 20.0
+    ca_pct: float = 12.33
+    others_pct: float = 17.67
 
 
 # ── Payroll Rules (single-row config) ─────────────────────────
@@ -72,11 +80,14 @@ def _default_rules_dict() -> dict:
         "pf_employer_rate": 12.0, "pf_employer_cap": 1800.0,
         "esi_employee_rate": 0.75, "esi_employer_rate": 3.25,
         "esi_wage_ceiling": 21000.0, "pt_enabled": True,
+        "pf_enabled": True, "esi_enabled": True, "hra_enabled": True,
         "default_hra_percent": 40.0, "lop_enabled": False,
         "lop_basis": "calendar", "gratuity_enabled": False,
         "gratuity_rate": 4.81, "bonus_enabled": False,
         "bonus_rate": 8.33, "bonus_wage_ceil": 7000.0,
         "custom_components": [],
+        "use_salary_structure": True,
+        "basic_pct": 50.0, "hra_pct": 20.0, "ca_pct": 12.33, "others_pct": 17.67,
     }
 
 
@@ -102,6 +113,14 @@ def _load_rules(db: Session) -> dict:
         "bonus_rate": rec.bonus_rate,
         "bonus_wage_ceil": rec.bonus_wage_ceil,
         "custom_components": rec.custom_components or [],
+        "pf_enabled":  rec.pf_enabled  if rec.pf_enabled  is not None else True,
+        "esi_enabled": rec.esi_enabled if rec.esi_enabled is not None else True,
+        "hra_enabled": rec.hra_enabled if rec.hra_enabled is not None else True,
+        "use_salary_structure": rec.use_salary_structure if rec.use_salary_structure is not None else True,
+        "basic_pct":  rec.basic_pct  or 50.0,
+        "hra_pct":    rec.hra_pct    or 20.0,
+        "ca_pct":     rec.ca_pct     or 12.33,
+        "others_pct": rec.others_pct or 17.67,
     }
 
 
@@ -144,27 +163,48 @@ def calculate_indian_payroll(
 ) -> dict:
     r = rules or _default_rules_dict()
 
-    basic = override_basic if override_basic is not None else (emp.basic_salary or 0.0)
-    hra_pct = emp.hra_percent if emp.hra_percent is not None else r["default_hra_percent"]
-    special = emp.special_allowance or 0.0
-    lta = emp.lta or 0.0
-    other = emp.other_allowance or 0.0
-    pf_ok  = bool(emp.pf_applicable if emp.pf_applicable is not None else 1)
-    esi_ok = bool(emp.esi_applicable if emp.esi_applicable is not None else 1)
-    pt_state = emp.pt_state or "Karnataka"
+    # ── Determine gross / component amounts ─────────────────────
+    use_struct = r.get("use_salary_structure", True)
+    # emp.basic_salary acts as the Gross/CTC when use_salary_structure is True
+    gross_ctc = override_basic if override_basic is not None else (emp.basic_salary or 0.0)
 
-    hra = round(basic * hra_pct / 100, 2)
+    if use_struct and gross_ctc > 0:
+        # Auto-calculate from Gross using standard percentages
+        basic_pct    = r.get("basic_pct",   50.0)
+        hra_pct_ctc  = r.get("hra_pct",     20.0)
+        ca_pct       = r.get("ca_pct",      12.33)
+        others_pct   = r.get("others_pct",  17.67)
+        basic   = round(gross_ctc * basic_pct   / 100, 2)
+        hra     = round(gross_ctc * hra_pct_ctc / 100, 2)
+        ca      = round(gross_ctc * ca_pct      / 100, 2)
+        other   = round(gross_ctc * others_pct  / 100, 2)
+        special = 0.0
+        lta     = 0.0
+    else:
+        # Legacy manual mode
+        basic   = gross_ctc
+        hra_pct = emp.hra_percent if emp.hra_percent is not None else r["default_hra_percent"]
+        hra     = round(basic * hra_pct / 100, 2)
+        ca      = emp.ca_allowance or 0.0
+        special = emp.special_allowance or 0.0
+        lta     = emp.lta or 0.0
+        other   = emp.other_allowance or 0.0
+
+    pf_ok    = bool(emp.pf_applicable  if emp.pf_applicable  is not None else 1)
+    esi_ok   = bool(emp.esi_applicable if emp.esi_applicable is not None else 1)
+    pt_state = emp.pt_state or "Karnataka"
 
     # ── Build earnings list ──────────────────────────────────
     earnings = []
-    if basic   > 0: earnings.append({"component": "Basic Salary",             "amount": basic})
+    if basic   > 0: earnings.append({"component": "Basic Pay",                "amount": basic})
     if hra     > 0: earnings.append({"component": "House Rent Allowance",     "amount": hra})
+    if ca      > 0: earnings.append({"component": "Conveyance Allowance",     "amount": ca})
     if special > 0: earnings.append({"component": "Special Allowance",        "amount": special})
     if lta     > 0: earnings.append({"component": "Leave Travel Allowance",   "amount": lta})
     if other   > 0: earnings.append({"component": "Other Allowance",          "amount": other})
 
     # Custom earning components
-    base_gross_for_pct = basic + hra + special + lta + other
+    base_gross_for_pct = basic + hra + ca + special + lta + other
     for comp in r.get("custom_components", []):
         if comp.get("component_type") != "Earning":
             continue

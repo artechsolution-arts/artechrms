@@ -1,0 +1,19 @@
+{"ts":"2026-06-03T11:48:46.396Z","cmd":"goto","args":"http://localhost:8000","origin":"http://localhost:8000/","durationMs":306,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T11:48:49.250Z","cmd":"screenshot","args":"","origin":"http://localhost:8000/","durationMs":697,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T11:56:12.369Z","cmd":"goto","args":"http://localhost:8000","origin":"http://localhost:8000/","durationMs":129,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T11:56:14.660Z","cmd":"screenshot","args":"","origin":"http://localhost:8000/","durationMs":179,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:01:50.742Z","cmd":"goto","args":"http://localhost:8000","origin":"http://localhost:8000/","durationMs":133,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:01:53.008Z","cmd":"screenshot","args":"","origin":"http://localhost:8000/","durationMs":162,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:02:00.863Z","cmd":"snapshot","args":"","origin":"http://localhost:8000/","durationMs":36,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:02:05.582Z","cmd":"js","args":"Array.from(document.querySelectorAll('span')).find(s => s.textContent.trim() === 'Forgot Password?')?.click()","origin":"http://localhost:8000/","durationMs":19,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:02:06.921Z","cmd":"screenshot","args":"","origin":"http://localhost:8000/","durationMs":218,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:02:14.799Z","cmd":"js","args":"Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Cancel')?.click()","origin":"http://localhost:8000/","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:02:15.423Z","cmd":"js","args":"Array.from(document.querySelectorAll('span')).find(s => s.textContent.trim() === 'Contact HR Support')?.click()","origin":"http://localhost:8000/","durationMs":5,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:02:16.875Z","cmd":"screenshot","args":"","origin":"http://localhost:8000/","durationMs":258,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:02:57.092Z","cmd":"goto","args":"http://localhost:8000","origin":"http://localhost:8000/","durationMs":20,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:02:59.202Z","cmd":"viewport","args":"1440 900","origin":"http://localhost:8000/","durationMs":1,"status":"error","hasCookies":false,"mode":"launched","error":"Unexpected positional arg: 900. Usage: viewport [WxH] [--scale <n>]"}
+{"ts":"2026-06-03T12:02:59.480Z","cmd":"screenshot","args":"","origin":"http://localhost:8000/","durationMs":171,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:03:02.943Z","cmd":"viewport","args":"1440x900","origin":"http://localhost:8000/","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:03:03.201Z","cmd":"screenshot","args":"","origin":"http://localhost:8000/","durationMs":160,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:03:18.713Z","cmd":"viewport","args":"1920x1080","origin":"http://localhost:8000/","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-03T12:03:19.089Z","cmd":"screenshot","args":"","origin":"http://localhost:8000/","durationMs":263,"status":"ok","hasCookies":false,"mode":"launched"}

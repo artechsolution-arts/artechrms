@@ -26,13 +26,21 @@ function RuleRow({ label, hint, children }) {
   );
 }
 
-function RuleSection({ title, children }) {
+function RuleSection({ title, enabled, onToggle, children }) {
+  const hasToggle = onToggle !== undefined;
+  const isOpen    = !hasToggle || enabled;
   return (
-    <div className="card mb-4">
-      <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+    <div className={`card mb-4 transition-opacity ${hasToggle && !enabled ? 'opacity-60' : ''}`}>
+      <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
         <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</h3>
+        {hasToggle && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-gray-400">{enabled ? 'Enabled' : 'Disabled'}</span>
+            <Toggle checked={!!enabled} onChange={onToggle} />
+          </div>
+        )}
       </div>
-      <div className="px-5 py-1">{children}</div>
+      {isOpen && <div className="px-5 py-1">{children}</div>}
     </div>
   );
 }
@@ -98,6 +106,14 @@ export default function PayrollRules({ toast }) {
         gratuity_rate:     parseFloat(form.gratuity_rate)     || 4.81,
         bonus_rate:        parseFloat(form.bonus_rate)        || 8.33,
         bonus_wage_ceil:   parseFloat(form.bonus_wage_ceil)   || 7000,
+        basic_pct:    parseFloat(form.basic_pct)    || 50.0,
+        hra_pct:      parseFloat(form.hra_pct)      || 20.0,
+        ca_pct:       parseFloat(form.ca_pct)       || 12.33,
+        others_pct:   parseFloat(form.others_pct)   || 17.67,
+        pf_enabled:  !!form.pf_enabled,
+        esi_enabled: !!form.esi_enabled,
+        hra_enabled: !!form.hra_enabled,
+        use_salary_structure: !!form.use_salary_structure,
         custom_components: form.custom_components.map(c => ({
           ...c,
           value: parseFloat(c.value) || 0,
@@ -157,13 +173,69 @@ export default function PayrollRules({ toast }) {
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 mb-4">
           <Info size={15} className="text-blue-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-            These rules are applied each time you run payroll. Employee-level settings (Basic, HRA %, PF applicable, ESI applicable) override the defaults set here.
+            These rules are applied each time you run payroll. When <strong>Salary Structure mode</strong> is on, enter the employee's <strong>Gross/CTC</strong> as their salary and all components are auto-calculated.
             Changes here only affect future payroll runs — existing salary slips are not modified.
           </p>
         </div>
 
+        {/* ── Salary Structure ── */}
+        <RuleSection title="Salary Structure (% of Gross / CTC)">
+          <RuleRow label="Use Standard Salary Structure"
+            hint="When ON: enter Gross/CTC as employee salary — Basic, HRA, CA, Others auto-calculated from percentages below">
+            <Toggle checked={!!form.use_salary_structure} onChange={v => f({ use_salary_structure: v })} />
+          </RuleRow>
+          {form.use_salary_structure && (
+            <>
+              {/* Visual breakdown */}
+              <div className="mt-3 mb-2 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800">
+                <div className="grid grid-cols-4 text-center text-[11px]">
+                  {[
+                    { label: 'Basic Pay',   pct: form.basic_pct,  color: 'bg-blue-500'   },
+                    { label: 'HRA',         pct: form.hra_pct,    color: 'bg-teal-500'   },
+                    { label: 'Conveyance',  pct: form.ca_pct,     color: 'bg-purple-500' },
+                    { label: 'Others',      pct: form.others_pct, color: 'bg-amber-500'  },
+                  ].map(({ label, pct, color }) => (
+                    <div key={label} className="flex flex-col items-center py-2 px-1 border-r last:border-r-0 border-gray-100 dark:border-gray-800">
+                      <div className={`w-3 h-3 rounded-full ${color} mb-1`} />
+                      <span className="text-gray-500 dark:text-gray-400">{label}</span>
+                      <span className="font-bold text-gray-800 dark:text-gray-200 text-xs">{parseFloat(pct || 0).toFixed(2)}%</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Progress bar */}
+                <div className="h-2 flex">
+                  {[
+                    { pct: form.basic_pct,  color: 'bg-blue-500'   },
+                    { pct: form.hra_pct,    color: 'bg-teal-500'   },
+                    { pct: form.ca_pct,     color: 'bg-purple-500' },
+                    { pct: form.others_pct, color: 'bg-amber-500'  },
+                  ].map(({ pct, color }, i) => (
+                    <div key={i} className={`${color} h-full transition-all`} style={{ width: `${pct || 0}%` }} />
+                  ))}
+                </div>
+                <div className="text-center py-1 text-[10px] text-gray-400">
+                  Total: {((parseFloat(form.basic_pct)||0)+(parseFloat(form.hra_pct)||0)+(parseFloat(form.ca_pct)||0)+(parseFloat(form.others_pct)||0)).toFixed(2)}% of Gross
+                </div>
+              </div>
+              <RuleRow label="Basic Pay" hint="% of Gross/CTC">
+                <NumInput value={form.basic_pct} onChange={v => f({ basic_pct: v })} suffix="% of Gross" width="w-20" />
+              </RuleRow>
+              <RuleRow label="House Rent Allowance (HRA)" hint="% of Gross/CTC">
+                <NumInput value={form.hra_pct} onChange={v => f({ hra_pct: v })} suffix="% of Gross" width="w-20" />
+              </RuleRow>
+              <RuleRow label="Conveyance Allowance (CA)" hint="% of Gross/CTC">
+                <NumInput value={form.ca_pct} onChange={v => f({ ca_pct: v })} suffix="% of Gross" width="w-20" />
+              </RuleRow>
+              <RuleRow label="Others (Special / LTA etc.)" hint="% of Gross/CTC">
+                <NumInput value={form.others_pct} onChange={v => f({ others_pct: v })} suffix="% of Gross" width="w-20" />
+              </RuleRow>
+            </>
+          )}
+        </RuleSection>
+
         {/* Provident Fund */}
-        <RuleSection title="Provident Fund (PF)">
+        <RuleSection title="Provident Fund (PF)"
+          enabled={form.pf_enabled} onToggle={v => f({ pf_enabled: v })}>
           <RuleRow label="Employee PF Contribution" hint="Deducted from employee's salary">
             <NumInput value={form.pf_employee_rate} onChange={v => f({ pf_employee_rate: v })} suffix="% of Basic" width="w-20" />
             <span className="text-gray-400 text-xs">cap</span>
@@ -177,7 +249,8 @@ export default function PayrollRules({ toast }) {
         </RuleSection>
 
         {/* ESI */}
-        <RuleSection title="Employee State Insurance (ESI)">
+        <RuleSection title="Employee State Insurance (ESI)"
+          enabled={form.esi_enabled} onToggle={v => f({ esi_enabled: v })}>
           <RuleRow label="Employee ESI Contribution" hint="Deducted from salary when gross ≤ wage ceiling">
             <NumInput value={form.esi_employee_rate} onChange={v => f({ esi_employee_rate: v })} step={0.01} suffix="% of Gross" width="w-20" />
           </RuleRow>
@@ -189,64 +262,55 @@ export default function PayrollRules({ toast }) {
           </RuleRow>
         </RuleSection>
 
-        {/* PT & HRA Defaults */}
-        <RuleSection title="Professional Tax & HRA">
-          <RuleRow label="Professional Tax" hint="Slabs applied per state configured on each employee">
-            <span className="text-xs text-gray-500 mr-2">Enable</span>
-            <Toggle checked={!!form.pt_enabled} onChange={v => f({ pt_enabled: v })} />
+        {/* Professional Tax */}
+        <RuleSection title="Professional Tax"
+          enabled={form.pt_enabled} onToggle={v => f({ pt_enabled: v })}>
+          <RuleRow label="State-wise PT slabs" hint="Professional tax is calculated based on the state configured on each employee record">
+            <span className="text-xs text-gray-400">Slabs: KA ₹200, MH ₹200, TN/AP/TS ₹208 (above ₹15k gross)</span>
           </RuleRow>
-          <RuleRow label="Default HRA %" hint="Used when HRA % is not explicitly set on the employee record">
+        </RuleSection>
+
+        {/* HRA Defaults */}
+        <RuleSection title="House Rent Allowance (HRA)"
+          enabled={form.hra_enabled} onToggle={v => f({ hra_enabled: v })}>
+          <RuleRow label="Default HRA %" hint="Used when Salary Structure mode is OFF and HRA % is not set on the employee">
             <NumInput value={form.default_hra_percent} onChange={v => f({ default_hra_percent: v })} suffix="% of Basic" width="w-20" />
           </RuleRow>
         </RuleSection>
 
         {/* Loss of Pay */}
-        <RuleSection title="Loss of Pay (LOP)">
-          <RuleRow label="Deduct for Absent Days" hint="Calculates per-day deduction based on basic salary and attendance records">
-            <Toggle checked={!!form.lop_enabled} onChange={v => f({ lop_enabled: v })} />
+        <RuleSection title="Loss of Pay (LOP)"
+          enabled={form.lop_enabled} onToggle={v => f({ lop_enabled: v })}>
+          <RuleRow label="LOP Basis" hint="Divisor used to compute per-day salary">
+            <Select
+              value={form.lop_basis || 'calendar'}
+              onChange={v => f({ lop_basis: v })}
+              options={[
+                { value: 'calendar', label: 'Calendar days in month' },
+                { value: 'working',  label: 'Working days (Mon–Fri, 20–22 days)' },
+              ]}
+              className="w-48"
+            />
           </RuleRow>
-          {form.lop_enabled && (
-            <RuleRow label="LOP Basis" hint="Divisor used to compute per-day salary">
-              <Select
-                value={form.lop_basis || 'calendar'}
-                onChange={v => f({ lop_basis: v })}
-                options={[
-                  { value: 'calendar', label: 'Calendar days in month' },
-                  { value: 'working', label: 'Working days (Mon–Fri, 20–22 days)' },
-                ]}
-                className="w-48"
-              />
-            </RuleRow>
-          )}
         </RuleSection>
 
         {/* Bonus */}
-        <RuleSection title="Bonus">
-          <RuleRow label="Include Bonus in Salary" hint="Statutory bonus under Payment of Bonus Act">
-            <Toggle checked={!!form.bonus_enabled} onChange={v => f({ bonus_enabled: v })} />
+        <RuleSection title="Bonus"
+          enabled={form.bonus_enabled} onToggle={v => f({ bonus_enabled: v })}>
+          <RuleRow label="Bonus Rate" hint="Statutory bonus under Payment of Bonus Act — % of basic (or wage ceiling if basic > ceiling)">
+            <NumInput value={form.bonus_rate} onChange={v => f({ bonus_rate: v })} suffix="% of Basic" width="w-20" />
           </RuleRow>
-          {form.bonus_enabled && (
-            <>
-              <RuleRow label="Bonus Rate" hint="Percentage of basic (or wage ceiling if basic > ceiling)">
-                <NumInput value={form.bonus_rate} onChange={v => f({ bonus_rate: v })} suffix="% of Basic" width="w-20" />
-              </RuleRow>
-              <RuleRow label="Wage Ceiling" hint="Bonus is computed on min(Basic, Ceiling) — statutory ceiling is ₹7,000">
-                <NumInput value={form.bonus_wage_ceil} onChange={v => f({ bonus_wage_ceil: v })} suffix="₹" width="w-24" />
-              </RuleRow>
-            </>
-          )}
+          <RuleRow label="Wage Ceiling" hint="Bonus is computed on min(Basic, Ceiling) — statutory ceiling is ₹7,000">
+            <NumInput value={form.bonus_wage_ceil} onChange={v => f({ bonus_wage_ceil: v })} suffix="₹" width="w-24" />
+          </RuleRow>
         </RuleSection>
 
         {/* Gratuity */}
-        <RuleSection title="Gratuity">
-          <RuleRow label="Include Gratuity Provision" hint="Employer gratuity provision shown on CTC — not deducted from employee salary">
-            <Toggle checked={!!form.gratuity_enabled} onChange={v => f({ gratuity_enabled: v })} />
+        <RuleSection title="Gratuity"
+          enabled={form.gratuity_enabled} onToggle={v => f({ gratuity_enabled: v })}>
+          <RuleRow label="Gratuity Rate" hint="Employer provision on CTC (not deducted from employee). Standard: 4.81% = 15/26 × 1/12 × 100">
+            <NumInput value={form.gratuity_rate} onChange={v => f({ gratuity_rate: v })} step={0.01} suffix="% of Basic" width="w-20" />
           </RuleRow>
-          {form.gratuity_enabled && (
-            <RuleRow label="Gratuity Rate" hint="Standard rate is 4.81% (15/26 × 1/12 × 100)">
-              <NumInput value={form.gratuity_rate} onChange={v => f({ gratuity_rate: v })} step={0.01} suffix="% of Basic" width="w-20" />
-            </RuleRow>
-          )}
         </RuleSection>
 
         {/* Custom Components */}

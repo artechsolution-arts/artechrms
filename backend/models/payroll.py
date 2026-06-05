@@ -10,6 +10,11 @@ class PayrollRules(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
+    # Section toggles
+    pf_enabled  = Column(Boolean, default=True)
+    esi_enabled = Column(Boolean, default=True)
+    hra_enabled = Column(Boolean, default=True)
+
     # Provident Fund
     pf_employee_rate = Column(Float, default=12.0)    # % of basic
     pf_employee_cap  = Column(Float, default=1800.0)  # monthly cap (0 = no cap)
@@ -39,6 +44,13 @@ class PayrollRules(Base):
     bonus_enabled    = Column(Boolean, default=False)
     bonus_rate       = Column(Float, default=8.33)    # % of basic
     bonus_wage_ceil  = Column(Float, default=7000.0)  # apply on min(basic, ceiling)
+
+    # ── Standard Salary Structure (% of Gross/CTC) ──────────────
+    use_salary_structure = Column(Boolean, default=True)
+    basic_pct    = Column(Float, default=50.0)   # Basic Pay  = 50% of Gross
+    hra_pct      = Column(Float, default=20.0)   # HRA        = 20% of Gross (= 40% of Basic)
+    ca_pct       = Column(Float, default=12.33)  # Conveyance = 12.33% of Gross
+    others_pct   = Column(Float, default=17.67)  # Others     = 17.67% of Gross
 
     # Custom components: [{name, component_type, calc_type, value}]
     custom_components = Column(JSON, default=[])
