@@ -188,7 +188,7 @@ export default function Topbar({ current, onNavigate, onToggleSidebar, accent, s
 
   return (
     <>
-    <header className="sidebar-desktop h-11 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 items-center px-4 gap-3 flex-shrink-0 z-20">
+    <header className="glass-topbar sidebar-desktop h-11 items-center px-4 gap-3 flex-shrink-0 z-20">
       <button
         onClick={onToggleSidebar}
         className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"

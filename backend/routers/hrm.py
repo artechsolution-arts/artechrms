@@ -4,7 +4,8 @@ from datetime import date, timedelta
 from typing import Optional
 from backend import storage
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Request
+from backend.approval_utils import require_approval_rights
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -975,10 +976,11 @@ def hr_list_edit_requests(status: Optional[str] = None, db: Session = Depends(ge
 
 
 @router.put("/edit-requests/{req_id}/approve")
-def hr_approve_edit_request(req_id: int, data: _ResolveIn = _ResolveIn(), db: Session = Depends(get_db)):
+def hr_approve_edit_request(req_id: int, request: Request, data: _ResolveIn = _ResolveIn(), db: Session = Depends(get_db)):
     req = db.query(_EditReq).filter(_EditReq.id == req_id).first()
     if not req:
         raise HTTPException(404, "Request not found")
+    require_approval_rights(request, db, req.employee_id)
     req.status = "Approved"
     req.hr_remarks = data.hr_remarks
     req.resolved_at = _er_dt.utcnow()
@@ -987,10 +989,11 @@ def hr_approve_edit_request(req_id: int, data: _ResolveIn = _ResolveIn(), db: Se
 
 
 @router.put("/edit-requests/{req_id}/reject")
-def hr_reject_edit_request(req_id: int, data: _ResolveIn = _ResolveIn(), db: Session = Depends(get_db)):
+def hr_reject_edit_request(req_id: int, request: Request, data: _ResolveIn = _ResolveIn(), db: Session = Depends(get_db)):
     req = db.query(_EditReq).filter(_EditReq.id == req_id).first()
     if not req:
         raise HTTPException(404, "Request not found")
+    require_approval_rights(request, db, req.employee_id)
     req.status = "Rejected"
     req.hr_remarks = data.hr_remarks
     req.resolved_at = _er_dt.utcnow()

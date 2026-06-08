@@ -95,7 +95,7 @@ function SectionCard({ title, subtitle, action, children, delay = 0 }) {
       borderRadius: 16,
       border: `1px solid ${B.mist}`,
       overflow: 'hidden',
-      boxShadow: '0 2px 12px rgba(13,31,78,0.05)',
+      boxShadow: '0 4px 18px rgba(13,31,78,0.10), 0 1px 3px rgba(13,31,78,0.06)',
       animation: `dashFadeUp 0.5s ease-out ${delay}s both`,
     }}>
       {(title || action) && (

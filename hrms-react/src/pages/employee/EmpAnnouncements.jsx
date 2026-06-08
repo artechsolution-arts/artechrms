@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
-import { fmtDate } from '../../utils/date';
+import { fmtDate, safeDate } from '../../utils/date';
 import { Megaphone } from 'lucide-react';
 
 const PRIORITY_COLOR = {
@@ -55,7 +55,7 @@ export default function EmpAnnouncements({ toast }) {
                 <div className="text-xs text-gray-400 mt-2 flex gap-3">
                   <span>Posted {fmtDate(a.created_at)}</span>
                   {a.created_by && <span>by {a.created_by}</span>}
-                  {a.expires_on && <span>· Expires {new Date(a.expires_on).toLocaleDateString('en-IN')}</span>}
+                  {a.expires_on && <span>· Expires {safeDate(a.expires_on)?.toLocaleDateString('en-IN') ?? '—'}</span>}
                 </div>
               </div>
             ))}

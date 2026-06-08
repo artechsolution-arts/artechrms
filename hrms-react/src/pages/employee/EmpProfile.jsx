@@ -162,7 +162,7 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
 
         {/* Profile header */}
         <div className="card p-5 flex items-center gap-5">
@@ -231,9 +231,9 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
 
         {/* ── DETAILS TAB ── */}
         {tab === 'details' && (
-          <>
-            {/* Editable section */}
-            <div className="card">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            {/* Editable section — full width */}
+            <div className="card md:col-span-2">
               <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact & Address</h3>
                 {!editing ? (
@@ -336,7 +336,7 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
                 {emp._ec.email && <Row icon={Mail} label="Email" value={emp._ec.email} />}
               </Section>
             )}
-          </>
+          </div>
         )}
 
         {/* ── EDUCATION & EXPERIENCE TAB ── */}

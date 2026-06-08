@@ -162,6 +162,7 @@ _PUBLIC_PREFIXES = (
 # Paths accessible by Employee role only
 _EMPLOYEE_ALLOWED_PREFIXES = (
     "/api/portal/",
+    "/api/auth/change-password",
     "/api/hrm/holidays",
     "/api/hrm/announcements",
     "/api/hrm/assets",

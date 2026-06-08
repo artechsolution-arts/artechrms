@@ -8,6 +8,7 @@ from backend.models.resignation import Resignation
 from backend.models.employee import Employee
 from backend.auth_utils import decode_token
 from backend.models.auth import User
+from backend.approval_utils import require_approval_rights
 
 router = APIRouter(prefix="/api/resignations", tags=["Resignations"])
 
@@ -65,6 +66,7 @@ def approve_resignation(resignation_id: int, data: ActionIn, request: Request, d
     r = db.query(Resignation).filter(Resignation.id == resignation_id).first()
     if not r:
         raise HTTPException(404, "Resignation not found")
+    require_approval_rights(request, db, r.employee_id)
     if r.status != "Pending":
         raise HTTPException(400, f"Cannot approve a resignation with status '{r.status}'")
     r.status = "Approved"
@@ -82,6 +84,7 @@ def reject_resignation(resignation_id: int, data: ActionIn, request: Request, db
     r = db.query(Resignation).filter(Resignation.id == resignation_id).first()
     if not r:
         raise HTTPException(404, "Resignation not found")
+    require_approval_rights(request, db, r.employee_id)
     if r.status != "Pending":
         raise HTTPException(400, f"Cannot reject a resignation with status '{r.status}'")
     r.status = "Rejected"

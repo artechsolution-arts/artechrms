@@ -9,19 +9,26 @@ const ROLE_META = {
   Employee: { label: 'Employee', color: 'bg-gray-100 text-gray-700',   ring: 'ring-gray-400' },
 };
 
-// All features grouped by section for display
+// All features grouped by section — must match the keys in App.jsx PAGES / Sidebar NAV
 const FEATURE_SECTIONS = [
   {
-    section: 'HR Portal — Core',
+    section: 'Dashboards',
     features: [
-      { key: 'dashboard',        label: 'Dashboard' },
+      { key: 'dashboard',        label: 'HR Dashboard' },
+      { key: 'ceo-dashboard',    label: 'CEO Dashboard' },
+      { key: 'emp-dashboard',    label: 'Employee Dashboard' },
+    ],
+  },
+  {
+    section: 'HR — Core',
+    features: [
       { key: 'employees',        label: 'Employees' },
       { key: 'departments',      label: 'Departments' },
       { key: 'designations',     label: 'Designations' },
     ],
   },
   {
-    section: 'HR Portal — Leaves & Attendance',
+    section: 'HR — Leaves & Attendance',
     features: [
       { key: 'leaves',           label: 'Leave Applications' },
       { key: 'work-mode-sheet',  label: 'Team Calendar' },
@@ -32,18 +39,16 @@ const FEATURE_SECTIONS = [
     ],
   },
   {
-    section: 'HR Portal — Company',
+    section: 'HR — Company',
     features: [
       { key: 'announcements',    label: 'Announcements' },
       { key: 'assets',           label: 'Asset Management' },
       { key: 'edit-requests',    label: 'Edit Requests' },
       { key: 'resignations',     label: 'Resignations' },
-      { key: 'status-sheets',    label: 'Status Sheets' },
-      { key: 'document-requests', label: 'Document Requests' },
     ],
   },
   {
-    section: 'HR Portal — Payroll',
+    section: 'Payroll',
     features: [
       { key: 'salary-slips',     label: 'Salary Slips' },
       { key: 'payroll-entry',    label: 'Payroll Entry' },
@@ -51,47 +56,49 @@ const FEATURE_SECTIONS = [
     ],
   },
   {
-    section: 'HR Portal — Recruitment & Appraisals',
+    section: 'Recruitment',
     features: [
+      { key: 'onboarding',       label: 'Onboarding / Offboarding' },
       { key: 'job-openings',     label: 'Job Openings' },
       { key: 'applicants',       label: 'Applicants' },
+    ],
+  },
+  {
+    section: 'Appraisals',
+    features: [
       { key: 'appraisals',       label: 'Appraisals' },
     ],
   },
   {
-    section: 'HR Portal — My Portal',
+    section: 'Documents',
     features: [
+      { key: 'document-requests', label: 'Document Requests' },
+      { key: 'status-sheets',     label: 'Status Sheets' },
+      { key: 'company-docs',      label: 'Company Documents' },
+    ],
+  },
+  {
+    section: 'My Portal — Self Service',
+    features: [
+      { key: 'start-journey',    label: 'Start Journey' },
       { key: 'my-profile',       label: 'My Profile' },
       { key: 'my-leaves',        label: 'My Leaves' },
-      { key: 'my-salary',        label: 'My Salary Slips' },
       { key: 'my-attendance',    label: 'My Attendance' },
+      { key: 'my-salary',        label: 'My Salary Slips' },
+      { key: 'my-appraisals',    label: 'My Appraisals' },
+      { key: 'my-assets',        label: 'My Assets' },
       { key: 'my-documents',     label: 'My Documents' },
-      { key: 'my-status',        label: 'My Status Sheet' },
+      { key: 'my-status',        label: 'Status Sheet' },
       { key: 'my-work-mode',     label: 'Team Calendar' },
+      { key: 'my-edit-requests', label: 'Edit Requests' },
+      { key: 'my-resignation',   label: 'Resignation' },
     ],
   },
   {
-    section: 'Employee Portal — Self Service',
+    section: 'My Portal — Company',
     features: [
-      { key: 'emp-dashboard',    label: 'Dashboard' },
-      { key: 'emp-profile',      label: 'My Profile' },
-      { key: 'emp-leaves',       label: 'My Leaves' },
-      { key: 'emp-attendance',   label: 'My Attendance' },
-      { key: 'emp-salary',       label: 'My Salary Slips' },
-      { key: 'emp-appraisals',   label: 'My Appraisals' },
-      { key: 'emp-assets',       label: 'My Assets' },
-      { key: 'emp-documents',    label: 'My Documents' },
-      { key: 'emp-status',       label: 'Status Sheet' },
-      { key: 'emp-work-mode',    label: 'Team Calendar' },
-      { key: 'emp-edit-requests', label: 'Edit Requests' },
-      { key: 'emp-resignation',   label: 'Resignation' },
-    ],
-  },
-  {
-    section: 'Employee Portal — Company',
-    features: [
-      { key: 'emp-announcements', label: 'Announcements' },
-      { key: 'emp-holidays',      label: 'Holidays' },
+      { key: 'my-announcements', label: 'Announcements' },
+      { key: 'my-holidays',      label: 'Holidays' },
     ],
   },
 ];

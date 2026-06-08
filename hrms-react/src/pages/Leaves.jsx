@@ -18,6 +18,14 @@ const STATUS_TABS = [
   { value: 'Cancelled',              label: 'Cancelled' },
 ];
 
+// Approval hierarchy: Employee req → HR or CEO; HR req → CEO only; CEO req → nobody.
+// SuperAdmin only manages accounts — no approval powers.
+function canApprove(approverRole, requesterRole) {
+  if (requesterRole === 'HR') return approverRole === 'CEO';
+  if (requesterRole === 'CEO') return false;
+  return approverRole === 'HR' || approverRole === 'CEO';  // Employee request
+}
+
 export default function Leaves({ toast }) {
   const [allRows, setAllRows] = useState([]);
   const [types, setTypes] = useState([]);
@@ -26,6 +34,9 @@ export default function Leaves({ toast }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({});
+
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('artech_hrms_user') || '{}'); } catch { return {}; } })();
+  const myRole = currentUser.role || '';
 
   const load = useCallback(async (st = statusFilter) => {
     setLoading(true);
@@ -269,7 +280,19 @@ export default function Leaves({ toast }) {
                     <td><Badge text={l.status} /></td>
                     <td>
                       <div className="flex items-center gap-1 flex-wrap">
-                        {l.status === 'Pending' && (
+                        {(() => {
+                          const actionable = ['Pending', 'Cancellation Requested', 'Edit Requested'].includes(l.status);
+                          const allowed = canApprove(myRole, l.requester_role || 'Employee');
+                          if (actionable && !allowed) {
+                            return (
+                              <span className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                🔒 {l.requester_role === 'HR' ? 'CEO approval required' : l.requester_role === 'CEO' ? 'Top-level — no approval' : 'No permission'}
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
+                        {l.status === 'Pending' && canApprove(myRole, l.requester_role || 'Employee') && (
                           <>
                             <button onClick={() => approve(l.id)} className="btn btn-success btn-xs gap-1">
                               <CheckCircle size={11} /> Approve
@@ -279,7 +302,7 @@ export default function Leaves({ toast }) {
                             </button>
                           </>
                         )}
-                        {l.status === 'Cancellation Requested' && (
+                        {l.status === 'Cancellation Requested' && canApprove(myRole, l.requester_role || 'Employee') && (
                           <>
                             <button onClick={() => approveCancel(l.id)} className="btn btn-success btn-xs gap-1">
                               <CheckCircle size={11} /> Approve Cancel
@@ -289,7 +312,7 @@ export default function Leaves({ toast }) {
                             </button>
                           </>
                         )}
-                        {l.status === 'Edit Requested' && (
+                        {l.status === 'Edit Requested' && canApprove(myRole, l.requester_role || 'Employee') && (
                           <>
                             <button onClick={() => approveEdit(l.id)} className="btn btn-success btn-xs gap-1">
                               <CheckCircle size={11} /> Approve Edit

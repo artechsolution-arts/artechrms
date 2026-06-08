@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -15,6 +15,29 @@ class UserCreate(BaseModel):
     full_name: str
     password: str
     role: str = "HR"
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+def change_password(data: ChangePasswordIn, request: Request, db: Session = Depends(get_db)):
+    """Logged-in user changes their own password."""
+    username = getattr(request.state, "username", None)
+    if not username:
+        raise HTTPException(401, "Not authenticated")
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    if not verify_password(data.current_password.strip(), user.hashed_password):
+        raise HTTPException(400, "Current password is incorrect")
+    if len(data.new_password.strip()) < 6:
+        raise HTTPException(400, "New password must be at least 6 characters")
+    user.hashed_password = get_password_hash(data.new_password.strip())
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/login")

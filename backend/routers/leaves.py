@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 from pydantic import BaseModel
@@ -6,6 +6,7 @@ from datetime import date
 from backend.database import get_db
 from backend.models.leave import LeaveType, LeaveApplication, Attendance, LeavePolicy
 from backend.models.hrm import LeaveBalance
+from backend.approval_utils import require_approval_rights
 
 router = APIRouter(prefix="/api/leaves", tags=["Leaves"])
 
@@ -135,10 +136,16 @@ def list_leaves(
     if status:
         q = q.filter(LeaveApplication.status == status)
     leaves = q.order_by(LeaveApplication.from_date.desc()).all()
+    # Map employee_id → requester role (one query)
+    from backend.models.employee import Employee as _Emp
+    from backend.models.auth import User as _User
+    emp_user = dict(db.query(_Emp.id, _User.role).join(_User, _Emp.user_id == _User.id).all())
     result = []
     for lv in leaves:
         result.append({
             "id": lv.id,
+            "employee_id": lv.employee_id,
+            "requester_role": emp_user.get(lv.employee_id, "Employee"),
             "employee_name": lv.employee_rel.full_name if lv.employee_rel else "",
             "leave_type": lv.leave_type_rel.name if lv.leave_type_rel else "",
             "from_date": str(lv.from_date),
@@ -169,11 +176,12 @@ def create_leave(data: LeaveAppIn, db: Session = Depends(get_db)):
 
 
 @router.put("/{leave_id}/approve")
-def approve_leave(leave_id: int, db: Session = Depends(get_db)):
+def approve_leave(leave_id: int, request: Request, db: Session = Depends(get_db)):
     from backend.models.work_mode_entry import WorkModeEntry
     leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
     if not leave:
         raise HTTPException(404, "Leave not found")
+    require_approval_rights(request, db, leave.employee_id)
     leave.status = "Approved"
     db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).update({"status": "Approved"})
     # Deduct from leave balance
@@ -190,11 +198,12 @@ def approve_leave(leave_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{leave_id}/reject")
-def reject_leave(leave_id: int, db: Session = Depends(get_db)):
+def reject_leave(leave_id: int, request: Request, db: Session = Depends(get_db)):
     from backend.models.work_mode_entry import WorkModeEntry
     leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
     if not leave:
         raise HTTPException(404, "Leave not found")
+    require_approval_rights(request, db, leave.employee_id)
     leave.status = "Rejected"
     db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
     db.commit()
@@ -202,11 +211,12 @@ def reject_leave(leave_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{leave_id}/approve-cancel")
-def approve_leave_cancellation(leave_id: int, db: Session = Depends(get_db)):
+def approve_leave_cancellation(leave_id: int, request: Request, db: Session = Depends(get_db)):
     from backend.models.work_mode_entry import WorkModeEntry
     leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
     if not leave:
         raise HTTPException(404, "Leave not found")
+    require_approval_rights(request, db, leave.employee_id)
     if leave.status != "Cancellation Requested":
         raise HTTPException(400, "Leave is not in Cancellation Requested state")
     # Restore balance
@@ -226,10 +236,11 @@ def approve_leave_cancellation(leave_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{leave_id}/reject-cancel")
-def reject_leave_cancellation(leave_id: int, db: Session = Depends(get_db)):
+def reject_leave_cancellation(leave_id: int, request: Request, db: Session = Depends(get_db)):
     leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
     if not leave:
         raise HTTPException(404, "Leave not found")
+    require_approval_rights(request, db, leave.employee_id)
     if leave.status != "Cancellation Requested":
         raise HTTPException(400, "Leave is not in Cancellation Requested state")
     leave.status = "Approved"
@@ -239,11 +250,12 @@ def reject_leave_cancellation(leave_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{leave_id}/approve-edit")
-def approve_leave_edit(leave_id: int, db: Session = Depends(get_db)):
+def approve_leave_edit(leave_id: int, request: Request, db: Session = Depends(get_db)):
     from backend.models.work_mode_entry import WorkModeEntry
     leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
     if not leave:
         raise HTTPException(404, "Leave not found")
+    require_approval_rights(request, db, leave.employee_id)
     if leave.status != "Edit Requested":
         raise HTTPException(400, "Leave is not in Edit Requested state")
     old_days = leave.total_days
@@ -282,10 +294,11 @@ def approve_leave_edit(leave_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{leave_id}/reject-edit")
-def reject_leave_edit(leave_id: int, db: Session = Depends(get_db)):
+def reject_leave_edit(leave_id: int, request: Request, db: Session = Depends(get_db)):
     leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
     if not leave:
         raise HTTPException(404, "Leave not found")
+    require_approval_rights(request, db, leave.employee_id)
     if leave.status != "Edit Requested":
         raise HTTPException(400, "Leave is not in Edit Requested state")
     leave.status = "Approved"

@@ -5,53 +5,81 @@ import {
   Star, X, Award, ListChecks, LogOut, Megaphone, Gift,
   Monitor, BookOpen, FileDown, UserCircle, Receipt, Wallet, ClipboardList, CalendarCheck2,
   ChevronDown, ChevronRight, FilePenLine, UserMinus, FolderOpen, ClipboardCheck,
+  ShieldCheck, Key, Crown, Settings as SettingsIcon, ChevronRight as ChevronRightIcon,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
+import SettingsModal from './SettingsModal';
 
 const HR_PRIMARY = [
-  { key: 'dashboard',  label: 'Home',       icon: LayoutDashboard },
-  { key: 'employees',  label: 'Employees',  icon: Users },
-  { key: 'leaves',     label: 'Leaves',     icon: CalendarDays },
-  { key: 'attendance', label: 'Attendance', icon: Clock },
+  { key: 'dashboard',     label: 'Home',       icon: LayoutDashboard },
+  { key: 'employees',     label: 'Employees',  icon: Users },
+  { key: 'leaves',        label: 'Leaves',     icon: CalendarDays },
+  { key: 'attendance',    label: 'Attendance', icon: Clock },
+  { key: 'emp-dashboard', label: 'Home',       icon: LayoutDashboard },
+  { key: 'ceo-dashboard', label: 'Home',       icon: LayoutDashboard },
+  { key: 'admin-overview',label: 'Overview',   icon: ShieldCheck },
 ];
 
 const NAV = [
-  { key: 'dashboard',         label: 'Dashboard',          icon: LayoutDashboard, section: null },
-  { key: 'employees',         label: 'Employees',           icon: Users,           section: 'HR' },
-  { key: 'departments',       label: 'Departments',         icon: Building2,       section: 'HR' },
-  { key: 'designations',      label: 'Designations',        icon: Award,           section: 'HR' },
-  { key: 'leaves',            label: 'Leave Applications',  icon: CalendarDays,    section: 'HR' },
-  { key: 'work-mode-sheet',   label: 'Team Calendar',       icon: CalendarCheck2,  section: 'HR' },
-  { key: 'leave-types',       label: 'Leave Types',         icon: ListChecks,      section: 'HR' },
-  { key: 'leave-balances',    label: 'Leave Balances',      icon: BookOpen,        section: 'HR' },
-  { key: 'attendance',        label: 'Attendance',          icon: Clock,           section: 'HR' },
-  { key: 'holidays',          label: 'Holidays',            icon: Gift,            section: 'HR' },
-  { key: 'announcements',     label: 'Announcements',       icon: Megaphone,       section: 'HR' },
-  { key: 'assets',            label: 'Asset Management',    icon: Monitor,         section: 'HR' },
-  { key: 'edit-requests',     label: 'Edit Requests',       icon: FilePenLine,     section: 'HR' },
-  { key: 'resignations',      label: 'Resignations',        icon: UserMinus,       section: 'HR' },
-  { key: 'onboarding',        label: 'Onboarding / Offboarding', icon: ClipboardCheck,  section: 'Recruitment' },
-  { key: 'salary-slips',      label: 'Salary Slips',        icon: DollarSign,      section: 'Payroll' },
-  { key: 'payroll-entry',     label: 'Payroll Entry',       icon: FileText,        section: 'Payroll' },
-  { key: 'payroll-rules',     label: 'Payroll Rules',       icon: ClipboardList,   section: 'Payroll' },
-  { key: 'job-openings',      label: 'Job Openings',        icon: Briefcase,       section: 'Recruitment' },
-  { key: 'applicants',        label: 'Applicants',          icon: UserCheck,       section: 'Recruitment' },
-  { key: 'appraisals',        label: 'Appraisals',          icon: Star,            section: 'Appraisals' },
-  { key: 'document-requests', label: 'Document Requests',   icon: FileDown,        section: 'Documents' },
-  { key: 'status-sheets',     label: 'Status Sheets',       icon: ClipboardList,   section: 'Documents' },
-  { key: 'company-docs',      label: 'Company Documents',   icon: FolderOpen,      section: 'Documents' },
-  { key: 'start-journey',     label: 'Start Journey',        icon: ClipboardCheck,  section: 'My Portal' },
-  { key: 'my-profile',        label: 'My Profile',          icon: UserCircle,      section: 'My Portal' },
-  { key: 'my-leaves',         label: 'My Leaves',           icon: CalendarDays,    section: 'My Portal' },
-  { key: 'my-salary',         label: 'My Salary Slips',     icon: Wallet,          section: 'My Portal' },
-  { key: 'my-attendance',     label: 'My Attendance',       icon: Clock,           section: 'My Portal' },
-  { key: 'my-documents',      label: 'My Documents',        icon: Receipt,         section: 'My Portal' },
-  { key: 'my-status',         label: 'Status Sheet',        icon: ClipboardList,   section: 'My Portal' },
-  { key: 'my-work-mode',      label: 'Team Calendar',       icon: CalendarCheck2,  section: 'My Portal' },
+  // ── SuperAdmin ──────────────────────────────────────────
+  { key: 'admin-overview',    label: 'Overview',                  icon: LayoutDashboard, section: 'Admin' },
+  { key: 'admin-users',       label: 'User Accounts',             icon: Users,           section: 'Admin' },
+  { key: 'admin-permissions', label: 'Feature Permissions',       icon: Key,             section: 'Admin' },
+  // ── CEO ─────────────────────────────────────────────────
+  { key: 'ceo-dashboard',     label: 'Dashboard',                 icon: Crown,           section: 'CEO' },
+  // ── HR Dashboard (null = always top, filtered by allowedFeatures) ──
+  { key: 'dashboard',         label: 'Dashboard',                 icon: LayoutDashboard, section: null },
+  // ── Employee Dashboard (null = always top, filtered by allowedFeatures) ──
+  { key: 'emp-dashboard',     label: 'Dashboard',                 icon: LayoutDashboard, section: null },
+  // ── HR ──────────────────────────────────────────────────
+  { key: 'employees',         label: 'Employees',                 icon: Users,           section: 'HR' },
+  { key: 'departments',       label: 'Departments',               icon: Building2,       section: 'HR' },
+  { key: 'designations',      label: 'Designations',              icon: Award,           section: 'HR' },
+  { key: 'leaves',            label: 'Leave Applications',        icon: CalendarDays,    section: 'HR' },
+  { key: 'work-mode-sheet',   label: 'Team Calendar',             icon: CalendarCheck2,  section: 'HR' },
+  { key: 'leave-types',       label: 'Leave Types',               icon: ListChecks,      section: 'HR' },
+  { key: 'leave-balances',    label: 'Leave Balances',            icon: BookOpen,        section: 'HR' },
+  { key: 'attendance',        label: 'Attendance',                icon: Clock,           section: 'HR' },
+  { key: 'holidays',          label: 'Holidays',                  icon: Gift,            section: 'HR' },
+  { key: 'announcements',     label: 'Announcements',             icon: Megaphone,       section: 'HR' },
+  { key: 'assets',            label: 'Asset Management',          icon: Monitor,         section: 'HR' },
+  { key: 'edit-requests',     label: 'Edit Requests',             icon: FilePenLine,     section: 'HR' },
+  { key: 'resignations',      label: 'Resignations',              icon: UserMinus,       section: 'HR' },
+  // ── Payroll ─────────────────────────────────────────────
+  { key: 'salary-slips',      label: 'Salary Slips',              icon: DollarSign,      section: 'Payroll' },
+  { key: 'payroll-entry',     label: 'Payroll Entry',             icon: FileText,        section: 'Payroll' },
+  { key: 'payroll-rules',     label: 'Payroll Rules',             icon: ClipboardList,   section: 'Payroll' },
+  // ── Recruitment ─────────────────────────────────────────
+  { key: 'onboarding',        label: 'Onboarding / Offboarding',  icon: ClipboardCheck,  section: 'Recruitment' },
+  { key: 'job-openings',      label: 'Job Openings',              icon: Briefcase,       section: 'Recruitment' },
+  { key: 'applicants',        label: 'Applicants',                icon: UserCheck,       section: 'Recruitment' },
+  // ── Appraisals ──────────────────────────────────────────
+  { key: 'appraisals',        label: 'Appraisals',                icon: Star,            section: 'Appraisals' },
+  // ── Documents ───────────────────────────────────────────
+  { key: 'document-requests', label: 'Document Requests',         icon: FileDown,        section: 'Documents' },
+  { key: 'status-sheets',     label: 'Status Sheets',             icon: ClipboardList,   section: 'Documents' },
+  { key: 'company-docs',      label: 'Company Documents',         icon: FolderOpen,      section: 'Documents' },
+  // ── Employee Self Service ────────────────────────────────
+  { key: 'start-journey',     label: 'Start Journey',             icon: ClipboardCheck,  section: 'Self Service' },
+  { key: 'my-profile',        label: 'My Profile',                icon: UserCircle,      section: 'Self Service' },
+  { key: 'my-leaves',         label: 'My Leaves',                 icon: CalendarDays,    section: 'Self Service' },
+  { key: 'my-attendance',     label: 'My Attendance',             icon: Clock,           section: 'Self Service' },
+  { key: 'my-salary',         label: 'My Salary Slips',           icon: Wallet,          section: 'Self Service' },
+  { key: 'my-appraisals',     label: 'My Appraisals',             icon: Star,            section: 'Self Service' },
+  { key: 'my-assets',         label: 'My Assets',                 icon: Monitor,         section: 'Self Service' },
+  { key: 'my-documents',      label: 'My Documents',              icon: Receipt,         section: 'Self Service' },
+  { key: 'my-status',         label: 'Status Sheet',              icon: ClipboardList,   section: 'Self Service' },
+  { key: 'my-work-mode',      label: 'Team Calendar',             icon: CalendarCheck2,  section: 'Self Service' },
+  { key: 'my-edit-requests',  label: 'Edit Requests',             icon: FilePenLine,     section: 'Self Service' },
+  { key: 'my-resignation',    label: 'Resignation',               icon: UserMinus,       section: 'Self Service' },
+  // ── Company Info ────────────────────────────────────────
+  { key: 'my-announcements',  label: 'Announcements',             icon: Megaphone,       section: 'Company' },
+  { key: 'my-holidays',       label: 'Holidays',                  icon: Gift,            section: 'Company' },
 ];
 
-const ALL_SECTIONS = ['HR', 'Payroll', 'Recruitment', 'Appraisals', 'Documents', 'My Portal'];
+const ALL_SECTIONS = ['Admin', 'CEO', 'HR', 'Payroll', 'Recruitment', 'Appraisals', 'Documents', 'Self Service', 'Company'];
 
 function loadCollapsed() {
   try {
@@ -62,12 +90,15 @@ function loadCollapsed() {
 
 export { NAV };
 
-export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout, allowedFeatures }) {
+export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout, allowedFeatures, toast, railCollapsed = false, onToggleRail }) {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [collapsed, setCollapsed]         = useState(loadCollapsed);
+  const [userMenuOpen, setUserMenuOpen]   = useState(false);
+  const [settingsOpen, setSettingsOpen]   = useState(false);
+  const rail = railCollapsed;  // icon-only rail mode (desktop)
 
   const visibleNAV = allowedFeatures
-    ? NAV.filter(item => !item.key || item.key === 'dashboard' || allowedFeatures.includes(item.key))
+    ? NAV.filter(item => !item.key || allowedFeatures.includes(item.key))
     : NAV;
 
   useEffect(() => {
@@ -94,7 +125,10 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
     sections[item.section].push(item);
   });
 
-  const dashboardItem = NAV.find(n => n.key === 'dashboard');
+  // Pick the right top-level dashboard: emp-dashboard for employee, dashboard for others
+  // Only show one — based on what's in allowedFeatures (or all for SuperAdmin)
+  const nullItems = visibleNAV.filter(n => n.section === null);
+  const dashboardItem = nullItems[0]; // first allowed null-section item
 
   const initials = user?.full_name
     ? user.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
@@ -102,7 +136,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
 
   const grouped = [];
   let lastSection = null;
-  visibleNAV.forEach(item => {
+  visibleNAV.filter(item => item.section !== null).forEach(item => {
     if (item.section !== lastSection) {
       lastSection = item.section;
       if (item.section) grouped.push({ type: 'sep', label: item.section });
@@ -116,31 +150,79 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
     onNavigate(key);
   };
 
-  const SidebarInner = () => (
+  const SidebarInner = ({ railMode = false }) => {
+    const rail = railMode;
+    return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
       {/* Brand */}
-      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ padding: rail ? '14px 0 12px' : '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: rail ? 'center' : 'flex-start' }}>
           <img src="/logo.svg" alt="Artech" style={{ width: 28, height: 28, flexShrink: 0 }} />
-          <div>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#fff', lineHeight: '1.2', letterSpacing: '-0.01em' }}>Artech HRMS</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 1 }}>Human Resources</div>
+          <div style={{ overflow: 'hidden', opacity: rail ? 0 : 1, width: rail ? 0 : 'auto', transition: 'opacity 0.15s' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#fff', lineHeight: '1.2', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>Artech HRMS</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 1, whiteSpace: 'nowrap' }}>Human Resources</div>
           </div>
+          {/* Desktop rail toggle */}
+          {!rail && onToggleRail && (
+            <button onClick={onToggleRail} title="Collapse sidebar"
+              className="rail-toggle-desktop"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4, borderRadius: 5, display: 'flex', marginLeft: 'auto', flexShrink: 0, transition: 'color 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}>
+              <PanelLeftClose size={16} />
+            </button>
+          )}
+          {/* Mobile close */}
           <button onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', padding: 4, borderRadius: 5, display: 'flex', marginLeft: 'auto', flexShrink: 0 }}>
+            className="lg:hidden"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', padding: 4, borderRadius: 5, display: rail ? 'none' : 'flex', marginLeft: rail ? 0 : 4, flexShrink: 0 }}>
             <X size={15} />
           </button>
         </div>
+        {/* Expand button shown when collapsed */}
+        {rail && onToggleRail && (
+          <button onClick={onToggleRail} title="Expand sidebar"
+            style={{ background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', padding: 6, borderRadius: 7, display: 'flex', margin: '10px auto 0', transition: 'background 0.15s, color 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}>
+            <PanelLeftOpen size={16} />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '6px 0', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
 
-        {/* Dashboard */}
-        <div style={{ padding: '2px 8px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 4 }}>
-          <NavBtn item={dashboardItem} isActive={current === 'dashboard'} onNavigate={onNavigate} onClose={onClose} />
-        </div>
+        {/* ── RAIL MODE: flat icon-only list ── */}
+        {rail ? (
+          <>
+            {dashboardItem && (
+              <div style={{ padding: '2px 0 6px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 4 }}>
+                <NavBtn item={dashboardItem} isActive={current === dashboardItem.key} onNavigate={onNavigate} onClose={onClose} rail />
+              </div>
+            )}
+            {ALL_SECTIONS.map((section, si) => {
+              const items = sections[section] || [];
+              if (!items.length) return null;
+              return (
+                <div key={section} style={{ marginBottom: 4 }}>
+                  {si > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 16px' }} />}
+                  {items.map(item => (
+                    <NavBtn key={item.key} item={item} isActive={current === item.key} onNavigate={onNavigate} onClose={onClose} rail />
+                  ))}
+                </div>
+              );
+            })}
+          </>
+        ) : (
+        <>
+        {/* Top-level Dashboard (role-specific) */}
+        {dashboardItem && (
+          <div style={{ padding: '2px 8px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 4 }}>
+            <NavBtn item={dashboardItem} isActive={current === dashboardItem.key} onNavigate={onNavigate} onClose={onClose} />
+          </div>
+        )}
 
         {/* Sections */}
         {ALL_SECTIONS.map(section => {
@@ -190,11 +272,52 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
             </div>
           );
         })}
+        </>
+        )}
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: '10px 10px 12px', borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.04)' }}>
+      <div style={{ padding: '10px 10px 12px', borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0, position: 'relative' }}>
+
+        {/* Popup menu (Settings + Logout) */}
+        {userMenuOpen && (
+          <>
+            <div onClick={() => setUserMenuOpen(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+            <div style={{
+              position: 'absolute', bottom: '100%', marginBottom: 6, zIndex: 50,
+              ...(rail ? { left: 8, width: 180 } : { left: 10, right: 10 }),
+              background: 'rgba(31,41,55,0.72)', backdropFilter: 'blur(24px) saturate(1.5)', WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.45)', overflow: 'hidden', padding: 6,
+              animation: 'dashFadeUp 0.15s ease-out both',
+            }}>
+              <button
+                onClick={() => { setUserMenuOpen(false); setSettingsOpen(true); }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500, textAlign: 'left' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                <SettingsIcon size={15} /> Settings
+              </button>
+              {onLogout && (
+                <button
+                  onClick={() => { setUserMenuOpen(false); setConfirmLogout(true); }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, color: '#f87171', fontSize: 13, fontWeight: 500, textAlign: 'left' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                  <LogOut size={15} /> Log out
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        <button
+          onClick={() => setUserMenuOpen(o => !o)}
+          title={rail ? (user?.full_name || 'User') : undefined}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: rail ? 'center' : 'flex-start', gap: 8, padding: rail ? '6px 0' : '7px 8px', borderRadius: 8, background: userMenuOpen ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+          onMouseEnter={e => { if (!userMenuOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+          onMouseLeave={e => { if (!userMenuOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}>
           {user?.profile_photo ? (
             <img src={user.profile_photo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
           ) : (
@@ -206,37 +329,34 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
               {initials}
             </div>
           )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user?.full_name || 'User'}
-            </div>
-            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>
-              {user?.role || 'HR'}
-            </div>
-          </div>
-          {onLogout && (
-            <button
-              onClick={() => setConfirmLogout(true)}
-              title="Sign out"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: 5, borderRadius: 5, display: 'flex', transition: 'color 0.15s, background 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.25)'; e.currentTarget.style.background = 'none'; }}
-            >
-              <LogOut size={13} />
-            </button>
+          {!rail && (
+            <>
+              <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user?.full_name || 'User'}
+                </div>
+                <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>
+                  {user?.role || 'HR'}
+                </div>
+              </div>
+              <ChevronRightIcon size={14} style={{ color: 'rgba(255,255,255,0.3)', transform: userMenuOpen ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.15s' }} />
+            </>
           )}
-        </div>
+        </button>
       </div>
 
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} toast={toast || (() => {})} />
+
     </div>
-  );
+    );
+  };
 
   return (
     <>
       {/* Desktop */}
-      <aside className={`sidebar-desktop flex-col fixed inset-y-0 left-0 z-40 w-[220px] flex-shrink-0 ${!mobileOpen ? 'sidebar-hidden' : ''}`}
-        style={{ background: '#111827', borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-        <SidebarInner />
+      <aside className="glass-sidebar sidebar-desktop flex-col fixed inset-y-0 left-0 z-40 flex-shrink-0"
+        style={{ width: rail ? 76 : 220, transition: 'width 0.22s ease-in-out' }}>
+        <SidebarInner railMode={rail} />
       </aside>
 
       {/* Mobile overlay */}
@@ -244,13 +364,12 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-y-0 left-0 z-40 w-[240px] flex flex-col"
-          style={{ background: '#111827', borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-          <SidebarInner />
+        <div className="glass-sidebar lg:hidden fixed inset-y-0 left-0 z-40 w-[240px] flex flex-col">
+          <SidebarInner railMode={false} />
         </div>
       )}
 
-      <MobileBottomNav primaryItems={HR_PRIMARY} allItems={drawerItems} current={current} onNavigate={handleMobileNav} />
+      <MobileBottomNav primaryItems={HR_PRIMARY} allItems={drawerItems} current={current} onNavigate={handleMobileNav} onLogout={() => setConfirmLogout(true)} />
 
       <ConfirmModal
         open={confirmLogout}
@@ -265,14 +384,17 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
   );
 }
 
-function NavBtn({ item, isActive, onNavigate, onClose }) {
+function NavBtn({ item, isActive, onNavigate, onClose, rail = false }) {
   return (
     <button
       onClick={() => { onNavigate(item.key); if (window.innerWidth < 1024) onClose(); }}
+      title={rail ? item.label : undefined}
       style={{
-        width: 'calc(100% - 16px)', margin: '1px 8px',
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '6px 10px', borderRadius: 6,
+        width: rail ? 44 : 'calc(100% - 16px)',
+        height: rail ? 40 : 'auto',
+        margin: rail ? '2px auto' : '1px 8px',
+        display: 'flex', alignItems: 'center', justifyContent: rail ? 'center' : 'flex-start', gap: 8,
+        padding: rail ? 0 : '6px 10px', borderRadius: rail ? 9 : 6,
         border: 'none', cursor: 'pointer', textAlign: 'left',
         fontFamily: 'inherit', fontSize: 13, fontWeight: isActive ? 500 : 400,
         background: isActive ? 'rgba(26,106,180,0.2)' : 'transparent',
@@ -283,9 +405,9 @@ function NavBtn({ item, isActive, onNavigate, onClose }) {
       onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'rgba(255,255,255,0.82)'; }}}
       onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}}
     >
-      {isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 2.5, height: 14, borderRadius: 2, background: '#60A5FA' }} />}
-      <item.icon size={14} style={{ flexShrink: 0, opacity: isActive ? 0.9 : 0.6 }} />
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+      {isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 2.5, height: rail ? 18 : 14, borderRadius: 2, background: '#60A5FA' }} />}
+      <item.icon size={rail ? 17 : 14} style={{ flexShrink: 0, opacity: isActive ? 0.95 : 0.65 }} />
+      {!rail && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
     </button>
   );
 }

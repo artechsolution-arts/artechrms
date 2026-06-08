@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import { Users, UserCheck, UserX, ShieldCheck, Briefcase, CalendarClock } from 'lucide-react';
+import StatCard from '../../components/StatCard';
 
 const ROLE_COLORS = {
   SuperAdmin: 'bg-violet-100 text-violet-700',
@@ -9,7 +10,7 @@ const ROLE_COLORS = {
   Employee:   'bg-gray-100 text-gray-600',
 };
 
-export default function AdminOverview({ toast }) {
+export default function AdminOverview({ toast, onNavigate }) {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
 
@@ -21,12 +22,18 @@ export default function AdminOverview({ toast }) {
       .catch(e => toast(e.message, 'error'));
   }, []);
 
+  // Navigate to User Accounts with an optional status filter (read via sessionStorage)
+  const goUsers = (filter) => {
+    if (filter) sessionStorage.setItem('admin_users_filter', filter);
+    else sessionStorage.removeItem('admin_users_filter');
+    onNavigate?.('admin-users');
+  };
+
   const statCards = stats ? [
-    { label: 'Total Accounts',     value: stats.total_users,       icon: Users,        color: 'from-violet-500 to-purple-600' },
-    { label: 'Active Accounts',    value: stats.active_users,      icon: UserCheck,    color: 'from-blue-500 to-blue-600' },
-    { label: 'Inactive Accounts',  value: stats.inactive_users,    icon: UserX,        color: 'from-rose-500 to-red-600' },
-    { label: 'Total Employees',    value: stats.total_employees,   icon: Briefcase,    color: 'from-emerald-500 to-green-600' },
-    { label: 'Pending Leaves',     value: stats.pending_leaves,    icon: CalendarClock, color: 'from-amber-500 to-orange-500' },
+    { label: 'Total Accounts',     value: stats.total_users,       icon: Users,        gradient: 'violet', onClick: () => goUsers('all') },
+    { label: 'Active Accounts',    value: stats.active_users,      icon: UserCheck,    gradient: 'navy',   onClick: () => goUsers('active') },
+    { label: 'Inactive Accounts',  value: stats.inactive_users,    icon: UserX,        gradient: 'rose',   onClick: () => goUsers('inactive') },
+    { label: 'Total Employees',    value: stats.total_employees,   icon: Briefcase,    gradient: 'green',  onClick: () => onNavigate?.('admin-users') },
   ] : [];
 
   return (
@@ -37,17 +44,9 @@ export default function AdminOverview({ toast }) {
 
       <div className="page-content space-y-6">
         {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {statCards.map(c => (
-            <div key={c.label} className="card p-4 flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${c.color} flex items-center justify-center flex-shrink-0`}>
-                <c.icon size={18} className="text-white" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{c.value ?? '—'}</div>
-                <div className="text-xs text-gray-500">{c.label}</div>
-              </div>
-            </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {statCards.map((c, i) => (
+            <StatCard key={c.label} label={c.label} value={c.value} icon={c.icon} gradient={c.gradient} delay={0.04 * (i + 1)} onClick={c.onClick} />
           ))}
         </div>
 

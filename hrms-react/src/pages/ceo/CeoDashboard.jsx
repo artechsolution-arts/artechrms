@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import { Users, CalendarDays, Clock, CheckCircle, XCircle, ChevronRight, TrendingUp } from 'lucide-react';
+import StatCard from '../../components/StatCard';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -10,21 +11,6 @@ const STATUS_COLOR = {
   Rejected: 'bg-red-100 text-red-700 border-red-200',
   'Cancellation Requested': 'bg-orange-100 text-orange-700 border-orange-200',
 };
-
-function StatCard({ label, value, icon: Icon, color, bg, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`card p-5 text-left ${onClick ? 'hover:shadow-md transition-shadow cursor-pointer' : 'cursor-default'}`}
-    >
-      <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
-        <Icon size={16} className={color} />
-      </div>
-      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-0.5">{value ?? 0}</div>
-      <div className="text-xs text-gray-500">{label}</div>
-    </button>
-  );
-}
 
 export default function CeoDashboard({ toast, onNavigate }) {
   const [data, setData] = useState(null);
@@ -83,10 +69,10 @@ export default function CeoDashboard({ toast, onNavigate }) {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Active Employees" value={s.total_employees}   icon={Users}        color="text-blue-600"  bg="bg-blue-50"   onClick={() => onNavigate('ceo-employees')} />
-        <StatCard label="Present Today"    value={s.present_today}     icon={Clock}        color="text-green-600" bg="bg-green-50"  onClick={() => onNavigate('ceo-attendance')} />
-        <StatCard label="Pending Leaves"   value={s.pending_leaves}    icon={CalendarDays} color="text-amber-600" bg="bg-amber-50"  onClick={() => onNavigate('ceo-leaves')} />
-        <StatCard label="Approved Leaves"  value={ls.approved}         icon={CheckCircle}  color="text-teal-600"  bg="bg-teal-50"   onClick={() => onNavigate('ceo-leaves')} />
+        <StatCard label="Active Employees" value={s.total_employees}   icon={Users}        gradient="navy"  delay={0.04} onClick={() => onNavigate('employees')} />
+        <StatCard label="Present Today"    value={s.present_today}     icon={Clock}        gradient="green" delay={0.08} onClick={() => onNavigate('attendance')} />
+        <StatCard label="Pending Leaves"   value={s.pending_leaves}    icon={CalendarDays} gradient="amber" delay={0.12} onClick={() => onNavigate('leaves')} />
+        <StatCard label="Approved Leaves"  value={ls.approved}         icon={CheckCircle}  gradient="blue"  delay={0.16} onClick={() => onNavigate('leaves')} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

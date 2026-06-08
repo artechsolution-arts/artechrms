@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
-import { fmtDate } from '../../utils/date';
+import { fmtDate, safeDate } from '../../utils/date';
+const safeFmt = (d, opts) => { const dt = safeDate(d); return dt ? dt.toLocaleDateString('en-IN', opts) : '—'; };
 import Badge from '../../components/Badge';
+import StatCard from '../../components/StatCard';
 import { CalendarDays, Clock, ClipboardList, Megaphone, Gift, CalendarCheck2, ChevronRight } from 'lucide-react';
 
 
@@ -96,22 +98,20 @@ export default function EmpDashboard({ toast, onNavigate }) {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Pending Leaves',  value: stats.pending_leaves,  icon: CalendarDays,  color: 'text-amber-500',  bg: 'bg-amber-50',   action: 'emp-leaves' },
-          { label: 'Approved Leaves', value: stats.approved_leaves, icon: CalendarDays,  color: 'text-green-600', bg: 'bg-green-50',   action: null },
-          { label: 'Leave Balance',   value: balances.reduce((s, b) => s + b.available, 0), icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', action: 'emp-leaves' },
-          { label: 'Status Sheet',    value: '→',                   icon: ClipboardList, color: 'text-indigo-600',bg: 'bg-indigo-50',  action: 'emp-status' },
-        ].map(({ label, value, icon: Icon, color, bg, action }) => (
-          <button
+          { label: 'Pending Leaves',  value: stats.pending_leaves,  icon: CalendarDays,  gradient: 'amber', action: 'my-leaves' },
+          { label: 'Approved Leaves', value: stats.approved_leaves, icon: CalendarDays,  gradient: 'green', action: null },
+          { label: 'Leave Balance',   value: balances.reduce((s, b) => s + b.available, 0), icon: Clock, gradient: 'navy', action: 'my-leaves' },
+          { label: 'Status Sheet',    value: '→',                   icon: ClipboardList, gradient: 'blue',  action: 'my-status' },
+        ].map(({ label, value, icon, gradient, action }, i) => (
+          <StatCard
             key={label}
-            onClick={() => action && onNavigate(action)}
-            className={`card p-5 text-left ${action ? 'hover:shadow-md transition-shadow cursor-pointer' : 'cursor-default'}`}
-          >
-            <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
-              <Icon size={16} className={color} />
-            </div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-0.5">{value ?? 0}</div>
-            <div className="text-xs text-gray-500">{label}</div>
-          </button>
+            label={label}
+            value={value}
+            icon={icon}
+            gradient={gradient}
+            delay={0.04 * (i + 1)}
+            onClick={action ? () => onNavigate(action) : undefined}
+          />
         ))}
       </div>
 
@@ -127,7 +127,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
                   {a.status[0]}
                 </div>
                 <div className="text-[10px] text-gray-500 text-center leading-tight">
-                  {new Date(a.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  {safeFmt(a.date, { day: 'numeric', month: 'short' })}
                 </div>
                 <Badge text={a.status} />
               </div>
@@ -172,10 +172,10 @@ export default function EmpDashboard({ toast, onNavigate }) {
                   </div>
                   <div className="text-right flex-shrink-0 ml-4">
                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {new Date(h.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      {safeFmt(h.date, { day: 'numeric', month: 'short' })}
                     </p>
                     <p className="text-[11px] text-gray-400">
-                      {new Date(h.date).toLocaleDateString('en-IN', { weekday: 'short' })}
+                      {safeFmt(h.date, { weekday: 'short' })}
                     </p>
                   </div>
                 </div>
@@ -195,7 +195,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
               <div key={w.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800">
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${WM_COLOR[w.work_mode] || 'bg-gray-100 text-gray-600'}`}>{w.work_mode}</span>
                 <span className="text-xs text-gray-500">
-                  {new Date(w.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  {safeFmt(w.date, { day: 'numeric', month: 'short' })}
                 </span>
               </div>
             ))}
