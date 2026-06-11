@@ -65,7 +65,7 @@ html[data-accent="indigo"] { --accent: #4F46E5; --accent-dark: #312E81; --accent
 
   /* ── Custom background image (selected in Settings) ── */
   html.has-bg-image body,
-  html.dark.has-bg-image body {
+  html.has-bg-image.bg-is-dark body {
     background-color: #0a0a0a;
     background-image: var(--bg-overlay), var(--app-bg-image);
     background-size: cover, cover;
@@ -81,13 +81,13 @@ html[data-accent="indigo"] { --accent: #4F46E5; --accent-dark: #312E81; --accent
   }
   /* Keep page headers as readable glass over the image */
   html.has-bg-image .page-head {
-    background-color: rgba(255,255,255,0.82) !important;
-    backdrop-filter: blur(24px) saturate(1.3);
-    -webkit-backdrop-filter: blur(24px) saturate(1.3);
-    border-color: rgba(255,255,255,0.4) !important;
+    background-color: rgba(255,255,255,0.42) !important;
+    backdrop-filter: blur(34px) saturate(1.7);
+    -webkit-backdrop-filter: blur(34px) saturate(1.7);
+    border-color: rgba(255,255,255,0.35) !important;
   }
-  html.dark.has-bg-image .page-head {
-    background-color: rgba(15,23,42,0.78) !important;
+  html.has-bg-image.bg-is-dark .page-head {
+    background-color: rgba(15,23,42,0.40) !important;
     border-color: rgba(255,255,255,0.08) !important;
   }
 
@@ -98,10 +98,17 @@ html[data-accent="indigo"] { --accent: #4F46E5; --accent-dark: #312E81; --accent
     border-right: 1px solid rgba(255,255,255,0.07);
   }
   html.has-bg-image .glass-sidebar {
-    background: rgba(13, 18, 30, 0.96) !important;
-    backdrop-filter: blur(30px) saturate(1.3);
-    -webkit-backdrop-filter: blur(30px) saturate(1.3);
-    border-right: 1px solid rgba(255,255,255,0.08) !important;
+    background: rgba(16, 21, 33, 0.52) !important;
+    backdrop-filter: blur(42px) saturate(1.9);
+    -webkit-backdrop-filter: blur(42px) saturate(1.9);
+    border-right: 1px solid rgba(255,255,255,0.10) !important;
+  }
+  /* Over a LIGHT background image (e.g. default sky), keep the sidebar crisply dark
+     instead of washed-out grey — matches the clarity of the dark backgrounds. */
+  html.has-bg-image:not(.bg-is-dark) .glass-sidebar {
+    background: rgba(13, 18, 30, 0.93) !important;
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
   }
 
   .glass-topbar {
@@ -113,75 +120,76 @@ html[data-accent="indigo"] { --accent: #4F46E5; --accent-dark: #312E81; --accent
     border-bottom: 1px solid #1f2937;
   }
   html.has-bg-image .glass-topbar {
-    background: rgba(255,255,255,0.55) !important;
-    backdrop-filter: blur(22px) saturate(1.4);
-    -webkit-backdrop-filter: blur(22px) saturate(1.4);
-    border-bottom: 1px solid rgba(255,255,255,0.4) !important;
+    background: rgba(255,255,255,0.38) !important;
+    backdrop-filter: blur(34px) saturate(1.7);
+    -webkit-backdrop-filter: blur(34px) saturate(1.7);
+    border-bottom: 1px solid rgba(255,255,255,0.35) !important;
   }
-  html.dark.has-bg-image .glass-topbar {
-    background: rgba(15,23,42,0.5) !important;
+  html.has-bg-image.bg-is-dark .glass-topbar {
+    background: rgba(15,23,42,0.40) !important;
     border-bottom: 1px solid rgba(255,255,255,0.08) !important;
   }
 
-  /* Modal panels: always glassy (they float over content) */
+  /* Modal panels: frosted glass (kept a touch more opaque so forms stay readable) */
   .glass-panel {
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(28px) saturate(1.5);
-    -webkit-backdrop-filter: blur(28px) saturate(1.5);
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(40px) saturate(1.8);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
     border: 1px solid rgba(255,255,255,0.5);
   }
   html.dark .glass-panel {
-    background: rgba(20,27,45,0.88);
+    background: rgba(20,27,45,0.74);
     border: 1px solid rgba(255,255,255,0.1);
   }
 
-  /* When a background image is active, cards stay frosted but opaque enough to hide busy patterns */
+  /* When a background image is active, cards become translucent frosted glass —
+     the background theme bleeds through the whole page (macOS-vibrancy look). */
   html.has-bg-image .card {
-    background: rgba(255,255,255,0.86) !important;
-    backdrop-filter: blur(24px) saturate(1.4);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border: 1px solid rgba(255,255,255,0.6) !important;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+    background: rgba(255,255,255,0.55) !important;
+    backdrop-filter: blur(34px) saturate(1.8);
+    -webkit-backdrop-filter: blur(34px) saturate(1.8);
+    border: 1px solid rgba(255,255,255,0.5) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
   }
-  html.dark.has-bg-image .card {
-    background: rgba(18,25,42,0.84) !important;
+  html.has-bg-image.bg-is-dark .card {
+    background: rgba(18,25,42,0.52) !important;
     border: 1px solid rgba(255,255,255,0.12) !important;
   }
-  /* Dashboard inline-white SectionCards → glass too */
+  /* Dashboard inline-white SectionCards → translucent glass too */
   html.has-bg-image main [style*="background: rgb(255, 255, 255)"],
   html.has-bg-image main [style*="background:#fff"],
   html.has-bg-image main [style*="background: #fff"] {
-    background: rgba(255,255,255,0.88) !important;
-    backdrop-filter: blur(24px) saturate(1.4);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    background: rgba(255,255,255,0.55) !important;
+    backdrop-filter: blur(34px) saturate(1.8);
+    -webkit-backdrop-filter: blur(34px) saturate(1.8);
   }
   /* On DARK backgrounds, glassy SectionCards turn dark — recolor inline dark text to light */
-  html.dark.has-bg-image main [style*="background: rgb(255, 255, 255)"],
-  html.dark.has-bg-image main [style*="background:#fff"],
-  html.dark.has-bg-image main [style*="background: #fff"] {
-    background: rgba(20,27,45,0.86) !important;
+  html.has-bg-image.bg-is-dark main [style*="background: rgb(255, 255, 255)"],
+  html.has-bg-image.bg-is-dark main [style*="background:#fff"],
+  html.has-bg-image.bg-is-dark main [style*="background: #fff"] {
+    background: rgba(20,27,45,0.52) !important;
     border: 1px solid rgba(255,255,255,0.10) !important;
   }
   /* Recolor Dashboard's hardcoded dark inline text to readable light (dark bg only) */
-  html.dark.has-bg-image main [style*="color: rgb(13, 31, 78)"]   { color: #eef2f9 !important; }
-  html.dark.has-bg-image main [style*="color: rgb(160, 170, 191)"]{ color: #aab6cc !important; }
-  html.dark.has-bg-image main [style*="color: rgb(13, 31, 78)"] h1,
-  html.dark.has-bg-image main h1[style*="color: rgb(13, 31, 78)"] { color: #f8fafc !important; }
+  html.has-bg-image.bg-is-dark main [style*="color: rgb(13, 31, 78)"]   { color: #eef2f9 !important; }
+  html.has-bg-image.bg-is-dark main [style*="color: rgb(160, 170, 191)"]{ color: #aab6cc !important; }
+  html.has-bg-image.bg-is-dark main [style*="color: rgb(13, 31, 78)"] h1,
+  html.has-bg-image.bg-is-dark main h1[style*="color: rgb(13, 31, 78)"] { color: #f8fafc !important; }
   /* Topbar text/icons readable on dark glass */
-  html.dark.has-bg-image .glass-topbar,
-  html.dark.has-bg-image .glass-topbar * { color: #cbd5e1; }
+  html.has-bg-image.bg-is-dark .glass-topbar,
+  html.has-bg-image.bg-is-dark .glass-topbar * { color: #cbd5e1; }
 
   /* Dark-background hover states: keep them dark so light text stays visible */
-  html.dark.has-bg-image .hire-row:hover { background: rgba(255,255,255,0.07) !important; }
-  html.dark.has-bg-image .action-btn {
+  html.has-bg-image.bg-is-dark .hire-row:hover { background: rgba(255,255,255,0.07) !important; }
+  html.has-bg-image.bg-is-dark .action-btn {
     background: rgba(255,255,255,0.08) !important;
     color: #e2e8f0 !important;
     border-color: rgba(255,255,255,0.18) !important;
   }
-  html.dark.has-bg-image .action-btn:hover { background: rgba(255,255,255,0.15) !important; }
+  html.has-bg-image.bg-is-dark .action-btn:hover { background: rgba(255,255,255,0.15) !important; }
   /* Generic light hover utilities → dark over a dark background */
-  html.dark.has-bg-image .hover\:bg-gray-50:hover,
-  html.dark.has-bg-image .hover\:bg-gray-100:hover {
+  html.has-bg-image.bg-is-dark .hover\:bg-gray-50:hover,
+  html.has-bg-image.bg-is-dark .hover\:bg-gray-100:hover {
     background-color: rgba(255,255,255,0.08) !important;
   }
 
@@ -313,6 +321,21 @@ html.dark .text-gray-900 { color: #f1f5f9; }
 html.dark .text-gray-800 { color: #e2e8f0; }
 html.dark .text-gray-700 { color: #cbd5e1; }
 html.dark .text-gray-600 { color: #94a3b8; }
+
+/* ── Dark BACKGROUND (image) → apply dark-theme text/surfaces even when the
+      light/dark toggle is OFF, so dark backdrops always read like the dark theme. ── */
+html.bg-is-dark .card-title          { color: #e2e8f0 !important; }
+html.bg-is-dark .card-head           { border-color: rgba(255,255,255,0.10) !important; }
+html.bg-is-dark .page-title          { color: #f1f5f9 !important; }
+html.bg-is-dark .text-gray-900       { color: #f1f5f9 !important; }
+html.bg-is-dark .text-gray-800       { color: #e2e8f0 !important; }
+html.bg-is-dark .text-gray-700       { color: #cbd5e1 !important; }
+html.bg-is-dark .text-gray-600       { color: #aab6cc !important; }
+html.bg-is-dark .text-gray-500       { color: #94a3b8 !important; }
+html.bg-is-dark .data-table thead th { background-color: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.10) !important; color: #94a3b8 !important; }
+html.bg-is-dark .data-table tbody tr { border-color: rgba(255,255,255,0.08) !important; }
+html.bg-is-dark .data-table tbody td { color: #cbd5e1 !important; }
+html.bg-is-dark .data-table tbody tr:hover { background-color: rgba(255,255,255,0.05) !important; }
 
 /* ── Shared dashboard card animation ───────────────────────── */
 @keyframes dashFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }

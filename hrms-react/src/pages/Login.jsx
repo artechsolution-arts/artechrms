@@ -130,6 +130,26 @@ export default function Login({ onLogin }) {
         }
         @media (min-width: 1024px) { .lp-left { display: flex; } }
 
+        /* animated video background */
+        .lp-video {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          z-index: 0;
+        }
+        .lp-video-tint {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          background: linear-gradient(135deg,
+            rgba(13,31,78,0.74) 0%,
+            rgba(13,31,78,0.50) 45%,
+            rgba(13,31,78,0.80) 100%);
+        }
+
         /* mesh blobs */
         .blob {
           position: absolute;
@@ -449,10 +469,11 @@ export default function Login({ onLogin }) {
 
         {/* ══════════════════ LEFT PANEL ══════════════════ */}
         <div className="lp-left">
-          <div className="blob blob-1" />
-          <div className="blob blob-2" />
-          <div className="blob blob-3" />
-          <div className="blob blob-4" />
+          {/* Animated video background */}
+          <video className="lp-video" autoPlay loop muted playsInline preload="auto">
+            <source src="/login-bg.mp4" type="video/mp4" />
+          </video>
+          <div className="lp-video-tint" />
 
           <div className="lp-left-inner">
 

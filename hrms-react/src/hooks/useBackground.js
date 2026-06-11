@@ -5,8 +5,8 @@ export const BACKGROUNDS = [
   {
     key: 'none', label: 'Default', sub: 'Artech sky',
     file: 'default-bg.jpg', thumb: 'default-bg-thumb.jpg',
-    accent: '#1A6AB4', accentDark: '#0D1F4E', dark: false,
-    overlay: 'linear-gradient(180deg, rgba(244,248,255,0.46) 0%, rgba(238,243,252,0.62) 100%)',
+    accent: '#3D9BE6', accentDark: '#1A6AB4', dark: true,
+    overlay: 'linear-gradient(180deg, rgba(8,16,32,0.60) 0%, rgba(6,12,24,0.78) 100%)',
   },
   {
     key: 'nebula', label: 'Nebula', sub: 'Cosmic ink',
@@ -46,6 +46,9 @@ export function applyBackground(key, { syncMode = true } = {}) {
     root.style.setProperty('--app-bg-image', `url(/themes/${bg.file})`);
     root.style.setProperty('--bg-overlay', bg.overlay);
   }
+  // Mark whether the active backdrop is dark — drives glass/text styling
+  // independently of the light/dark mode toggle.
+  root.classList.toggle('bg-is-dark', !!bg.file && !!bg.dark);
   // Accent follows the image
   root.style.setProperty('--accent', bg.accent);
   root.style.setProperty('--accent-dark', bg.accentDark);
