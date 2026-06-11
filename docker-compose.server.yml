@@ -1,0 +1,62 @@
+# ───────────────────────────────────────────────────────────────
+# SERVER / PRODUCTION compose for the on-prem laptop.
+# Run with:   docker compose -f docker-compose.server.yml up --build -d
+#
+# Keeps server-specific settings (PostgreSQL on port 5433, password ARtechs@707)
+# separate from the dev docker-compose.yml, so `git pull` never overwrites them.
+# Shares the same named volumes (minio_data, uploads_data) as before, so your
+# uploaded files are preserved.
+# ───────────────────────────────────────────────────────────────
+services:
+
+  minio:
+    image: minio/minio:latest
+    container_name: artechrms_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: artechrms_app
+    restart: unless-stopped
+    depends_on:
+      minio:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      # ── Server PostgreSQL (port 5433, password ARtechs@707) ──
+      DATABASE_URL: postgresql://postgres:ARtechs%40707@host.docker.internal:5433/artechrms
+      SECRET_KEY: artech-hrms-super-secret-jwt-key-change-in-production
+      ALLOWED_ORIGINS: "*"
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET: hrms
+      MINIO_PUBLIC_URL: http://localhost:9000
+      # ── Biometric auto-sync — uncomment & set when the eSSL device is reachable ──
+      # BIOMETRIC_DEVICE_IP: "192.168.1.201"
+      # BIOMETRIC_DEVICE_PORT: "4370"
+      # BIOMETRIC_SYNC_INTERVAL_MIN: "15"
+      # BIOMETRIC_SYNC_BACKFILL_DAYS: "1"
+    volumes:
+      - uploads_data:/app/static/uploads
+
+volumes:
+  minio_data:
+  uploads_data:
