@@ -149,15 +149,7 @@ async def ai_insights(db: Session = Depends(get_db)):
                 "action": "leaves"
             })
 
-        if active_emp > 0 and present_today < active_emp:
-            absent = active_emp - present_today
-            rate = round(present_today / active_emp * 100) if active_emp else 0
-            insights.append({
-                "type": "info",
-                "icon": "⏰",
-                "text": f"Attendance today: {present_today}/{active_emp} present ({rate}%)",
-                "action": "attendance"
-            })
+        # Attendance insight removed — attendance is captured automatically via biometric sync.
 
         if open_jobs > 0:
             insights.append({

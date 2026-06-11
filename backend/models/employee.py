@@ -54,6 +54,7 @@ class Employee(Base):
     bank_branch = Column(String(100))
     aadhar_no = Column(String(20))
     pan_no = Column(String(20))
+    biometric_id = Column(String(30), nullable=True, index=True)  # eSSL/ZK device enrollment number
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     profile_photo = Column(String(500), nullable=True)
     basic_salary = Column(Float, nullable=True)

@@ -46,6 +46,7 @@ class EmployeeIn(BaseModel):
     bank_branch: Optional[str] = None
     aadhar_no: Optional[str] = None
     pan_no: Optional[str] = None
+    biometric_id: Optional[str] = None
     basic_salary: Optional[float] = None
     hra_percent: float = 40.0
     special_allowance: float = 0.0
@@ -244,6 +245,7 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
         "bank_branch": emp.bank_branch,
         "aadhar_no": emp.aadhar_no,
         "pan_no": emp.pan_no,
+        "biometric_id": emp.biometric_id,
         "basic_salary": emp.basic_salary,
         "hra_percent": emp.hra_percent if emp.hra_percent is not None else 40.0,
         "special_allowance": emp.special_allowance or 0.0,

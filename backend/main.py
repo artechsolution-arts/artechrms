@@ -21,7 +21,9 @@ from backend.routers import notifications as notifications_router
 from backend.routers import resignations as resignations_router
 from backend.routers import notice_period_config as notice_period_config_router
 from backend.routers import onboarding as onboarding_router
+from backend.routers import biometric as biometric_router
 from backend.models import onboarding as _onboarding_models  # ensure tables created
+from backend.models import biometric as _biometric_models    # ensure tables created
 from backend.auth_utils import decode_token
 from backend.database import SessionLocal
 from backend.models.auth import User
@@ -79,6 +81,7 @@ with engine.connect() as _conn:
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_branch VARCHAR(100)",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS aadhar_no VARCHAR(20)",
         "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pan_no VARCHAR(20)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS biometric_id VARCHAR(30)",
         "ALTER TABLE work_mode_entries ADD COLUMN IF NOT EXISTS leave_id INTEGER REFERENCES leave_applications(id) ON DELETE SET NULL",
         "ALTER TABLE leave_applications ADD COLUMN IF NOT EXISTS leave_category VARCHAR(20) DEFAULT 'Planned'",
         "ALTER TABLE leave_applications ADD COLUMN IF NOT EXISTS cancellation_reason TEXT",
@@ -139,6 +142,16 @@ from backend.leave_accrual import start_accrual_scheduler, _run_accrual
 start_accrual_scheduler()
 
 app = FastAPI(title="Artech HRMS", version="1.0.0")
+
+
+@app.on_event("startup")
+def _start_biometric_sync():
+    """Begin automatic biometric attendance sync (no-op if no device configured)."""
+    try:
+        from backend.biometric_scheduler import start_scheduler
+        start_scheduler()
+    except Exception:
+        pass
 
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
@@ -229,6 +242,7 @@ app.include_router(notifications_router.router)
 app.include_router(resignations_router.router)
 app.include_router(onboarding_router.router)
 app.include_router(notice_period_config_router.router)
+app.include_router(biometric_router.router)
 
 # Serve uploaded profile photos
 UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")

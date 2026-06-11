@@ -336,44 +336,6 @@ export default function Dashboard({ onNavigate, toast }) {
           </button>
         </div>
 
-        {/* ── AI Insights ── */}
-        {insights.length > 0 && (
-          <div style={{
-            background: `linear-gradient(135deg, ${B.navy} 0%, #1A3A6E 100%)`,
-            borderRadius: 14,
-            padding: '14px 18px',
-            marginBottom: 20,
-            display: 'flex', alignItems: 'flex-start', gap: 12,
-            animation: 'dashFadeUp 0.4s ease-out 0.05s both',
-            boxShadow: `0 4px 20px rgba(13,31,78,0.15)`,
-          }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(61,199,179,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Sparkles size={15} color={B.teal} />
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: B.teal, textTransform: 'uppercase', letterSpacing: '0.06em', width: '100%', marginBottom: 2 }}>AI Insights</span>
-              {insights.map((ins, i) => {
-                const st = insightStyle[ins.type] || insightStyle.info;
-                return (
-                  <div key={i}
-                    onClick={() => ins.action && onNavigate(ins.action)}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '5px 10px', borderRadius: 20,
-                      background: st.bg, border: `1px solid ${st.border}`,
-                      color: st.text, fontSize: 12, fontWeight: 500,
-                      cursor: ins.action ? 'pointer' : 'default',
-                    }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: st.dot, flexShrink: 0 }} />
-                    {ins.icon} {ins.text}
-                    {ins.action && <span style={{ opacity: 0.5, fontSize: 11 }}>→</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* ── Stat cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
           <StatCard

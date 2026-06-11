@@ -922,6 +922,7 @@ export default function Employees({ toast }) {
         bank_name: form.bank_name || null, bank_account_no: form.bank_account_no || null,
         bank_ifsc: form.bank_ifsc || null, bank_branch: form.bank_branch || null,
         aadhar_no: form.aadhar_no || null, pan_no: form.pan_no || null,
+        biometric_id: form.biometric_id || null,
       };
 
       if (modal.mode === 'add') {
@@ -2287,6 +2288,7 @@ export default function Employees({ toast }) {
           <FormGrid>
             <Field label="Aadhaar Number"><input className="form-input" value={form.aadhar_no || ''} onChange={e => f({ aadhar_no: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="12-digit Aadhaar" maxLength={12} /></Field>
             <Field label="PAN Number"><input className="form-input uppercase" value={form.pan_no || ''} onChange={e => f({ pan_no: e.target.value.toUpperCase().slice(0, 10) })} placeholder="e.g. ABCDE1234F" maxLength={10} /></Field>
+            <Field label="Biometric / Device ID"><input className="form-input" value={form.biometric_id || ''} onChange={e => f({ biometric_id: e.target.value.trim() })} placeholder="Enrollment no. on the eSSL device (e.g. 3)" /></Field>
           </FormGrid>
         </FormSection>
 
