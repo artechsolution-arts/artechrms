@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
-import { fmtDate } from '../utils/date';
+import { fmtDate, fmtHours, fmtTime12 } from '../utils/date';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
@@ -1823,10 +1823,10 @@ export default function Employees({ toast }) {
                                     </div>
                                   )}
                                   {(rec?.in_time || rec?.out_time || rec?.working_hours) && (
-                                    <div className="text-[9px] opacity-70 leading-snug mt-0.5 space-y-px">
-                                      {rec.in_time  && <div>▲ {rec.in_time}</div>}
-                                      {rec.out_time && <div>▼ {rec.out_time}</div>}
-                                      {rec.working_hours ? <div className="opacity-80 font-semibold">{rec.working_hours}h</div> : null}
+                                    <div className="text-[11px] opacity-70 leading-snug mt-0.5 space-y-px">
+                                      {rec.in_time  && <div>▲ {fmtTime12(rec.in_time)}</div>}
+                                      {rec.out_time && <div>▼ {fmtTime12(rec.out_time)}</div>}
+                                      {rec.working_hours ? <div className="opacity-80 font-semibold">{fmtHours(rec.working_hours)}</div> : null}
                                     </div>
                                   )}
                                 </button>
@@ -1844,8 +1844,8 @@ export default function Employees({ toast }) {
                               <p className="text-xs font-bold">{fmtDate(selRec.date)} — <span>{selRec.status}</span></p>
                               {(selRec.in_time || selRec.out_time) && (
                                 <p className="text-xs mt-0.5 opacity-80">
-                                  Login: {selRec.in_time || '—'} &nbsp;·&nbsp; Logout: {selRec.out_time || '—'}
-                                  {selRec.working_hours ? ` · ${selRec.working_hours}h worked` : ''}
+                                  Login: {fmtTime12(selRec.in_time) || '—'} &nbsp;·&nbsp; Logout: {fmtTime12(selRec.out_time) || '—'}
+                                  {selRec.working_hours ? ` · ${fmtHours(selRec.working_hours)} worked` : ''}
                                 </p>
                               )}
                             </div>

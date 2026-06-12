@@ -34,6 +34,25 @@ export function safeDate(d) {
   return isNaN(dt.getTime()) ? null : dt;
 }
 
+// Convert decimal hours (e.g. 8.92) → "8h 55m"
+export function fmtHours(h) {
+  if (!h && h !== 0) return '—';
+  const hrs = Math.floor(h);
+  const mins = Math.round((h - hrs) * 60);
+  return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+}
+
+// Convert "HH:MM" 24h string → "H:MM AM/PM"
+export function fmtTime12(t) {
+  if (!t) return '—';
+  const [hStr, mStr] = t.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
+}
+
 // Format as "18 May 2026" style
 export function fmtDateLong(d) {
   const dt = safeDate(d);

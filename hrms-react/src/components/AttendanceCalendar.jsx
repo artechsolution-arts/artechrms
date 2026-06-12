@@ -1,5 +1,24 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+// Convert decimal hours (e.g. 8.92) → "8h 55m"
+const fmtHours = (h) => {
+  if (!h && h !== 0) return '';
+  const hrs = Math.floor(h);
+  const mins = Math.round((h - hrs) * 60);
+  return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+};
+
+// Convert "HH:MM" 24h → "H:MM AM/PM"
+const fmtTime12 = (t) => {
+  if (!t) return '';
+  const [hStr, mStr] = t.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
+};
+
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAY_NAMES = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 
@@ -156,9 +175,9 @@ export default function AttendanceCalendar({
                   )}
                   {rec && (rec.in_time || rec.out_time || rec.working_hours) && (
                     <div className="mt-1 space-y-0.5">
-                      {rec.in_time  && <div className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">▲ {rec.in_time}</div>}
-                      {rec.out_time && <div className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">▼ {rec.out_time}</div>}
-                      {rec.working_hours ? <div className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">{rec.working_hours}h</div> : null}
+                      {rec.in_time  && <div className="text-[13px] text-gray-500 dark:text-gray-400 leading-tight">▲ {fmtTime12(rec.in_time)}</div>}
+                      {rec.out_time && <div className="text-[13px] text-gray-500 dark:text-gray-400 leading-tight">▼ {fmtTime12(rec.out_time)}</div>}
+                      {rec.working_hours ? <div className="text-[13px] font-semibold text-gray-600 dark:text-gray-300">{fmtHours(rec.working_hours)}</div> : null}
                     </div>
                   )}
                 </button>

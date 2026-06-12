@@ -26,7 +26,7 @@ logger = logging.getLogger("biometric")
 
 def _interval_seconds() -> int:
     try:
-        return max(1, int(os.getenv("BIOMETRIC_SYNC_INTERVAL_MIN", "15"))) * 60
+        return max(1, int(os.getenv("BIOMETRIC_SYNC_INTERVAL_MIN", "5"))) * 60
     except ValueError:
         return 15 * 60
 
@@ -47,15 +47,19 @@ def _collect_devices(db) -> list:
             env_port = int(os.getenv("BIOMETRIC_DEVICE_PORT", "4370"))
         except ValueError:
             env_port = 4370
-        devices.append((env_ip, env_port, None))
+        try:
+            env_pw = int(os.getenv("BIOMETRIC_DEVICE_PASSWORD", "0"))
+        except ValueError:
+            env_pw = 0
+        devices.append((env_ip, env_port, env_pw, None))
 
     try:
         from backend.models.biometric import BiometricDevice
         for d in db.query(BiometricDevice).filter(BiometricDevice.is_active == True).all():  # noqa: E712
-            if not any(d.ip_address == ip and d.port == port for ip, port, _ in devices):
-                devices.append((d.ip_address, d.port, d))
+            if not any(d.ip_address == ip and d.port == port for ip, port, _pw, _ in devices):
+                devices.append((d.ip_address, d.port, d.password or 0, d))
     except Exception:
-        pass
+        db.rollback()  # prevent aborted-transaction poisoning the rest of the session
     return devices
 
 
@@ -71,9 +75,9 @@ def _run_once():
             return  # nothing configured — idle
         to_date = date.today()
         from_date = to_date - timedelta(days=_backfill_days())
-        for ip, port, row in devices:
+        for ip, port, pw, row in devices:
             try:
-                summary = biometric_zk.sync_device(db, ip, port, from_date, to_date)
+                summary = biometric_zk.sync_device(db, ip, port, from_date, to_date, password=pw)
                 logger.info("Biometric sync %s:%s → %s", ip, port, summary)
                 if row is not None:
                     row.last_sync_at = datetime.utcnow()

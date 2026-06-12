@@ -23,3 +23,11 @@ def get_db():
 def init_db():
     from backend import models  # noqa: F401 — registers all models
     Base.metadata.create_all(bind=engine)
+    # Add columns introduced after initial deploy (safe to run repeatedly)
+    with engine.connect() as conn:
+        conn.execute(
+            __import__("sqlalchemy").text(
+                "ALTER TABLE biometric_devices ADD COLUMN IF NOT EXISTS password INTEGER DEFAULT 0"
+            )
+        )
+        conn.commit()

@@ -11,6 +11,7 @@ class BiometricDevice(Base):
     name = Column(String(100), nullable=False)          # e.g. "Main Entrance"
     ip_address = Column(String(50), nullable=False)
     port = Column(Integer, default=4370)
+    password = Column(Integer, default=0)               # ZK comm password (0 = none)
     location = Column(String(120))                      # optional label
     is_active = Column(Boolean, default=True)
     last_sync_at = Column(DateTime(timezone=True), nullable=True)
