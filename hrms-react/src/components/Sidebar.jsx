@@ -159,7 +159,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
       <div style={{ padding: rail ? '14px 0 12px' : '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: rail ? 'center' : 'flex-start' }}>
           <img src="/logo.svg" alt="Artech" style={{ width: 28, height: 28, flexShrink: 0 }} />
-          <div style={{ overflow: 'hidden', opacity: rail ? 0 : 1, width: rail ? 0 : 'auto', transition: 'opacity 0.15s' }}>
+          <div style={{ overflow: 'hidden', opacity: rail ? 0 : 1, maxWidth: rail ? 0 : 200, transition: 'opacity 0.12s ease, max-width 0.18s cubic-bezier(0.23,1,0.32,1)' }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, color: '#fff', lineHeight: '1.2', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>Artech HRMS</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 1, whiteSpace: 'nowrap' }}>Human Resources</div>
           </div>
@@ -238,7 +238,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '8px 16px 3px', background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'rgba(255,255,255,0.3)', fontFamily: 'inherit',
+                  color: 'rgba(255,255,255,0.3)', fontFamily: 'inherit', transition: 'color 0.12s ease',
                 }}
                 onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
@@ -246,15 +246,16 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
                 <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   {section}
                 </span>
-                {isCollapsed
-                  ? <ChevronRight size={11} />
-                  : <ChevronDown  size={11} />
-                }
+                <ChevronDown size={11} style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 150ms cubic-bezier(0.23,1,0.32,1)' }} />
               </button>
 
-              {!isCollapsed && items.map(item => (
-                <NavBtn key={item.key} item={item} isActive={current === item.key} onNavigate={onNavigate} onClose={onClose} />
-              ))}
+              <div style={{ display: 'grid', gridTemplateRows: isCollapsed ? '0fr' : '1fr', transition: 'grid-template-rows 200ms cubic-bezier(0.23,1,0.32,1)' }}>
+                <div style={{ overflow: 'hidden', opacity: isCollapsed ? 0 : 1, transition: 'opacity 150ms ease' }}>
+                  {items.map(item => (
+                    <NavBtn key={item.key} item={item} isActive={current === item.key} onNavigate={onNavigate} onClose={onClose} />
+                  ))}
+                </div>
+              </div>
 
               {isCollapsed && hasActive && (() => {
                 const a = items.find(i => i.key === current);
@@ -290,7 +291,8 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
               background: 'rgba(31,41,55,0.72)', backdropFilter: 'blur(24px) saturate(1.5)', WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
               border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
               boxShadow: '0 12px 40px rgba(0,0,0,0.45)', overflow: 'hidden', padding: 6,
-              animation: 'dashFadeUp 0.15s ease-out both',
+              animation: 'menuSlideUp 0.15s cubic-bezier(0.23,1,0.32,1) both',
+              transformOrigin: 'bottom left',
             }}>
               <button
                 onClick={() => { setUserMenuOpen(false); setSettingsOpen(true); }}
@@ -355,7 +357,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
     <>
       {/* Desktop */}
       <aside className="glass-sidebar sidebar-desktop flex-col fixed inset-y-0 left-0 z-40 flex-shrink-0"
-        style={{ width: rail ? 76 : 220, transition: 'width 0.22s ease-in-out' }}>
+        style={{ width: rail ? 76 : 220, transition: 'width 0.18s cubic-bezier(0.23,1,0.32,1)' }}>
         <SidebarInner railMode={rail} />
       </aside>
 
@@ -364,7 +366,8 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="glass-sidebar lg:hidden fixed inset-y-0 left-0 z-40 w-[240px] flex flex-col">
+        <div className="glass-sidebar lg:hidden fixed inset-y-0 left-0 z-40 w-[240px] flex flex-col"
+          style={{ animation: 'sidebarSlideIn 0.28s cubic-bezier(0.32, 0.72, 0, 1) both' }}>
           <SidebarInner railMode={false} />
         </div>
       )}
@@ -399,11 +402,13 @@ function NavBtn({ item, isActive, onNavigate, onClose, rail = false }) {
         fontFamily: 'inherit', fontSize: 13, fontWeight: isActive ? 500 : 400,
         background: isActive ? 'rgba(26,106,180,0.2)' : 'transparent',
         color: isActive ? '#60A5FA' : 'rgba(255,255,255,0.5)',
-        transition: 'background 0.12s, color 0.12s',
+        transition: 'background 0.12s, color 0.12s, transform 100ms cubic-bezier(0.23,1,0.32,1)',
         position: 'relative',
       }}
       onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'rgba(255,255,255,0.82)'; }}}
-      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}}
+      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; } e.currentTarget.style.transform = 'scale(1)'; }}
+      onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+      onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
     >
       {isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 2.5, height: rail ? 18 : 14, borderRadius: 2, background: '#60A5FA' }} />}
       <item.icon size={rail ? 17 : 14} style={{ flexShrink: 0, opacity: isActive ? 0.95 : 0.65 }} />

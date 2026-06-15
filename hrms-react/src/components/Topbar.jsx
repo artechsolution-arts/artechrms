@@ -326,7 +326,7 @@ export default function Topbar({ current, onNavigate, onToggleSidebar, accent, s
                     key={t.name}
                     onClick={() => setAccent(t.name)}
                     title={t.label}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform hover:scale-110"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95"
                     style={{ backgroundColor: t.hex }}
                   >
                     {accent === t.name && <span className="w-2.5 h-2.5 rounded-full bg-white/80" />}

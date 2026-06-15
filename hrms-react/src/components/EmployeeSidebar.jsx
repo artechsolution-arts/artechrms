@@ -110,7 +110,7 @@ export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClo
         </nav>
 
         {/* User footer */}
-        <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3">
+        <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-3 space-y-2">
           <div className="flex items-center gap-2.5">
             {user?.profile_photo ? (
               <img src={user.profile_photo} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
@@ -124,16 +124,16 @@ export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClo
               <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{user?.full_name || 'Employee'}</div>
               <div className="text-[11px] text-gray-400 truncate">{user?.role || 'Employee'}</div>
             </div>
-            {onLogout && (
-              <button
-                onClick={() => setConfirmLogout(true)}
-                className="p-1.5 rounded-md text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors"
-                title="Sign out"
-              >
-                <LogOut size={13} />
-              </button>
-            )}
           </div>
+          {onLogout && (
+            <button
+              onClick={() => setConfirmLogout(true)}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            >
+              <LogOut size={13} />
+              Sign Out
+            </button>
+          )}
         </div>
       </aside>
 
@@ -143,6 +143,7 @@ export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClo
         allItems={drawerItems}
         current={current}
         onNavigate={handleMobileNav}
+        onLogout={() => setConfirmLogout(true)}
       />
 
       <ConfirmModal

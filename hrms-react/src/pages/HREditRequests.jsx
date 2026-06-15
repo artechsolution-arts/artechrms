@@ -7,10 +7,10 @@ import { FilePenLine, Check, X, RefreshCw } from 'lucide-react';
 const TABS = ['All', 'Pending', 'Approved', 'Rejected'];
 
 const TYPE_CHIP = {
-  'Leave Entry':   'bg-blue-50 text-blue-700',
-  'Status Sheet':  'bg-violet-50 text-violet-700',
-  'Attendance':    'bg-teal-50 text-teal-700',
-  'Other':         'bg-gray-100 text-gray-600',
+  'Leave Entry':   'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
+  'Status Sheet':  'bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400',
+  'Attendance':    'bg-teal-50 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400',
+  'Other':         'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
 };
 
 const AVATAR_COLORS = [
@@ -167,14 +167,14 @@ export default function HREditRequests({ toast }) {
                         <button
                           onClick={() => resolve(r.id, 'approve')}
                           disabled={resolving === r.id}
-                          className="btn btn-success btn-xs gap-1 disabled:opacity-60"
+                          className="btn-approve disabled:opacity-50"
                         >
                           <Check size={11} /> Approve
                         </button>
                         <button
                           onClick={() => resolve(r.id, 'reject')}
                           disabled={resolving === r.id}
-                          className="btn btn-danger btn-xs gap-1 disabled:opacity-60"
+                          className="btn-reject disabled:opacity-50"
                         >
                           <X size={11} /> Reject
                         </button>

@@ -23,11 +23,35 @@ def get_db():
 def init_db():
     from backend import models  # noqa: F401 — registers all models
     Base.metadata.create_all(bind=engine)
-    # Add columns introduced after initial deploy (safe to run repeatedly)
+
+    sql = __import__("sqlalchemy").text
+
     with engine.connect() as conn:
-        conn.execute(
-            __import__("sqlalchemy").text(
-                "ALTER TABLE biometric_devices ADD COLUMN IF NOT EXISTS password INTEGER DEFAULT 0"
-            )
-        )
+        # Columns added after initial deploy (safe to run repeatedly)
+        conn.execute(sql(
+            "ALTER TABLE biometric_devices ADD COLUMN IF NOT EXISTS password INTEGER DEFAULT 0"
+        ))
+
+        # Readable view: status sheet with employee details joined in
+        conn.execute(sql("""
+            CREATE OR REPLACE VIEW v_status_sheet AS
+            SELECT
+                se.id,
+                e.employee_id           AS emp_code,
+                e.full_name             AS employee_name,
+                e.department,
+                e.designation,
+                TO_CHAR(se.entry_date, 'YYYY-MM')  AS month,
+                se.task_id,
+                se.entry_date,
+                se.task_name,
+                se.due_date,
+                se.status,
+                se.percent_complete,
+                se.updated_at
+            FROM status_entries se
+            JOIN employees e ON e.id = se.employee_id
+            ORDER BY e.full_name, se.entry_date
+        """))
+
         conn.commit()

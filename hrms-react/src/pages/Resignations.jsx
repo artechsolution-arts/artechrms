@@ -100,10 +100,10 @@ function NoticePeriodSettings({ toast }) {
 const STATUS_TABS = ['All', 'Pending', 'Approved', 'Rejected', 'Withdrawn'];
 
 const STATUS_COLOR = {
-  Pending:   'bg-amber-50 text-amber-700 border border-amber-200',
-  Approved:  'bg-green-50 text-green-700 border border-green-200',
-  Rejected:  'bg-red-50 text-red-700 border border-red-200',
-  Withdrawn: 'bg-gray-100 text-gray-500 border border-gray-200',
+  Pending:   'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+  Approved:  'bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
+  Rejected:  'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
+  Withdrawn: 'bg-gray-100 text-gray-500 border border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600',
 };
 
 function tenure(doj) {
@@ -231,9 +231,7 @@ export default function Resignations({ toast }) {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[r.status] || ''}`}>
-                        {r.status}
-                      </span>
+                      <Badge text={r.status} />
                       <span className="text-xs text-gray-400">{fmtDate(r.created_at)}</span>
                     </div>
                   </div>

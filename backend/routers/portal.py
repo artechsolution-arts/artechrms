@@ -1,5 +1,5 @@
 """Employee Self-Service Portal — endpoints return data scoped to the logged-in employee."""
-import time
+import time, uuid
 from fastapi import APIRouter, Request, HTTPException, UploadFile, File
 from backend import storage
 from sqlalchemy.orm import Session
@@ -440,6 +440,7 @@ def portal_appraisals(request: Request, db: Session = Depends(get_db)):
         "business_score": a.business_score,
         "biz_head_score": a.biz_head_score,
         "total_score": a.total_score,
+        "perf_documents": a.perf_documents or [],
         "created_at": str(a.created_at)[:10] if a.created_at else "",
     } for a in rows]
 
@@ -470,6 +471,58 @@ def portal_self_eval(appraisal_id: int, data: SelfEvalIn, request: Request, db: 
     a.self_score = _weighted_score(a.goals or [], a.self_eval)
     a.status = "Self Evaluated"
     a.total_score = _total(a)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/appraisals/{appraisal_id}/documents/upload")
+async def portal_upload_perf_doc(
+    appraisal_id: int,
+    file: UploadFile = File(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    emp = _get_employee(request, db)
+    a = db.query(Appraisal).filter(
+        Appraisal.id == appraisal_id,
+        Appraisal.employee_id == emp.id,
+    ).first()
+    if not a:
+        raise HTTPException(404, "Appraisal not found")
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if ext not in ("pdf", "doc", "docx", "jpg", "jpeg", "png", "xlsx", "pptx"):
+        raise HTTPException(400, "Unsupported file type")
+    fname = f"appraisal_{appraisal_id}_{int(time.time())}.{ext}"
+    url = storage.upload_file(await file.read(), "documents", fname)
+    docs = list(a.perf_documents or [])
+    docs.append({
+        "id": str(uuid.uuid4())[:8],
+        "name": file.filename,
+        "url": url,
+        "uploaded_by": emp.full_name,
+        "uploaded_at": _datetime.utcnow().isoformat(),
+        "type": ext.upper(),
+    })
+    a.perf_documents = docs
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/appraisals/{appraisal_id}/documents/{doc_id}")
+def portal_delete_perf_doc(
+    appraisal_id: int,
+    doc_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    emp = _get_employee(request, db)
+    a = db.query(Appraisal).filter(
+        Appraisal.id == appraisal_id,
+        Appraisal.employee_id == emp.id,
+    ).first()
+    if not a:
+        raise HTTPException(404, "Appraisal not found")
+    a.perf_documents = [d for d in (a.perf_documents or []) if d.get("id") != doc_id]
     db.commit()
     return {"ok": True}
 
@@ -761,7 +814,7 @@ def portal_get_status(month: str, request: Request, db: Session = Depends(get_db
     is_past_or_current = (year < today.year) or (year == today.year and mon <= today.month)
     if is_past_or_current:
         limit_date = end
-        task_counter = db.query(StatusEntry).filter(StatusEntry.employee_id == emp.id).count()
+        task_counter = len(existing)  # reset to 0 each month so IDs start at 01
         d = start
         while d <= min(limit_date, end):
             if d.weekday() < 5 and d not in existing:

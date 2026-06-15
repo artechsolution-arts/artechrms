@@ -68,18 +68,18 @@ export default function Holidays({ toast }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(grouped).sort(([a],[b]) => +a - +b).map(([month, holidays]) => (
               <div key={month} className="card overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-gray-100 font-semibold text-sm text-gray-700">
+                <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700 font-semibold text-sm text-gray-700 dark:text-gray-200">
                   {MONTHS[+month]}
                 </div>
                 {holidays.map(h => (
-                  <div key={h.id} className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 group">
+                  <div key={h.id} className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 group">
                     <div className="flex items-center gap-3">
                       <div className="text-center w-8">
-                        <div className="text-lg font-bold leading-none text-gray-800">{new Date(h.date).getDate()}</div>
+                        <div className="text-lg font-bold leading-none text-gray-800 dark:text-gray-200">{new Date(h.date).getDate()}</div>
                         <div className="text-[10px] text-gray-400">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(h.date).getDay()]}</div>
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-800">{h.name}</div>
+                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{h.name}</div>
                         <Badge text={h.holiday_type} />
                       </div>
                     </div>

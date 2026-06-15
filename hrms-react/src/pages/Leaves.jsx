@@ -294,35 +294,35 @@ export default function Leaves({ toast }) {
                         })()}
                         {l.status === 'Pending' && canApprove(myRole, l.requester_role || 'Employee') && (
                           <>
-                            <button onClick={() => approve(l.id)} className="btn btn-success btn-xs gap-1">
+                            <button onClick={() => approve(l.id)} className="btn-approve">
                               <CheckCircle size={11} /> Approve
                             </button>
-                            <button onClick={() => reject(l.id)} className="btn btn-danger btn-xs gap-1">
+                            <button onClick={() => reject(l.id)} className="btn-reject">
                               <XCircle size={11} /> Reject
                             </button>
                           </>
                         )}
                         {l.status === 'Cancellation Requested' && canApprove(myRole, l.requester_role || 'Employee') && (
                           <>
-                            <button onClick={() => approveCancel(l.id)} className="btn btn-success btn-xs gap-1">
+                            <button onClick={() => approveCancel(l.id)} className="btn-approve">
                               <CheckCircle size={11} /> Approve Cancel
                             </button>
-                            <button onClick={() => rejectCancel(l.id)} className="btn btn-danger btn-xs gap-1">
+                            <button onClick={() => rejectCancel(l.id)} className="btn-reject">
                               <XCircle size={11} /> Reject Cancel
                             </button>
                           </>
                         )}
                         {l.status === 'Edit Requested' && canApprove(myRole, l.requester_role || 'Employee') && (
                           <>
-                            <button onClick={() => approveEdit(l.id)} className="btn btn-success btn-xs gap-1">
+                            <button onClick={() => approveEdit(l.id)} className="btn-approve">
                               <CheckCircle size={11} /> Approve Edit
                             </button>
-                            <button onClick={() => rejectEdit(l.id)} className="btn btn-danger btn-xs gap-1">
+                            <button onClick={() => rejectEdit(l.id)} className="btn-reject">
                               <XCircle size={11} /> Reject Edit
                             </button>
                           </>
                         )}
-                        <button onClick={() => del(l.id)} className="btn btn-secondary btn-xs gap-1">
+                        <button onClick={() => del(l.id)} className="btn-delete">
                           <Trash2 size={11} /> Delete
                         </button>
                       </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api';
+import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import Select from '../components/Select';
 import { Plus, RefreshCw, Trash2, ChevronDown, Target, Star, ClipboardCheck,
@@ -9,11 +10,11 @@ import { Plus, RefreshCw, Trash2, ChevronDown, Target, Star, ClipboardCheck,
 const STATUS_ORDER = ['Goals Set', 'Self Evaluated', 'Manager Evaluated', 'Business Evaluated', 'Completed'];
 
 const STATUS_STYLE = {
-  'Goals Set':           'bg-blue-50 text-blue-700 border-blue-200',
-  'Self Evaluated':      'bg-purple-50 text-purple-700 border-purple-200',
-  'Manager Evaluated':   'bg-amber-50 text-amber-700 border-amber-200',
-  'Business Evaluated':  'bg-orange-50 text-orange-700 border-orange-200',
-  'Completed':           'bg-green-50 text-green-700 border-green-200',
+  'Goals Set':           'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
+  'Self Evaluated':      'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800',
+  'Manager Evaluated':   'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+  'Business Evaluated':  'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800',
+  'Completed':           'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
 };
 
 // All evaluation stages (in display order)
@@ -306,9 +307,7 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
             <p className="text-xs text-gray-500 mt-0.5">{appraisal.period} · {appraisal.designation}</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${STATUS_STYLE[appraisal.status] || ''}`}>
-              {appraisal.status}
-            </span>
+            <Badge text={appraisal.status} />
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
               <X size={15} />
             </button>
@@ -621,11 +620,7 @@ export default function Appraisals({ toast }) {
                       {a.designation && <p className="text-xs text-gray-400">{a.designation}</p>}
                     </td>
                     <td className="text-gray-600 dark:text-gray-400">{a.period}</td>
-                    <td>
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${STATUS_STYLE[a.status] || ''}`}>
-                        {a.status}
-                      </span>
-                    </td>
+                    <td><Badge text={a.status} /></td>
                     <td className="text-center"><ScorePill score={a.self_score} /></td>
                     <td className="text-center"><ScorePill score={a.manager_score} /></td>
                     <td className="text-center"><ScorePill score={a.business_score} /></td>
@@ -639,7 +634,7 @@ export default function Appraisals({ toast }) {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => setDetail(a)}
-                          className="btn btn-secondary btn-xs gap-1"
+                          className="btn-action"
                         >
                           <Eye size={11} />
                           {a.status === 'Goals Set' ? 'View' :
@@ -647,7 +642,7 @@ export default function Appraisals({ toast }) {
                            a.status === 'Manager Evaluated' ? 'Evaluate' :
                            a.status === 'Business Evaluated' ? 'Evaluate' : 'View'}
                         </button>
-                        <button onClick={e => del(a.id, e)} className="btn btn-danger btn-xs">
+                        <button onClick={e => del(a.id, e)} className="btn-delete">
                           <Trash2 size={11} />
                         </button>
                       </div>

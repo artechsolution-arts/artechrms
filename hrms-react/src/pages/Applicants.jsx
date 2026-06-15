@@ -91,12 +91,12 @@ export default function Applicants({ toast }) {
                 ) : rows.map(a => (
                   <tr key={a.id}>
                     <td>
-                      <div className="font-semibold text-gray-900">{a.name}</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">{a.name}</div>
                       <div className="text-xs text-gray-400">{a.email}</div>
                     </td>
-                    <td className="text-gray-600">{a.job_title}</td>
+                    <td className="text-gray-600 dark:text-gray-300">{a.job_title}</td>
                     <td><Badge text={a.status} /></td>
-                    <td className="text-gray-500">{fmtDate(a.created_at)}</td>
+                    <td className="text-gray-500 dark:text-gray-400">{fmtDate(a.created_at)}</td>
                     <td>
                       <Select
                         value={a.status}

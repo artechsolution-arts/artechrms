@@ -67,7 +67,7 @@ function DetailRow({ label, value }) {
   if (!value) return null;
   return (
     <div className="flex items-start gap-2 py-1.5">
-      <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+      <span className="text-xs text-gray-600 dark:text-gray-300 w-32 flex-shrink-0 pt-0.5">{label}</span>
       <span className="text-xs text-gray-800 dark:text-gray-200 font-medium flex-1">{value}</span>
     </div>
   );
@@ -579,6 +579,15 @@ export default function Employees({ toast }) {
   const [eduExpSaving, setEduExpSaving] = useState(false);
   const [joinedMonthFilter, setJoinedMonthFilter] = useState('');
   const [joinedMonthLabel, setJoinedMonthLabel] = useState('');
+  const [jobInfoEditOpen, setJobInfoEditOpen] = useState(false);
+  const [jobInfoForm, setJobInfoForm] = useState({});
+  const [jobInfoSaving, setJobInfoSaving] = useState(false);
+  const [historyDropdownOpen, setHistoryDropdownOpen] = useState(false);
+  const [updateDropdownOpen, setUpdateDropdownOpen] = useState(false);
+  const [updateEventType, setUpdateEventType] = useState('');
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const [updateForm, setUpdateForm] = useState({});
+  const [updateSaving, setUpdateSaving] = useState(false);
 
   const load = async (s = search, d = deptFilter, st = statusFilter, pg = page, jm = joinedMonthFilter) => {
     setLoading(true);
@@ -876,6 +885,73 @@ export default function Employees({ toast }) {
     } catch (e) { toast(e.message, 'error'); }
   };
 
+  const openJobInfoEdit = () => {
+    setJobInfoForm({
+      department_id: detailEmp.department_id || '',
+      designation_id: detailEmp.designation_id || '',
+      employment_type: detailEmp.employment_type || 'Full-time',
+      status: detailEmp.status || 'Active',
+      reports_to_id: detailEmp.reports_to_id || null,
+      date_of_joining: detailEmp.date_of_joining || '',
+      notice_period_days: detailEmp.notice_period_days ?? '',
+      probation_period_days: detailEmp.probation_period_days ?? '',
+      office_address: detailEmp.office_address || '',
+    });
+    setJobInfoEditOpen(true);
+  };
+
+  const saveJobInfo = async () => {
+    setJobInfoSaving(true);
+    try {
+      await api('PUT', `/api/employees/${detailEmp.id}`, {
+        ...detailEmp,
+        department_id: jobInfoForm.department_id || detailEmp.department_id,
+        designation_id: jobInfoForm.designation_id || detailEmp.designation_id,
+        employment_type: jobInfoForm.employment_type,
+        status: jobInfoForm.status,
+        reports_to_id: jobInfoForm.reports_to_id || null,
+        date_of_joining: jobInfoForm.date_of_joining || detailEmp.date_of_joining,
+        notice_period_days: jobInfoForm.notice_period_days !== '' ? parseInt(jobInfoForm.notice_period_days) : null,
+        probation_period_days: jobInfoForm.probation_period_days !== '' ? parseInt(jobInfoForm.probation_period_days) : null,
+        office_address: jobInfoForm.office_address,
+      });
+      const updated = await api('GET', `/api/employees/${detailEmp.id}`);
+      setDetailEmp(p => ({ ...p, ...updated }));
+      setJobInfoEditOpen(false);
+      toast('Job info saved', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setJobInfoSaving(false); }
+  };
+
+  const saveUpdate = async () => {
+    if (!updateForm.effective_date) return toast('Effective date is required', 'warning');
+    setUpdateSaving(true);
+    const approved = updateForm.approved_by?.trim();
+    const remarksText = [approved ? `Approved by: ${approved}` : '', updateForm.remarks?.trim() || ''].filter(Boolean).join('. ');
+    try {
+      await api('POST', `/api/hrm/employees/${detailEmp.id}/history`, {
+        change_type: updateEventType,
+        effective_date: updateForm.effective_date,
+        from_department: updateForm.from_department || null,
+        to_department: updateForm.to_department || null,
+        from_designation: updateForm.from_designation || null,
+        to_designation: updateForm.to_designation || null,
+        salary_before: updateForm.salary_before ? parseFloat(updateForm.salary_before) : null,
+        salary_after: updateForm.salary_after ? parseFloat(updateForm.salary_after) : null,
+        last_working_date: updateForm.last_working_date || null,
+        remarks: remarksText || null,
+      });
+      toast('History event added', 'success');
+      setUpdateModalOpen(false);
+      setUpdateDropdownOpen(false);
+      setUpdateForm({});
+      setUpdateEventType('');
+      if (historyDropdownOpen) loadHistory(detailEmp.id);
+      else setHistory([]);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setUpdateSaving(false); }
+  };
+
   const allocateAsset = async () => {
     if (!assetForm.asset_name.trim() || !assetForm.asset_type) return toast('Asset name and type are required', 'warning');
     try {
@@ -1091,7 +1167,7 @@ export default function Employees({ toast }) {
                     <tr><td colSpan={7}>
                       <div className="empty-state">
                         <div className="empty-state-icon">👤</div>
-                        <h3 className="text-sm font-semibold text-gray-700 mt-2">No employees found</h3>
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-2">No employees found</h3>
                         <p className="text-xs text-gray-400 mt-1">Try adjusting your filters or add a new employee</p>
                       </div>
                     </td></tr>
@@ -1105,7 +1181,7 @@ export default function Employees({ toast }) {
                         <div className="flex items-center gap-2.5">
                           <Avatar name={e.full_name} photo={e.profile_photo} />
                           <div>
-                            <div className="font-semibold text-gray-900 text-sm">{e.full_name}</div>
+                            <div className="font-semibold text-gray-900 dark:text-white text-sm">{e.full_name}</div>
                             <div className="text-xs text-gray-400">
                               <code className="bg-gray-100 px-1 rounded text-[10px]">{e.employee_id}</code>
                               {e.email && <span className="ml-1">· {e.email}</span>}
@@ -1116,14 +1192,14 @@ export default function Employees({ toast }) {
                       <td className="text-gray-600">{e.department || <span className="text-gray-300">—</span>}</td>
                       <td className="text-gray-600">{e.designation || <span className="text-gray-300">—</span>}</td>
                       <td className="text-gray-600">{fmtDate(e.date_of_joining)}</td>
-                      <td className="text-gray-700 font-medium">
+                      <td className="text-gray-700 dark:text-gray-300 font-medium">
                         {e.basic_salary ? `₹${Number(e.basic_salary).toLocaleString()}` : <span className="text-gray-300">—</span>}
                       </td>
                       <td><Badge text={e.status} /></td>
                       <td onClick={ev => ev.stopPropagation()}>
                         <button
                           onClick={() => del(e.id, e.full_name)}
-                          className="btn btn-danger btn-xs gap-1"
+                          className="btn-delete"
                         >
                           <Trash2 size={11} />Delete
                         </button>
@@ -1170,7 +1246,7 @@ export default function Employees({ toast }) {
               <div className="card">
                 <div className="empty-state">
                   <div className="empty-state-icon">👤</div>
-                  <h3 className="text-sm font-semibold text-gray-700 mt-2">No employees found</h3>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-2">No employees found</h3>
                 </div>
               </div>
             ) : (
@@ -1180,7 +1256,7 @@ export default function Employees({ toast }) {
                     <div
                       key={e.id}
                       onClick={() => openDetail(e.id)}
-                      className="card p-4 flex flex-col items-center text-center cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 select-none"
+                      className="card p-4 flex flex-col items-center text-center cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-[transform,box-shadow] duration-150 select-none"
                     >
                       <Avatar name={e.full_name} photo={e.profile_photo} size="lg" />
                       <div className="mt-3 w-full">
@@ -1226,7 +1302,7 @@ export default function Employees({ toast }) {
         <>
           <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => setDetailEmp(null)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col pointer-events-auto">
+          <div className="modal-surface bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col pointer-events-auto">
 
             {/* ── Profile header ── */}
             <div className="px-6 pt-6 pb-5 flex-shrink-0">
@@ -1375,7 +1451,7 @@ export default function Employees({ toast }) {
                         { label: 'Mobile',           value: detailEmp.mobile },
                       ].map(({ label, value }) => value && value !== '—' ? (
                         <div key={label} className="flex items-start py-3 gap-3">
-                          <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-300 w-36 flex-shrink-0 pt-0.5">{label}</span>
                           <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex-1">{value}</span>
                         </div>
                       ) : null)}
@@ -1395,7 +1471,7 @@ export default function Employees({ toast }) {
                         { label: 'Notice Period',      value: detailEmp.notice_period_days ? `${detailEmp.notice_period_days} days` : null },
                       ].map(({ label, value }) => value ? (
                         <div key={label} className="flex items-start py-3 gap-3">
-                          <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-300 w-36 flex-shrink-0 pt-0.5">{label}</span>
                           <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex-1">{value}</span>
                         </div>
                       ) : null)}
@@ -1406,13 +1482,142 @@ export default function Employees({ toast }) {
               ) : detailTab === 'job-info' ? (
                 /* ── JOB INFORMATION ── */
                 <div className="p-6 space-y-6">
-                  {/* Edit shortcut */}
+                  {/* Header with Update + History + Edit buttons */}
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white">Job Information</h3>
-                    <button onClick={() => openEdit(detailEmp.id)} className="btn btn-secondary btn-xs gap-1.5">
-                      <Pencil size={11} /> Edit
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {/* Update button with event-type dropdown */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setUpdateDropdownOpen(v => !v)}
+                          className="btn btn-primary btn-xs gap-1.5"
+                        >
+                          <Plus size={11} /> Update
+                          <ChevronDown size={10} className={`transition-transform ${updateDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {updateDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setUpdateDropdownOpen(false)} />
+                            <div className="absolute right-0 top-full mt-1.5 z-20 w-52 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden py-1">
+                              {EVENT_TYPES.filter(t => t !== 'Joining').map(type => {
+                                const m = EVENT_META[type] || { icon: Clock, color: 'bg-gray-100 text-gray-600' };
+                                const Icon = m.icon;
+                                return (
+                                  <button
+                                    key={type}
+                                    onClick={() => {
+                                      setUpdateEventType(type);
+                                      setUpdateForm({ effective_date: '', approved_by: '', remarks: '' });
+                                      setUpdateModalOpen(true);
+                                      setUpdateDropdownOpen(false);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                                  >
+                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${m.color}`}>
+                                      <Icon size={11} />
+                                    </span>
+                                    {type}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const next = !historyDropdownOpen;
+                          setHistoryDropdownOpen(next);
+                          if (next && history.length === 0) loadHistory(detailEmp.id);
+                        }}
+                        className={`btn btn-xs gap-1.5 ${historyDropdownOpen ? 'btn-primary' : 'btn-secondary'}`}
+                      >
+                        <History size={11} /> History
+                        <ChevronDown size={10} className={`transition-transform ${historyDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      <button onClick={openJobInfoEdit} className="btn btn-secondary btn-xs gap-1.5">
+                        <Pencil size={11} /> Edit
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Inline history dropdown */}
+                  {historyDropdownOpen && (
+                    <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                      <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Employment History</span>
+                        <button onClick={() => setHistoryDropdownOpen(false)} className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400">
+                          <X size={12} />
+                        </button>
+                      </div>
+                      <div className="p-4">
+                        {historyLoading ? (
+                          <div className="text-center py-4 text-xs text-gray-400">Loading…</div>
+                        ) : history.length === 0 ? (
+                          <div className="text-center py-4 text-xs text-gray-400">No history events yet</div>
+                        ) : (
+                          <div className="relative">
+                            <div className="absolute left-4 top-2 bottom-2 w-px bg-gray-200 dark:bg-gray-700" />
+                            <div className="space-y-3">
+                              {(() => {
+                                const synthetic = detailEmp.date_of_joining ? [{
+                                  id: '__join__', _synthetic: true,
+                                  change_type: 'Joining',
+                                  effective_date: detailEmp.date_of_joining,
+                                  to_designation: detailEmp.designation,
+                                  to_department: detailEmp.department,
+                                  remarks: 'Initial joining record',
+                                }] : [];
+                                const allEvents = [...history, ...synthetic].sort((a, b) => new Date(b.effective_date) - new Date(a.effective_date));
+                                return allEvents.map((ev, i) => {
+                                  const m = EVENT_META[ev.change_type] || { icon: Clock, color: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' };
+                                  const Icon = m.icon;
+                                  return (
+                                    <div key={ev.id || i} className="relative flex gap-3 pl-10">
+                                      <div className={`absolute left-0 w-8 h-8 rounded-full ${m.color} flex items-center justify-center flex-shrink-0 ring-2 ring-white dark:ring-gray-900 z-10`}>
+                                        <Icon size={14} />
+                                      </div>
+                                      <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 min-w-0">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ev.change_type}</p>
+                                            <p className="text-[11px] text-gray-400 mt-0.5">{fmtDate(ev.effective_date)}</p>
+                                            {(ev.from_designation || ev.to_designation) && (
+                                              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1 flex-wrap">
+                                                {ev.from_designation && <span className="line-through text-gray-400">{ev.from_designation}</span>}
+                                                {ev.from_designation && ev.to_designation && <span className="text-gray-400">→</span>}
+                                                {ev.to_designation && <span>{ev.to_designation}</span>}
+                                              </p>
+                                            )}
+                                            {(ev.from_department || ev.to_department) && (
+                                              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1 flex-wrap">
+                                                {ev.from_department && <span className="text-gray-400">{ev.from_department}</span>}
+                                                {ev.from_department && ev.to_department && <span className="text-gray-400">→</span>}
+                                                {ev.to_department && <span>{ev.to_department}</span>}
+                                              </p>
+                                            )}
+                                            {(ev.salary_before != null || ev.salary_after != null) && (
+                                              <p className="text-xs font-medium mt-1 flex items-center gap-1 flex-wrap">
+                                                {ev.salary_before != null && <span className="text-gray-400 line-through">₹{Number(ev.salary_before).toLocaleString('en-IN')}</span>}
+                                                {ev.salary_before != null && ev.salary_after != null && <span className="text-gray-400">→</span>}
+                                                {ev.salary_after != null && <span className="text-green-600">₹{Number(ev.salary_after).toLocaleString('en-IN')}</span>}
+                                              </p>
+                                            )}
+                                            {ev.remarks && <p className="text-[11px] text-gray-400 mt-1 italic">{ev.remarks}</p>}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Grid of info cards */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1432,7 +1637,7 @@ export default function Employees({ toast }) {
                           { label: 'Work Location',    value: detailEmp.office_address?.split(',')[0] || '—' },
                         ].map(({ label, value }) => (
                           <div key={label} className="flex items-start px-4 py-3 gap-3">
-                            <span className="text-xs text-gray-400 dark:text-gray-500 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className="text-xs text-gray-600 dark:text-gray-300 w-36 flex-shrink-0 pt-0.5">{label}</span>
                             <span className={`text-xs font-semibold flex-1 ${value && value !== '—' ? 'text-gray-800 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600 italic'}`}>{value || '—'}</span>
                           </div>
                         ))}
@@ -1453,7 +1658,7 @@ export default function Employees({ toast }) {
                           { label: 'Tenure',            value: (() => { if (!detailEmp.date_of_joining) return '—'; const d = new Date(detailEmp.date_of_joining); const now = new Date(); const months = (now.getFullYear()-d.getFullYear())*12 + now.getMonth()-d.getMonth(); const y = Math.floor(months/12), m = months%12; return y > 0 ? `${y}y ${m}m` : `${m} months`; })() },
                         ].map(({ label, value }) => (
                           <div key={label} className="flex items-start px-4 py-3 gap-3">
-                            <span className="text-xs text-gray-400 dark:text-gray-500 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className="text-xs text-gray-600 dark:text-gray-300 w-36 flex-shrink-0 pt-0.5">{label}</span>
                             <span className={`text-xs font-semibold flex-1 ${value && value !== '—' ? 'text-gray-800 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600 italic'}`}>{value || '—'}</span>
                           </div>
                         ))}
@@ -1474,7 +1679,7 @@ export default function Employees({ toast }) {
                           { label: 'PT State',         value: detailEmp.pt_state || '—' },
                         ].map(({ label, value }) => (
                           <div key={label} className="flex items-start px-4 py-3 gap-3">
-                            <span className="text-xs text-gray-400 dark:text-gray-500 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className="text-xs text-gray-600 dark:text-gray-300 w-36 flex-shrink-0 pt-0.5">{label}</span>
                             <span className={`text-xs font-semibold flex-1 ${value && value !== '—' ? 'text-gray-800 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600 italic'}`}>{value}</span>
                           </div>
                         ))}
@@ -1494,7 +1699,7 @@ export default function Employees({ toast }) {
                           { label: 'Branch',           value: detailEmp.bank_branch || '—' },
                         ].map(({ label, value }) => (
                           <div key={label} className="flex items-start px-4 py-3 gap-3">
-                            <span className="text-xs text-gray-400 dark:text-gray-500 w-36 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className="text-xs text-gray-600 dark:text-gray-300 w-36 flex-shrink-0 pt-0.5">{label}</span>
                             <span className={`text-xs font-semibold flex-1 ${value && value !== '—' ? 'text-gray-800 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600 italic'}`}>{value}</span>
                           </div>
                         ))}
@@ -1506,10 +1711,10 @@ export default function Employees({ toast }) {
                   {/* Status badge row */}
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
                     {[
-                      { label: detailEmp.status || 'Active',        color: detailEmp.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200' },
-                      { label: detailEmp.employment_type,           color: 'bg-blue-50 text-blue-700 border-blue-200' },
-                      detailEmp.pf_applicable  && { label: 'PF Enrolled',   color: 'bg-purple-50 text-purple-700 border-purple-200' },
-                      detailEmp.esi_applicable && { label: 'ESI Eligible',  color: 'bg-amber-50 text-amber-700 border-amber-200' },
+                      { label: detailEmp.status || 'Active',        color: detailEmp.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800' : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700' },
+                      { label: detailEmp.employment_type,           color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800' },
+                      detailEmp.pf_applicable  && { label: 'PF Enrolled',   color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800' },
+                      detailEmp.esi_applicable && { label: 'ESI Eligible',  color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' },
                     ].filter(Boolean).map(({ label, color }) => label && (
                       <span key={label} className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold ${color}`}>{label}</span>
                     ))}
@@ -1534,7 +1739,7 @@ export default function Employees({ toast }) {
                           { label: 'Mobile',         value: detailEmp.mobile },
                         ].map(({ label, value }) => value ? (
                           <div key={label} className="flex items-start py-2.5 gap-3">
-                            <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300 w-32 flex-shrink-0 pt-0.5">{label}</span>
                             <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex-1">{value}</span>
                           </div>
                         ) : null)}
@@ -1548,7 +1753,7 @@ export default function Employees({ toast }) {
                           { label: 'Office',      value: detailEmp.office_address },
                         ].map(({ label, value }) => (
                           <div key={label} className="flex items-start py-2.5 gap-3">
-                            <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300 w-32 flex-shrink-0 pt-0.5">{label}</span>
                             <span className={`text-xs font-semibold flex-1 ${value ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-600 italic'}`}>
                               {value || '—'}
                             </span>
@@ -1570,7 +1775,7 @@ export default function Employees({ toast }) {
                           { label: 'Branch',         value: detailEmp.bank_branch },
                         ].map(({ label, value }) => (
                           <div key={label} className="flex items-start py-2.5 gap-3">
-                            <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300 w-32 flex-shrink-0 pt-0.5">{label}</span>
                             <span className={`text-xs font-semibold flex-1 ${value ? 'text-gray-800 dark:text-gray-200 font-mono' : 'text-gray-400 dark:text-gray-600 italic'}`}>
                               {value || '—'}
                             </span>
@@ -1587,7 +1792,7 @@ export default function Employees({ toast }) {
                             { label: 'PAN',     value: detailEmp.pan_no },
                           ].map(({ label, value }) => value ? (
                             <div key={label} className="flex items-start py-2.5 gap-3">
-                              <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-300 w-32 flex-shrink-0 pt-0.5">{label}</span>
                               <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 font-mono flex-1">{value}</span>
                             </div>
                           ) : null)}
@@ -1604,7 +1809,7 @@ export default function Employees({ toast }) {
                             { label: 'Phone',        value: detailEmp._ec.phone },
                           ].map(({ label, value }) => value ? (
                             <div key={label} className="flex items-start py-2.5 gap-3">
-                              <span className="text-xs text-gray-400 w-32 flex-shrink-0 pt-0.5">{label}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-300 w-32 flex-shrink-0 pt-0.5">{label}</span>
                               <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex-1">{value}</span>
                             </div>
                           ) : null)}
@@ -1724,11 +1929,11 @@ export default function Employees({ toast }) {
                     WFH:        'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200',
                   };
                   const STATUS_BADGE = {
-                    Present:    'bg-green-50 text-green-700 border-green-200',
-                    Absent:     'bg-red-50 text-red-700 border-red-200',
-                    'On Leave': 'bg-amber-50 text-amber-700 border-amber-200',
-                    'Half Day': 'bg-blue-50 text-blue-700 border-blue-200',
-                    WFH:        'bg-purple-50 text-purple-700 border-purple-200',
+                    Present:    'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
+                    Absent:     'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
+                    'On Leave': 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+                    'Half Day': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
+                    WFH:        'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800',
                   };
                   const prevAttMonth = () => {
                     const ny = attCalMonth === 1 ? attCalYear - 1 : attCalYear;
@@ -2056,6 +2261,173 @@ export default function Employees({ toast }) {
           </div>
         </>
       )}
+
+      {/* ── UPDATE (HISTORY EVENT) MODAL ── */}
+      {(() => {
+        const type = updateEventType;
+        const needsDesig  = ['Promotion', 'Demotion', 'Role Change'].includes(type);
+        const needsDept   = ['Department Change', 'Transfer'].includes(type);
+        const needsSalary = type === 'Salary Hike';
+        const needsLwd    = ['Resignation', 'Notice Served'].includes(type);
+        const m = EVENT_META[type] || { icon: Clock, color: 'bg-gray-100 text-gray-600' };
+        const Icon = m.icon;
+        const uf = v => setUpdateForm(p => ({ ...p, ...v }));
+        return (
+          <Modal
+            open={updateModalOpen}
+            title={
+              <div className="flex items-center gap-2">
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${m.color}`}>
+                  <Icon size={12} />
+                </span>
+                {type}
+              </div>
+            }
+            onClose={() => { setUpdateModalOpen(false); setUpdateForm({}); setUpdateEventType(''); }}
+            onSave={saveUpdate}
+            saveLabel={updateSaving ? 'Saving…' : 'Save Event'}
+          >
+            <FormSection title="Event Details">
+              <FormGrid cols={2}>
+                <Field label="Effective Date" required>
+                  <DatePicker value={updateForm.effective_date || ''} onChange={v => uf({ effective_date: v })} placeholder="Select date" />
+                </Field>
+                <Field label="Approved By">
+                  <input
+                    className="form-input w-full"
+                    value={updateForm.approved_by || ''}
+                    onChange={e => uf({ approved_by: e.target.value })}
+                    placeholder="e.g. Rajesh Kumar"
+                  />
+                </Field>
+                {needsDesig && (<>
+                  <Field label="From Designation">
+                    <input className="form-input w-full" value={updateForm.from_designation || ''} onChange={e => uf({ from_designation: e.target.value })} placeholder="Previous designation" />
+                  </Field>
+                  <Field label="To Designation">
+                    <input className="form-input w-full" value={updateForm.to_designation || ''} onChange={e => uf({ to_designation: e.target.value })} placeholder="New designation" />
+                  </Field>
+                </>)}
+                {needsDept && (<>
+                  <Field label="From Department">
+                    <input className="form-input w-full" value={updateForm.from_department || ''} onChange={e => uf({ from_department: e.target.value })} placeholder="Previous department" />
+                  </Field>
+                  <Field label="To Department">
+                    <input className="form-input w-full" value={updateForm.to_department || ''} onChange={e => uf({ to_department: e.target.value })} placeholder="New department" />
+                  </Field>
+                </>)}
+                {needsSalary && (<>
+                  <Field label="Previous Salary (₹)">
+                    <input type="number" className="form-input w-full" value={updateForm.salary_before || ''} onChange={e => uf({ salary_before: e.target.value })} placeholder="e.g. 30000" min="0" />
+                  </Field>
+                  <Field label="New Salary (₹)">
+                    <input type="number" className="form-input w-full" value={updateForm.salary_after || ''} onChange={e => uf({ salary_after: e.target.value })} placeholder="e.g. 35000" min="0" />
+                  </Field>
+                </>)}
+                {needsLwd && (
+                  <Field label="Last Working Date">
+                    <DatePicker value={updateForm.last_working_date || ''} onChange={v => uf({ last_working_date: v })} placeholder="Select date" />
+                  </Field>
+                )}
+                <Field label="Remarks" full>
+                  <textarea className="form-input w-full resize-none" rows={2} value={updateForm.remarks || ''} onChange={e => uf({ remarks: e.target.value })} placeholder="Any additional notes…" />
+                </Field>
+              </FormGrid>
+            </FormSection>
+          </Modal>
+        );
+      })()}
+
+      {/* ── JOB INFO EDIT MODAL ── */}
+      <Modal
+        open={jobInfoEditOpen}
+        title="Edit Job Information"
+        onClose={() => setJobInfoEditOpen(false)}
+        onSave={saveJobInfo}
+        saveLabel={jobInfoSaving ? 'Saving…' : 'Save'}
+      >
+        <FormSection title="Role & Department">
+          <FormGrid cols={2}>
+            <Field label="Department">
+              <Select
+                value={String(jobInfoForm.department_id || '')}
+                onChange={v => setJobInfoForm(p => ({ ...p, department_id: v }))}
+                options={[{ value: '', label: '– Select –' }, ...depts.map(d => ({ value: String(d.id), label: d.name }))]}
+                placeholder="– Select –"
+              />
+            </Field>
+            <Field label="Designation">
+              <Select
+                value={String(jobInfoForm.designation_id || '')}
+                onChange={v => setJobInfoForm(p => ({ ...p, designation_id: v }))}
+                options={[{ value: '', label: '– Select –' }, ...desigs.map(d => ({ value: String(d.id), label: d.name }))]}
+                placeholder="– Select –"
+              />
+            </Field>
+            <Field label="Employment Type">
+              <Select
+                value={jobInfoForm.employment_type || ''}
+                onChange={v => setJobInfoForm(p => ({ ...p, employment_type: v }))}
+                options={['Full-time', 'Part-time', 'Contract', 'Intern', 'Consultant'].map(t => ({ value: t, label: t }))}
+              />
+            </Field>
+            <Field label="Status">
+              <Select
+                value={jobInfoForm.status || ''}
+                onChange={v => setJobInfoForm(p => ({ ...p, status: v }))}
+                options={['Active', 'Inactive', 'On Leave', 'Resigned', 'Terminated'].map(s => ({ value: s, label: s }))}
+              />
+            </Field>
+            <Field label="Reporting Manager">
+              <Select
+                value={String(jobInfoForm.reports_to_id || '')}
+                onChange={v => setJobInfoForm(p => ({ ...p, reports_to_id: v || null }))}
+                options={[{ value: '', label: '– None –' }, ...allEmps.filter(e => e.id !== detailEmp?.id).map(e => ({ value: String(e.id), label: e.full_name }))]}
+                placeholder="– None –"
+              />
+            </Field>
+            <Field label="Work Location">
+              <input
+                className="form-input w-full"
+                value={jobInfoForm.office_address || ''}
+                onChange={e => setJobInfoForm(p => ({ ...p, office_address: e.target.value }))}
+                placeholder="Office address / location"
+              />
+            </Field>
+          </FormGrid>
+        </FormSection>
+        <FormSection title="Dates & Periods">
+          <FormGrid cols={2}>
+            <Field label="Date of Joining">
+              <DatePicker
+                value={jobInfoForm.date_of_joining || ''}
+                onChange={v => setJobInfoForm(p => ({ ...p, date_of_joining: v }))}
+              />
+            </Field>
+            <div />
+            <Field label="Notice Period (days)">
+              <input
+                type="number"
+                className="form-input w-full"
+                value={jobInfoForm.notice_period_days ?? ''}
+                onChange={e => setJobInfoForm(p => ({ ...p, notice_period_days: e.target.value }))}
+                placeholder="e.g. 30"
+                min={0}
+              />
+            </Field>
+            <Field label="Probation Period (days)">
+              <input
+                type="number"
+                className="form-input w-full"
+                value={jobInfoForm.probation_period_days ?? ''}
+                onChange={e => setJobInfoForm(p => ({ ...p, probation_period_days: e.target.value }))}
+                placeholder="e.g. 90"
+                min={0}
+              />
+            </Field>
+          </FormGrid>
+        </FormSection>
+      </Modal>
 
       {/* ── ADD / EDIT MODAL ── */}
       <Modal open={!!modal} title={modal?.mode === 'add' ? 'New Employee' : form.full_name || 'Edit Employee'}

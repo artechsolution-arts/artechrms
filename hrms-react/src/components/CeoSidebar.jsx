@@ -182,6 +182,7 @@ export default function CeoSidebar({ current, onNavigate, mobileOpen, onClose, u
         allItems={drawerItems}
         current={current}
         onNavigate={handleMobileNav}
+        onLogout={() => setConfirmLogout(true)}
       />
 
       <ConfirmModal

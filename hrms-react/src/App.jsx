@@ -208,7 +208,7 @@ export default function App() {
         onToggleRail={toggleRail}
       />
 
-      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-all duration-200 ${railCollapsed ? 'lg:ml-[76px]' : 'lg:ml-[220px]'}`}>
+      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[margin-left] duration-200 ease-out ${railCollapsed ? 'lg:ml-[76px]' : 'lg:ml-[220px]'}`}>
         <Topbar
           current={effectivePage}
           onNavigate={navigate}

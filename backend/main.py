@@ -131,6 +131,29 @@ with engine.connect() as _conn:
             resolved_at TIMESTAMP,
             resolved_by INTEGER REFERENCES users(id)
         )""",
+        # Readable view for status sheet — easy to query per employee/month in DB tools
+        """
+        CREATE OR REPLACE VIEW v_status_sheet AS
+        SELECT
+            se.id,
+            e.employee_id               AS emp_code,
+            e.full_name                 AS employee_name,
+            d.name                      AS department,
+            ds.name                     AS designation,
+            TO_CHAR(se.entry_date, 'YYYY-MM') AS month,
+            se.task_id,
+            se.entry_date,
+            se.task_name,
+            se.due_date,
+            se.status,
+            se.percent_complete,
+            se.updated_at
+        FROM status_entries se
+        JOIN employees e  ON e.id  = se.employee_id
+        LEFT JOIN departments  d  ON d.id  = e.department_id
+        LEFT JOIN designations ds ON ds.id = e.designation_id
+        ORDER BY e.full_name, se.entry_date
+        """,
     ]:
         try:
             _conn.execute(text(_stmt))

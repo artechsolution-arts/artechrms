@@ -6,10 +6,10 @@ import StatCard from '../../components/StatCard';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const STATUS_COLOR = {
-  Pending:  'bg-amber-100 text-amber-700 border-amber-200',
-  Approved: 'bg-green-100 text-green-700 border-green-200',
-  Rejected: 'bg-red-100 text-red-700 border-red-200',
-  'Cancellation Requested': 'bg-orange-100 text-orange-700 border-orange-200',
+  Pending:  'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+  Approved: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
+  Rejected: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
+  'Cancellation Requested': 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800',
 };
 
 export default function CeoDashboard({ toast, onNavigate }) {
@@ -88,7 +88,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
           {pending.length === 0 ? (
             <div className="p-8 text-center">
               <div className="text-2xl mb-2">✅</div>
-              <p className="text-sm text-gray-500">No pending leaves</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">No pending leaves</p>
               <p className="text-xs text-gray-400 mt-1">All caught up!</p>
             </div>
           ) : (
@@ -97,7 +97,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
                 const days = lv.total_days || 1;
                 return (
                   <div key={lv.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-xs font-bold text-rose-700 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center text-xs font-bold text-rose-700 dark:text-rose-400 flex-shrink-0">
                       {(lv.employee_name || 'E')[0]}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -109,14 +109,14 @@ export default function CeoDashboard({ toast, onNavigate }) {
                     <div className="flex gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => approve(lv.id)}
-                        className="w-7 h-7 rounded-full bg-green-50 hover:bg-green-100 flex items-center justify-center text-green-600 transition-colors"
+                        className="w-7 h-7 rounded-full bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 transition-colors"
                         title="Approve"
                       >
                         <CheckCircle size={14} />
                       </button>
                       <button
                         onClick={() => reject(lv.id)}
-                        className="w-7 h-7 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-500 transition-colors"
+                        className="w-7 h-7 rounded-full bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center text-red-500 dark:text-red-400 transition-colors"
                         title="Reject"
                       >
                         <XCircle size={14} />
@@ -146,7 +146,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
                   <span className="text-xs text-gray-600 dark:text-gray-400 w-28 truncate flex-shrink-0">{d.name}</span>
                   <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-500"
+                      className="h-full rounded-full transition-[width] duration-500 ease-out"
                       style={{ width: `${(d.count / maxDept) * 100}%`, backgroundColor: 'var(--accent)', opacity: 0.7 }}
                     />
                   </div>
@@ -171,8 +171,8 @@ export default function CeoDashboard({ toast, onNavigate }) {
             return (
               <div key={label} className="text-center">
                 <div className={`text-3xl font-bold ${color} mb-1`}>{value || 0}</div>
-                <div className="text-xs text-gray-500 mb-2">{label}</div>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{label}</div>
+                <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div className={`h-full rounded-full ${bar}`} style={{ width: `${((value || 0) / total) * 100}%` }} />
                 </div>
               </div>

@@ -162,10 +162,10 @@ export default function PayrollEntry({ toast, onNavigate }) {
                   </td></tr>
                 ) : entries.map(e => (
                   <tr key={e.id}>
-                    <td className="font-semibold text-gray-900">{MONTHS[e.month - 1]} {e.year}</td>
-                    <td className="text-gray-600">{e.company}</td>
-                    <td className="text-gray-600">{e.total_employees ?? '—'}</td>
-                    <td className="font-medium text-gray-800">₹{(e.total_net || 0).toLocaleString()}</td>
+                    <td className="font-semibold text-gray-900 dark:text-white">{MONTHS[e.month - 1]} {e.year}</td>
+                    <td className="text-gray-600 dark:text-gray-400">{e.company}</td>
+                    <td className="text-gray-600 dark:text-gray-400">{e.total_employees ?? '—'}</td>
+                    <td className="font-medium text-gray-800 dark:text-gray-200">₹{(e.total_net || 0).toLocaleString()}</td>
                     <td><Badge text={e.status} /></td>
                   </tr>
                 ))}
@@ -209,13 +209,13 @@ export default function PayrollEntry({ toast, onNavigate }) {
                   <tbody>
                     {result.slips.map((s, i) => (
                       <tr key={i}>
-                        <td className="font-medium text-gray-900">{s.employee_name}</td>
-                        <td className="text-gray-600">₹{Number(s.basic).toLocaleString()}</td>
-                        <td className="text-gray-600">₹{Number(s.gross_pay).toLocaleString()}</td>
-                        <td className="text-gray-600">₹{Number(s.pf).toLocaleString()}</td>
-                        <td className="text-gray-600">₹{Number(s.esi).toLocaleString()}</td>
-                        <td className="text-gray-600">₹{Number(s.pt).toLocaleString()}</td>
-                        <td className="font-bold text-green-700">₹{Number(s.net_pay).toLocaleString()}</td>
+                        <td className="font-medium text-gray-900 dark:text-white">{s.employee_name}</td>
+                        <td className="text-gray-600 dark:text-gray-400">₹{Number(s.basic).toLocaleString()}</td>
+                        <td className="text-gray-600 dark:text-gray-400">₹{Number(s.gross_pay).toLocaleString()}</td>
+                        <td className="text-gray-600 dark:text-gray-400">₹{Number(s.pf).toLocaleString()}</td>
+                        <td className="text-gray-600 dark:text-gray-400">₹{Number(s.esi).toLocaleString()}</td>
+                        <td className="text-gray-600 dark:text-gray-400">₹{Number(s.pt).toLocaleString()}</td>
+                        <td className="font-bold text-green-700 dark:text-green-400">₹{Number(s.net_pay).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -286,15 +286,15 @@ export default function PayrollEntry({ toast, onNavigate }) {
                       {previewData.map((p, i) => (
                         <tr key={i}>
                           <td>
-                            <div className="font-medium text-gray-900">{p.employee_name}</div>
+                            <div className="font-medium text-gray-900 dark:text-white">{p.employee_name}</div>
                             {p.designation && <div className="text-gray-400">{p.designation}</div>}
                           </td>
-                          <td className="text-gray-600">₹{Number(p.basic).toLocaleString()}</td>
-                          <td className="text-gray-600">₹{Number(p.gross_pay).toLocaleString()}</td>
-                          <td className="text-gray-600">₹{Number(p.pf_employee).toLocaleString()}</td>
-                          <td className="text-gray-600">₹{Number(p.esi_employee).toLocaleString()}</td>
-                          <td className="text-gray-600">₹{Number(p.professional_tax).toLocaleString()}</td>
-                          <td className="font-bold text-green-700">₹{Number(p.net_pay).toLocaleString()}</td>
+                          <td className="text-gray-600 dark:text-gray-400">₹{Number(p.basic).toLocaleString()}</td>
+                          <td className="text-gray-600 dark:text-gray-400">₹{Number(p.gross_pay).toLocaleString()}</td>
+                          <td className="text-gray-600 dark:text-gray-400">₹{Number(p.pf_employee).toLocaleString()}</td>
+                          <td className="text-gray-600 dark:text-gray-400">₹{Number(p.esi_employee).toLocaleString()}</td>
+                          <td className="text-gray-600 dark:text-gray-400">₹{Number(p.professional_tax).toLocaleString()}</td>
+                          <td className="font-bold text-green-700 dark:text-green-400">₹{Number(p.net_pay).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -84,7 +84,7 @@ export default function Select({
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
         className={[
-          'w-full flex items-center gap-2 border bg-white dark:bg-gray-900 text-left transition-all',
+          'w-full flex items-center gap-2 border bg-white dark:bg-gray-900 text-left transition-[border-color,box-shadow]',
           triggerSize,
           open
             ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/20 shadow-sm'

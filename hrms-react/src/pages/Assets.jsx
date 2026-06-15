@@ -4,11 +4,12 @@ import { fmtDate } from '../utils/date';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
+import Badge from '../components/Badge';
 import { Plus, Monitor, Undo2, Trash2 } from 'lucide-react';
 
 const STATUS_COLOR = {
-  Allocated: 'bg-blue-50 text-blue-700 border border-blue-200',
-  Returned:  'bg-gray-100 text-gray-600 border border-gray-200',
+  Allocated: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
+  Returned:  'bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600',
 };
 
 const ASSET_TYPES = ['Laptop', 'Desktop', 'Mobile', 'Tablet', 'Mouse & Keyboard', 'Monitor', 'Headset', 'Access Card', 'Sim Card', 'Other'];
@@ -106,27 +107,25 @@ export default function Assets({ toast }) {
               <tbody>
                 {rows.map(r => (
                   <tr key={r.id}>
-                    <td className="font-medium text-gray-900">{r.employee_name}</td>
+                    <td className="font-medium text-gray-900 dark:text-white">{r.employee_name}</td>
                     <td>{r.asset_name}</td>
                     <td>{r.asset_type}</td>
-                    <td className="text-gray-500 font-mono text-xs">{r.serial_number || '—'}</td>
+                    <td className="text-gray-500 dark:text-gray-400 font-mono text-xs">{r.serial_number || '—'}</td>
                     <td>{fmtDate(r.allocated_date)}</td>
                     <td>{r.condition}</td>
                     <td>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.status] || 'bg-gray-100 text-gray-600'}`}>
-                        {r.status}
-                      </span>
+                      <Badge text={r.status} />
                     </td>
                     <td>
                       <div className="flex gap-1">
                         {r.status === 'Allocated' && (
                           <button
                             onClick={() => { setReturnModal(r.id); setReturnForm({ condition: 'Good', returned_date: new Date().toISOString().slice(0,10) }); }}
-                            className="btn btn-secondary btn-xs gap-1">
+                            className="btn-action">
                             <Undo2 size={11}/>Return
                           </button>
                         )}
-                        <button onClick={() => del(r.id)} className="p-1 text-gray-400 hover:text-red-500">
+                        <button onClick={() => del(r.id)} className="btn-delete">
                           <Trash2 size={13}/>
                         </button>
                       </div>

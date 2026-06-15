@@ -4,8 +4,24 @@ import { fmtDate, safeDate } from '../../utils/date';
 const safeFmt = (d, opts) => { const dt = safeDate(d); return dt ? dt.toLocaleDateString('en-IN', opts) : '—'; };
 import Badge from '../../components/Badge';
 import StatCard from '../../components/StatCard';
-import { CalendarDays, Clock, ClipboardList, Megaphone, Gift, CalendarCheck2, ChevronRight } from 'lucide-react';
+import { CalendarDays, Clock, ClipboardList, Megaphone, Gift, CalendarCheck2, ChevronRight, LogIn, LogOut } from 'lucide-react';
 
+function fmtTime(t) {
+  if (!t) return '—';
+  const [h, m] = t.split(':');
+  const hh = parseInt(h, 10);
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  return `${hh % 12 || 12}:${m} ${ampm}`;
+}
+
+function expectedLogout(inTime, workHours = 9) {
+  const [h, m] = inTime.split(':').map(Number);
+  const totalMins = h * 60 + m + workHours * 60;
+  const outH = Math.floor(totalMins / 60) % 24;
+  const outM = totalMins % 60;
+  const ampm = outH >= 12 ? 'PM' : 'AM';
+  return `${outH % 12 || 12}:${String(outM).padStart(2, '0')} ${ampm}`;
+}
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -77,6 +93,8 @@ export default function EmpDashboard({ toast, onNavigate }) {
   if (!data) return null;
 
   const { employee: emp, stats, recent_attendance } = data;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayRec = recent_attendance.find(a => a.date === todayStr);
 
   return (
     <div className="flex-1 p-6 overflow-auto space-y-5">
@@ -116,29 +134,76 @@ export default function EmpDashboard({ toast, onNavigate }) {
       </div>
 
       {/* Last 7 days attendance */}
-      <SectionCard title="Last 7 Days Attendance" icon={Clock} action="emp-attendance" onNavigate={onNavigate}>
+      <SectionCard title="Last 7 Days Attendance" icon={Clock} action="my-attendance" onNavigate={onNavigate}>
         {recent_attendance.length === 0 ? (
           <div className="p-6 text-center text-sm text-gray-400">No attendance records yet</div>
         ) : (
-          <div className="p-4 flex flex-wrap gap-3">
-            {recent_attendance.map(a => (
-              <div key={a.date} className="flex flex-col items-center gap-1.5 w-16">
-                <div className={`w-10 h-10 rounded-full ${STATUS_COLOR[a.status] || 'bg-gray-200'} flex items-center justify-center text-white text-xs font-bold shadow-sm`}>
-                  {a.status[0]}
+          <div className="p-4 flex items-center gap-2">
+            {/* 7-day circles */}
+            <div className="flex flex-wrap gap-3 flex-1">
+              {recent_attendance.map(a => (
+                <div key={a.date} className="flex flex-col items-center gap-1.5 w-16">
+                  <div className={`w-10 h-10 rounded-full ${STATUS_COLOR[a.status] || 'bg-gray-200'} flex items-center justify-center text-white text-xs font-bold shadow-sm`}>
+                    {a.status[0]}
+                  </div>
+                  <div className="text-[10px] text-gray-500 text-center leading-tight">
+                    {safeFmt(a.date, { day: 'numeric', month: 'short' })}
+                  </div>
+                  <Badge text={a.status} />
                 </div>
-                <div className="text-[10px] text-gray-500 text-center leading-tight">
-                  {safeFmt(a.date, { day: 'numeric', month: 'short' })}
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div className="w-px self-stretch bg-gray-100 dark:bg-gray-700 mx-4 flex-shrink-0" />
+
+            {/* Today's check-in / expected checkout — side by side */}
+            <div className="flex flex-col gap-3 flex-shrink-0">
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Today</div>
+              <div className="flex items-center gap-6">
+                {/* Check In */}
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0">
+                    <LogIn size={22} className="text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">Check In</div>
+                    <div className="text-xl font-bold text-green-600 dark:text-green-400 leading-none">
+                      {todayRec?.in_time ? fmtTime(todayRec.in_time) : '—'}
+                    </div>
+                  </div>
                 </div>
-                <Badge text={a.status} />
+
+                {/* Thin separator */}
+                <div className="w-px h-10 bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
+
+                {/* Check Out / Expected Out */}
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${todayRec?.out_time ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+                    <LogOut size={22} className={todayRec?.out_time ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500 dark:text-amber-400'} />
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">
+                      {todayRec?.out_time ? 'Check Out' : 'Expected Out'}
+                    </div>
+                    <div className={`text-xl font-bold leading-none ${todayRec?.out_time ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500 dark:text-amber-400'}`}>
+                      {todayRec?.out_time
+                        ? fmtTime(todayRec.out_time)
+                        : todayRec?.in_time
+                          ? expectedLogout(todayRec.in_time)
+                          : '—'}
+                    </div>
+                  </div>
+                </div>
               </div>
-            ))}
+            </div>
           </div>
         )}
       </SectionCard>
 
       {/* Announcements + Holidays side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <SectionCard title="Announcements" icon={Megaphone} action="emp-announcements" onNavigate={onNavigate}>
+        <SectionCard title="Announcements" icon={Megaphone} action="my-announcements" onNavigate={onNavigate}>
           {announcements.length === 0 ? (
             <div className="p-5 text-center text-sm text-gray-400">No announcements</div>
           ) : (
@@ -159,7 +224,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
           )}
         </SectionCard>
 
-        <SectionCard title="Upcoming Holidays" icon={Gift} action="emp-holidays" onNavigate={onNavigate}>
+        <SectionCard title="Upcoming Holidays" icon={Gift} action="my-holidays" onNavigate={onNavigate}>
           {holidays.length === 0 ? (
             <div className="p-5 text-center text-sm text-gray-400">No upcoming holidays this year</div>
           ) : (
@@ -186,7 +251,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
       </div>
 
       {/* Work Mode Sheet */}
-      <SectionCard title="Team Calendar — This Month" icon={CalendarCheck2} action="emp-work-mode" onNavigate={onNavigate}>
+      <SectionCard title="Team Calendar — This Month" icon={CalendarCheck2} action="my-work-mode" onNavigate={onNavigate}>
         {workMode.length === 0 ? (
           <div className="p-5 text-center text-sm text-gray-400">No work mode entries this month</div>
         ) : (
@@ -211,7 +276,7 @@ export default function EmpDashboard({ toast, onNavigate }) {
             <div className="text-2xl font-bold text-gray-900">₹{stats.latest_net_pay.toLocaleString()}</div>
             <div className="text-xs text-gray-400 mt-0.5">Net Pay</div>
           </div>
-          <button onClick={() => onNavigate('emp-salary')} className="btn btn-secondary btn-sm">
+          <button onClick={() => onNavigate('my-salary')} className="btn btn-secondary btn-sm">
             View Slips
           </button>
         </div>

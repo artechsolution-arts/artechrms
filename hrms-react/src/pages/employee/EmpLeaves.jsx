@@ -210,16 +210,16 @@ export default function EmpLeaves({ toast }) {
                       <td><Badge text={lv.status} /></td>
                       <td>
                         {lv.status === 'Pending' && (
-                          <button onClick={() => cancel(lv.id)} className="btn btn-danger btn-xs gap-1">
+                          <button onClick={() => cancel(lv.id)} className="btn-delete">
                             <Trash2 size={11} /> Cancel
                           </button>
                         )}
                         {lv.status === 'Approved' && (
                           <div className="flex flex-col gap-1">
-                            <button onClick={() => openEditRequest(lv)} className="btn btn-secondary btn-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50">
+                            <button onClick={() => openEditRequest(lv)} className="btn-action" style={{ color: '#2563eb' }}>
                               <PencilLine size={11} /> Edit Dates
                             </button>
-                            <button onClick={() => openCancelRequest(lv.id)} className="btn btn-secondary btn-xs gap-1 text-orange-600 border-orange-200 hover:bg-orange-50">
+                            <button onClick={() => openCancelRequest(lv.id)} className="btn-action" style={{ color: '#ea580c' }}>
                               <XCircle size={11} /> Request Cancel
                             </button>
                           </div>

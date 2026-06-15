@@ -39,7 +39,7 @@ export default function StatCard({ label, value, icon: Icon, gradient, sub, onCl
         cursor: onClick ? 'pointer' : 'default',
         position: 'relative',
         overflow: 'hidden',
-        animation: `dashFadeUp 0.5s ease-out ${delay}s both`,
+        animation: `dashFadeUp 0.3s cubic-bezier(0.23, 1, 0.32, 1) ${delay * 0.5}s both`,
         transition: 'transform 0.25s cubic-bezier(0.34,1.4,0.64,1), box-shadow 0.25s ease',
         boxShadow: '0 4px 20px rgba(13,31,78,0.12)',
       }}

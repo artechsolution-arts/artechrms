@@ -234,13 +234,13 @@ function SocialPreviewModal({ opening, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">Social Media Preview</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Social Media Preview</h3>
             <p className="text-xs text-gray-400 mt-0.5">{opening.title}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X size={18} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"><X size={18} /></button>
         </div>
         <div className="overflow-y-auto flex-1 p-6">
           <div className={`grid gap-6 ${platforms.length === 1 ? 'grid-cols-1 max-w-sm mx-auto' : platforms.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
@@ -273,7 +273,7 @@ function SocialPreviewModal({ opening, onClose }) {
             )}
           </div>
         </div>
-        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end">
+        <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-2xl flex justify-end">
           <button onClick={onClose} className="btn btn-secondary btn-sm">Close</button>
         </div>
       </div>
@@ -347,18 +347,18 @@ function CreateModal({ open, onClose, onSave, toast }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] p-4" onClick={e => e.target === e.currentTarget && handleClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
-          <h3 className="text-base font-semibold text-gray-900">New Job Opening</h3>
-          <button onClick={handleClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">New Job Opening</h3>
+          <button onClick={handleClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><X size={18} /></button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 px-6 flex-shrink-0">
+        <div className="flex border-b border-gray-200 dark:border-gray-700 px-6 flex-shrink-0">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
               {t}
               {t === 'Social Media' && platforms.length > 0 && (
                 <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold">{platforms.length}</span>
@@ -407,7 +407,7 @@ function CreateModal({ open, onClose, onSave, toast }) {
               <p className="text-sm text-gray-500 mb-4">Upload the Job Description document (PDF, DOC, DOCX — max 5MB). Applicants can download it when viewing the opening.</p>
               <div
                 onClick={() => fileRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${file ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'}`}
+                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${file ? 'border-green-400 bg-green-50 dark:bg-green-900/20' : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
               >
                 <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={e => setFile(e.target.files[0] || null)} />
                 {file ? (
@@ -434,7 +434,7 @@ function CreateModal({ open, onClose, onSave, toast }) {
             <div className="flex gap-6">
               {/* Platform selector */}
               <div className="w-52 flex-shrink-0">
-                <p className="text-sm font-medium text-gray-700 mb-3">Share on platforms</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">Share on platforms</p>
                 <div className="space-y-2">
                   {[
                     { key: 'LinkedIn',  Icon: LinkedinIcon,  color: '#0A66C2', bg: 'hover:bg-[#e8f0fb]', border: 'border-[#0A66C2]' },
@@ -444,9 +444,9 @@ function CreateModal({ open, onClose, onSave, toast }) {
                     const on = platforms.includes(key);
                     return (
                       <button key={key} onClick={() => togglePlatform(key)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${on ? `${border} bg-white shadow-sm` : 'border-gray-200 bg-white'} ${bg}`}>
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${on ? `${border} bg-white dark:bg-gray-800 shadow-sm` : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'} ${bg}`}>
                         <Icon size={18} style={{ color }} />
-                        <span className="text-sm font-medium text-gray-700">{key}</span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{key}</span>
                         <div className={`ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center ${on ? 'border-current bg-current' : 'border-gray-300'}`} style={on ? { color, borderColor: color, backgroundColor: color } : {}}>
                           {on && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                         </div>
@@ -500,7 +500,7 @@ function CreateModal({ open, onClose, onSave, toast }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50 rounded-b-2xl flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-2xl flex-shrink-0">
           <div className="flex items-center gap-2">
             {platforms.length > 0 && (
               <div className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -599,13 +599,13 @@ function SocialAccountsModal({ open, onClose, toast }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">Social Media Accounts</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Social Media Accounts</h3>
             <p className="text-xs text-gray-400 mt-0.5">Connect accounts to post job openings directly</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X size={18} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"><X size={18} /></button>
         </div>
 
         <div className="p-5 space-y-3">
@@ -615,14 +615,14 @@ function SocialAccountsModal({ open, onClose, toast }) {
             const isConnecting = connecting === authKey;
 
             return (
-              <div key={key} className="border border-gray-200 rounded-xl overflow-hidden">
+              <div key={key} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-3 px-4 py-3">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: color + '20', color }}>
                     <Icon size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 text-sm">{key}</div>
+                    <div className="font-medium text-gray-900 dark:text-white text-sm">{key}</div>
                     {!configured && (
                       <div className="text-xs text-amber-600 mt-0.5">{note}</div>
                     )}
@@ -637,23 +637,23 @@ function SocialAccountsModal({ open, onClose, toast }) {
                     </button>
                   )}
                   {!configured && (
-                    <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-1 rounded-md">Not configured</span>
+                    <span className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 px-2 py-1 rounded-md">Not configured</span>
                   )}
                 </div>
 
                 {connected.length > 0 && connected.map(acc => (
-                  <div key={acc.id} className="flex items-center gap-3 px-4 py-2.5 bg-gray-50 border-t border-gray-100">
+                  <div key={acc.id} className="flex items-center gap-3 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                       style={{ backgroundColor: color }}>
                       {(acc.account_name || '?')[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-800 truncate">{acc.account_name}</div>
+                      <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{acc.account_name}</div>
                       {acc.page_name && acc.platform === 'Facebook' && (
                         <div className="text-xs text-gray-400">Page: {acc.page_name}</div>
                       )}
                     </div>
-                    <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-2 py-0.5 rounded-full">
                       ✓ Connected
                     </span>
                     <button onClick={() => disconnect(acc.id, acc.account_name)} className="text-red-400 hover:text-red-600 ml-1">
@@ -666,13 +666,13 @@ function SocialAccountsModal({ open, onClose, toast }) {
           })}
         </div>
 
-        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-2xl">
           <p className="text-xs text-gray-400">
             Set environment variables before connecting. Redirect URI to register in your app:
             <br />
-            LinkedIn: <code className="bg-gray-100 px-1 rounded">{config.app_base_url}/api/social/callback/linkedin</code>
+            LinkedIn: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{config.app_base_url}/api/social/callback/linkedin</code>
             <br />
-            Facebook: <code className="bg-gray-100 px-1 rounded">{config.app_base_url}/api/social/callback/facebook</code>
+            Facebook: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{config.app_base_url}/api/social/callback/facebook</code>
           </p>
         </div>
       </div>
@@ -716,24 +716,24 @@ function PostNowModal({ opening, onClose, toast }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">Post to Social Media</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Post to Social Media</h3>
             <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[280px]">{opening.title}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X size={18} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"><X size={18} /></button>
         </div>
 
         <div className="p-5 space-y-3">
           {results ? (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700 mb-3">Posting results:</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">Posting results:</p>
               {results.map(r => (
-                <div key={r.platform} className={`flex items-start gap-3 p-3 rounded-lg ${r.status === 'posted' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                <div key={r.platform} className={`flex items-start gap-3 p-3 rounded-lg ${r.status === 'posted' ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'}`}>
                   <span className="text-lg">{r.status === 'posted' ? '✅' : '❌'}</span>
                   <div>
-                    <div className="text-sm font-semibold text-gray-800">{r.platform}</div>
+                    <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">{r.platform}</div>
                     {r.status === 'posted' && r.post_url && (
                       <a href={r.post_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline">View post →</a>
                     )}
@@ -753,7 +753,7 @@ function PostNowModal({ opening, onClose, toast }) {
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-gray-600 mb-1">Select platforms to post to:</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Select platforms to post to:</p>
                   {[
                     { key: 'LinkedIn',  Icon: LinkedinIcon,  color: '#0A66C2' },
                     { key: 'Facebook',  Icon: FacebookIcon,  color: '#1877F2' },
@@ -764,14 +764,14 @@ function PostNowModal({ opening, onClose, toast }) {
                     const on = selected.includes(key);
                     return (
                       <button key={key} onClick={() => togglePlatform(key)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${on ? 'shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${on ? 'shadow-sm' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
                         style={on ? { borderColor: color, backgroundColor: color + '08' } : {}}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ backgroundColor: color + '20', color }}>
                           <Icon size={18} />
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-800">{key}</div>
+                          <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{key}</div>
                           <div className="text-xs text-gray-400">{acc.account_name}</div>
                         </div>
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all`}
@@ -783,13 +783,13 @@ function PostNowModal({ opening, onClose, toast }) {
                   })}
 
                   {history.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-gray-100">
-                      <p className="text-xs font-medium text-gray-500 mb-2">Post history</p>
+                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Post history</p>
                       <div className="space-y-1.5">
                         {history.slice(0, 5).map(h => (
                           <div key={h.id} className="flex items-center gap-2 text-xs">
                             <span className={`w-1.5 h-1.5 rounded-full ${h.status === 'posted' ? 'bg-green-500' : 'bg-red-400'}`} />
-                            <span className="text-gray-600">{h.platform}</span>
+                            <span className="text-gray-600 dark:text-gray-300">{h.platform}</span>
                             <span className="text-gray-400">{h.posted_at?.slice(0, 10) || '—'}</span>
                             {h.post_url && <a href={h.post_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline ml-auto">View →</a>}
                           </div>
@@ -902,11 +902,11 @@ export default function JobOpenings({ toast }) {
                 ) : rows.map(j => (
                   <tr key={j.id}>
                     <td>
-                      <div className="font-semibold text-gray-900">{j.title}</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">{j.title}</div>
                       {j.description && <div className="text-xs text-gray-400 mt-0.5">{j.description.substring(0, 60)}{j.description.length > 60 ? '…' : ''}</div>}
                     </td>
-                    <td className="text-gray-600">{j.no_of_positions}</td>
-                    <td><span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{j.applicant_count}</span></td>
+                    <td className="text-gray-600 dark:text-gray-300">{j.no_of_positions}</td>
+                    <td><span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">{j.applicant_count}</span></td>
                     <td>
                       {j.attachment_url ? (
                         <a href={j.attachment_url} target="_blank" rel="noreferrer"
@@ -923,22 +923,22 @@ export default function JobOpenings({ toast }) {
                         </div>
                       ) : <span className="text-gray-300 text-xs">—</span>}
                     </td>
-                    <td className="text-gray-600">{j.closes_on || '—'}</td>
+                    <td className="text-gray-600 dark:text-gray-300">{j.closes_on || '—'}</td>
                     <td><Badge text={j.status} /></td>
                     <td>
                       <div className="flex items-center gap-1 flex-wrap">
-                        <button onClick={() => setPostNowOpening(j)} className="btn btn-secondary btn-xs gap-1" title="Post to social media">
+                        <button onClick={() => setPostNowOpening(j)} className="btn-action" title="Post to social media">
                           <Share2 size={11} /> Post
                         </button>
                         {j.social_platforms?.length > 0 && (
-                          <button onClick={() => setPreviewOpening(j)} className="btn btn-secondary btn-xs gap-1" title="Social preview">
+                          <button onClick={() => setPreviewOpening(j)} className="btn-action" title="Social preview">
                             <Eye size={11} /> Preview
                           </button>
                         )}
                         {j.status === 'Open' && (
-                          <button onClick={() => closeOpening(j.id)} className="btn btn-secondary btn-xs gap-1"><XCircle size={11} /> Close</button>
+                          <button onClick={() => closeOpening(j.id)} className="btn-action"><XCircle size={11} /> Close</button>
                         )}
-                        <button onClick={() => del(j.id, j.title)} className="btn btn-danger btn-xs gap-1"><Trash2 size={11} /> Delete</button>
+                        <button onClick={() => del(j.id, j.title)} className="btn-delete"><Trash2 size={11} /> Delete</button>
                       </div>
                     </td>
                   </tr>

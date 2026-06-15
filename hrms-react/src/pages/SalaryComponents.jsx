@@ -69,12 +69,12 @@ export default function SalaryComponents({ toast }) {
                   </td></tr>
                 ) : comps.map(c => (
                   <tr key={c.id}>
-                    <td className="font-semibold text-gray-900">{c.name}</td>
+                    <td className="font-semibold text-gray-900 dark:text-white">{c.name}</td>
                     <td><code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">{c.abbr || '—'}</code></td>
                     <td><Badge text={c.component_type} /></td>
                     <td className="text-gray-700">₹{c.amount || 0}</td>
                     <td>
-                      <button onClick={() => del(c.id, c.name)} className="btn btn-danger btn-xs gap-1">
+                      <button onClick={() => del(c.id, c.name)} className="btn-delete">
                         <Trash2 size={11} /> Delete
                       </button>
                     </td>

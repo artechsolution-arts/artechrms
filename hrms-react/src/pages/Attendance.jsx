@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import { fmtDate } from '../utils/date';
-import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
 import AttendanceCalendar from '../components/AttendanceCalendar';
-import { Plus, RefreshCw, ChevronLeft, ChevronRight, X, Search, Users } from 'lucide-react';
+import { Plus, RefreshCw, ChevronLeft, ChevronRight, X, Search, Users, Pencil, Save } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -62,6 +61,8 @@ export default function Attendance({ toast }) {
   const [editModal, setEditModal] = useState(false);
   const [editRow, setEditRow]     = useState(null);
   const [editForm, setEditForm]   = useState({});
+  const [inlineForm, setInlineForm] = useState({ status: 'Present', in_time: '', out_time: '' });
+  const [inlineSaving, setInlineSaving] = useState(false);
 
   const todayStr = today.toISOString().split('T')[0];
 
@@ -85,6 +86,17 @@ export default function Attendance({ toast }) {
 
   useEffect(() => { loadSummaries(calYear, calMonth); }, [calYear, calMonth, loadSummaries]);
   useRefreshOnFocus(() => loadSummaries(calYear, calMonth));
+
+  // Sync inline edit form when a date is selected in the popup
+  useEffect(() => {
+    if (!popupSelected) return;
+    const rec = popupRecords.find(r => r.date === popupSelected);
+    setInlineForm({
+      status:   rec?.status   || 'Present',
+      in_time:  rec?.in_time  || '',
+      out_time: rec?.out_time || '',
+    });
+  }, [popupSelected, popupRecords]);
 
   const prevMonth = () => {
     const ny = calMonth === 1 ? calYear - 1 : calYear;
@@ -181,6 +193,34 @@ export default function Attendance({ toast }) {
     } catch (e) { toast(e.message, 'error'); }
   };
 
+  const saveInline = async () => {
+    if (!popupEmp || !popupSelected) return;
+    const rec = popupRecords.find(r => r.date === popupSelected);
+    setInlineSaving(true);
+    try {
+      if (rec) {
+        await api('PUT', `/api/leaves/attendance/${rec.id}`, {
+          status:   inlineForm.status,
+          in_time:  inlineForm.in_time  || null,
+          out_time: inlineForm.out_time || null,
+        });
+      } else {
+        await api('POST', '/api/leaves/attendance', {
+          employee_id: popupEmp.id,
+          date:        popupSelected,
+          status:      inlineForm.status,
+          in_time:     inlineForm.in_time  || null,
+          out_time:    inlineForm.out_time || null,
+        });
+      }
+      toast('Attendance updated', 'success');
+      loadSummaries(calYear, calMonth);
+      const att = await api('GET', `/api/leaves/attendance?employee_id=${popupEmp.id}&year=${popupYear}&month=${popupMonth}`);
+      setPopupRecords(att);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setInlineSaving(false); }
+  };
+
   const filtered = emps.filter(e =>
     !search || e.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     e.employee_id?.toLowerCase().includes(search.toLowerCase())
@@ -240,7 +280,7 @@ export default function Attendance({ toast }) {
                 <div
                   key={emp.id}
                   onClick={() => openPopup(emp)}
-                  className="card p-4 flex flex-col items-center text-center cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 select-none"
+                  className="card p-4 flex flex-col items-center text-center cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-[transform,box-shadow] duration-150 select-none"
                 >
                   <Avatar name={emp.full_name} photo={emp.profile_photo} />
                   <div className="mt-3 w-full">
@@ -305,7 +345,7 @@ export default function Attendance({ toast }) {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => { setForm({ employee_id: String(popupEmp.id), date: todayStr, status: 'Present' }); setModal(true); }}
+                  onClick={() => { setForm({ employee_id: String(popupEmp.id), date: popupSelected || todayStr, status: 'Present' }); setModal(true); }}
                   className="btn btn-primary btn-sm gap-1"
                 >
                   <Plus size={12} /> Mark
@@ -328,42 +368,136 @@ export default function Attendance({ toast }) {
                 onSelect={setPopupSelected}
               />
             </div>
+
+            {/* Inline edit panel — appears when a date is selected */}
+            {popupSelected && (
+              <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 px-4 py-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Pencil size={13} className="text-[var(--accent)]" />
+                  <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                    {new Date(popupSelected + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                  {popupRecords.find(r => r.date === popupSelected) ? (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20 font-medium">Editing existing record</span>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-500/20 font-medium">No record — will create</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Status</label>
+                    <Select
+                      value={inlineForm.status}
+                      onChange={v => setInlineForm(p => ({ ...p, status: v }))}
+                      options={['Present', 'Absent', 'On Leave', 'Half Day', 'WFH']}
+                      size="sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">In Time</label>
+                    <input
+                      type="time"
+                      className="form-input text-sm w-full"
+                      value={inlineForm.in_time}
+                      onChange={e => setInlineForm(p => ({ ...p, in_time: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Out Time</label>
+                    <input
+                      type="time"
+                      className="form-input text-sm w-full"
+                      value={inlineForm.out_time}
+                      onChange={e => setInlineForm(p => ({ ...p, out_time: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <button
+                      onClick={saveInline}
+                      disabled={inlineSaving}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-50"
+                      style={{ backgroundColor: 'var(--accent)' }}
+                    >
+                      <Save size={12} /> {inlineSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => setPopupSelected(null)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Mark Attendance Modal */}
-      <Modal open={modal} title="Mark Attendance" onClose={() => setModal(false)} onSave={save} saveLabel="Mark Attendance">
-        <FormSection title="Attendance Details">
-          <FormGrid>
-            <Field label="Employee" required>
-              <Select
-                value={form.employee_id || ''}
-                onChange={v => f({ employee_id: v })}
-                options={emps.map(e => ({ value: String(e.id), label: e.full_name }))}
-                placeholder="Select employee"
-                searchable
-              />
-            </Field>
-            <Field label="Date" required>
-              <DatePicker value={form.date || todayStr} onChange={v => f({ date: v })} placeholder="Select date" />
-            </Field>
-            <Field label="Status">
-              <Select
-                value={form.status || 'Present'}
-                onChange={v => f({ status: v })}
-                options={['Present', 'Absent', 'On Leave', 'Half Day', 'WFH']}
-              />
-            </Field>
-            <Field label="In Time">
-              <input type="time" className="form-input" value={form.in_time || ''} onChange={e => f({ in_time: e.target.value })} />
-            </Field>
-            <Field label="Out Time">
-              <input type="time" className="form-input" value={form.out_time || ''} onChange={e => f({ out_time: e.target.value })} />
-            </Field>
-          </FormGrid>
-        </FormSection>
-      </Modal>
+      {/* Mark Attendance — centered popup */}
+      {modal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) setModal(false); }}
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent)' }}>
+                  <Plus size={14} className="text-white" />
+                </div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Mark Attendance</h3>
+              </div>
+              <button onClick={() => setModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Employee <span className="text-red-400">*</span></label>
+                <Select
+                  value={form.employee_id || ''}
+                  onChange={v => f({ employee_id: v })}
+                  options={emps.map(e => ({ value: String(e.id), label: e.full_name }))}
+                  placeholder="Select employee"
+                  searchable
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Date <span className="text-red-400">*</span></label>
+                  <DatePicker value={form.date || todayStr} onChange={v => f({ date: v })} placeholder="Select date" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Status</label>
+                  <Select
+                    value={form.status || 'Present'}
+                    onChange={v => f({ status: v })}
+                    options={['Present', 'Absent', 'On Leave', 'Half Day', 'WFH']}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">In Time</label>
+                  <input type="time" className="form-input w-full" value={form.in_time || ''} onChange={e => f({ in_time: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Out Time</label>
+                  <input type="time" className="form-input w-full" value={form.out_time || ''} onChange={e => f({ out_time: e.target.value })} />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 rounded-b-2xl">
+              <button onClick={() => setModal(false)} className="btn btn-secondary btn-sm">Cancel</button>
+              <button onClick={save} className="btn btn-primary btn-sm">Mark Attendance</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

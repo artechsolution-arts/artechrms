@@ -127,31 +127,29 @@ export default function Expenses({ toast }) {
               <tbody>
                 {rows.map(r => (
                   <tr key={r.id}>
-                    <td className="font-medium text-gray-900">{r.employee_name}</td>
+                    <td className="font-medium text-gray-900 dark:text-white">{r.employee_name}</td>
                     <td>{r.expense_type}</td>
                     <td>{fmtDate(r.claim_date)}</td>
                     <td className="font-semibold">₹{(+r.amount).toLocaleString('en-IN')}</td>
                     <td className="max-w-[180px] truncate text-gray-500">{r.description || '—'}</td>
                     <td>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.status] || ''}`}>
-                        {r.status}
-                      </span>
+                      <Badge text={r.status} />
                     </td>
                     <td>
                       <div className="flex gap-1">
                         {r.status === 'Pending' && (
                           <>
                             <button onClick={() => { setActionModal({ id: r.id, action: 'approve' }); setRemarks(''); }}
-                              className="btn btn-secondary btn-xs text-green-600 border-green-200 hover:bg-green-50 gap-1">
+                              className="btn-approve">
                               <CheckCircle size={11}/>Approve
                             </button>
                             <button onClick={() => { setActionModal({ id: r.id, action: 'reject' }); setRemarks(''); }}
-                              className="btn btn-secondary btn-xs text-red-500 border-red-200 hover:bg-red-50 gap-1">
+                              className="btn-reject">
                               <XCircle size={11}/>Reject
                             </button>
                           </>
                         )}
-                        <button onClick={() => del(r.id)} className="p-1 text-gray-400 hover:text-red-500">
+                        <button onClick={() => del(r.id)} className="btn-delete">
                           <Trash2 size={13}/>
                         </button>
                       </div>

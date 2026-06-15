@@ -233,10 +233,10 @@ export default function EmpSalary({ toast }) {
                     <td className="font-semibold text-green-700">₹{Number(s.net_pay).toLocaleString()}</td>
                     <td><Badge text={s.status} /></td>
                     <td className="flex gap-1">
-                      <button onClick={() => openSlip(s.id)} className="btn btn-secondary btn-xs gap-1">
+                      <button onClick={() => openSlip(s.id)} className="btn-action">
                         <Eye size={11} /> View
                       </button>
-                      <button onClick={() => downloadPdf(s.id, s.slip_id)} className="btn btn-secondary btn-xs gap-1">
+                      <button onClick={() => downloadPdf(s.id, s.slip_id)} className="btn-action">
                         <FileDown size={11} /> PDF
                       </button>
                     </td>

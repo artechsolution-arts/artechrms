@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, Clock, Menu, X, Bell, Settings, ChevronRight, LogOut, Moon, Sun, Check } from 'lucide-react';
+import { LayoutDashboard, Clock, Menu, X, Bell, Settings, ChevronRight, LogOut, Moon, Sun, Check, Image as ImageIcon } from 'lucide-react';
 import { api } from '../api';
 import { useTheme, ACCENT_THEMES } from '../hooks/useTheme';
+import { useBackground, BACKGROUNDS } from '../hooks/useBackground';
 
 const PRIORITY_DOT = {
   high:   'bg-red-500',
@@ -18,6 +19,7 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
 
   // Theme controls — effects are global DOM mutations, so this works standalone
   const { accent: accentName, setAccent, darkMode, setDarkMode } = useTheme();
+  const { background, setBackground } = useBackground();
 
   const accent = accentColor || 'var(--accent, #2563eb)';
 
@@ -199,13 +201,46 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
                 <button
                   key={t.name}
                   onClick={() => setAccent(t.name)}
-                  className="relative w-9 h-9 rounded-full transition-transform active:scale-90 flex items-center justify-center"
+                  className="relative w-9 h-9 rounded-full transition-transform duration-100 active:scale-95 flex items-center justify-center"
                   style={{ backgroundColor: t.hex, boxShadow: accentName === t.name ? `0 0 0 2px #fff, 0 0 0 4px ${t.hex}` : 'none' }}
                   aria-label={t.label}
                 >
                   {accentName === t.name && <Check size={16} className="text-white" strokeWidth={3} />}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Background picker */}
+          <div className="px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <ImageIcon size={13} className="text-gray-500" />
+              <div className="text-sm font-medium text-gray-800 dark:text-gray-200">Background</div>
+            </div>
+            <div className="text-xs text-gray-400 mb-3">Pick a backdrop theme</div>
+            <div className="grid grid-cols-3 gap-2">
+              {BACKGROUNDS.map(bg => {
+                const active = background === bg.key;
+                return (
+                  <button key={bg.key} onClick={() => setBackground(bg.key)}
+                    className={`relative rounded-xl overflow-hidden border-2 transition-all text-left ${active ? '' : 'border-transparent'}`}
+                    style={active ? { borderColor: bg.accent } : {}}>
+                    <div className="h-16 w-full" style={{
+                      background: bg.thumb ? `url(/themes/${bg.thumb})` : 'linear-gradient(135deg, #1A6AB4, #3DC7B3)',
+                      backgroundSize: 'cover', backgroundPosition: 'center',
+                    }}>
+                      {active && (
+                        <div className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: bg.accent }}>
+                          <Check size={11} className="text-white" strokeWidth={3} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="px-1.5 py-1 bg-white dark:bg-gray-800">
+                      <div className="text-[10px] font-semibold text-gray-800 dark:text-gray-200 truncate">{bg.label}</div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -244,7 +279,7 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
           {/* Centre "More" — elevated pill */}
           <div className="flex flex-col items-center gap-1 -mt-5">
             <button onClick={() => { setDrawerOpen(o => !o); setBellOpen(false); setSettingsOpen(false); }}
-              className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95"
+              className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform duration-100 active:scale-95"
               style={{ backgroundColor: accent }}>
               {drawerOpen ? <X size={20} className="text-white" /> : <Menu size={20} className="text-white" />}
             </button>
@@ -254,7 +289,7 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
           {/* Notifications */}
           <div className="flex flex-col items-center gap-1 px-2 py-1">
             <button onClick={() => { setBellOpen(o => !o); setDrawerOpen(false); setSettingsOpen(false); if (!bellOpen) fetchNotifs(); }}
-              className="relative w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition-all"
+              className="relative w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition-transform duration-100"
               style={bellOpen ? { backgroundColor: accent + '22' } : {}}>
               <Bell size={20} style={bellOpen ? { color: accent } : {}} className={bellOpen ? '' : 'text-gray-400 dark:text-gray-500'} />
               {unreadCount > 0 && (
@@ -291,7 +326,7 @@ function NavBtn({ item, current, onNavigate, accent, label }) {
   const active = current === item?.key;
   return (
     <button onClick={() => item?.key && onNavigate(item.key)}
-      className="flex flex-col items-center gap-1 px-2 py-1 rounded-xl transition-all active:scale-95">
+      className="flex flex-col items-center gap-1 px-2 py-1 rounded-xl transition-transform duration-100 active:scale-95">
       {item?.icon && (
         <item.icon size={20}
           style={active ? { color: accent } : {}}

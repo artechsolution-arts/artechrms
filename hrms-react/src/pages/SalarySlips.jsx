@@ -41,39 +41,39 @@ function SlipView({ slip }) {
       {/* Earnings & Deductions side by side */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {/* Earnings */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <div className="bg-green-50 px-4 py-2 text-xs font-bold text-green-800 uppercase tracking-wider border-b border-gray-200">
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div className="bg-green-50 dark:bg-green-900/20 px-4 py-2 text-xs font-bold text-green-800 dark:text-green-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
             Earnings
           </div>
           <table className="w-full text-sm">
             <tbody>
               {earnings.map((e, i) => (
-                <tr key={i} className="border-b border-gray-100 last:border-0">
-                  <td className="px-4 py-2 text-gray-700">{e.component || e.name}</td>
-                  <td className="px-4 py-2 text-right font-medium text-gray-800">₹{Number(e.amount || 0).toLocaleString()}</td>
+                <tr key={i} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                  <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{e.component || e.name}</td>
+                  <td className="px-4 py-2 text-right font-medium text-gray-800 dark:text-gray-200">₹{Number(e.amount || 0).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-green-50">
-                <td className="px-4 py-2.5 font-bold text-green-800">Gross Earnings</td>
-                <td className="px-4 py-2.5 text-right font-bold text-green-800">₹{Number(slip.gross_pay || 0).toLocaleString()}</td>
+              <tr className="bg-green-50 dark:bg-green-900/20">
+                <td className="px-4 py-2.5 font-bold text-green-800 dark:text-green-400">Gross Earnings</td>
+                <td className="px-4 py-2.5 text-right font-bold text-green-800 dark:text-green-400">₹{Number(slip.gross_pay || 0).toLocaleString()}</td>
               </tr>
             </tfoot>
           </table>
         </div>
 
         {/* Deductions */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <div className="bg-red-50 px-4 py-2 text-xs font-bold text-red-800 uppercase tracking-wider border-b border-gray-200">
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div className="bg-red-50 dark:bg-red-900/20 px-4 py-2 text-xs font-bold text-red-800 dark:text-red-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
             Deductions
           </div>
           <table className="w-full text-sm">
             <tbody>
               {empDeductions.map((d, i) => (
-                <tr key={i} className="border-b border-gray-100 last:border-0">
-                  <td className="px-4 py-2 text-gray-700">{d.component || d.name}</td>
-                  <td className="px-4 py-2 text-right font-medium text-gray-800">₹{Number(d.amount || 0).toLocaleString()}</td>
+                <tr key={i} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                  <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{d.component || d.name}</td>
+                  <td className="px-4 py-2 text-right font-medium text-gray-800 dark:text-gray-200">₹{Number(d.amount || 0).toLocaleString()}</td>
                 </tr>
               ))}
               {empDeductions.length === 0 && (
@@ -81,9 +81,9 @@ function SlipView({ slip }) {
               )}
             </tbody>
             <tfoot>
-              <tr className="bg-red-50">
-                <td className="px-4 py-2.5 font-bold text-red-800">Total Deductions</td>
-                <td className="px-4 py-2.5 text-right font-bold text-red-800">₹{Number(slip.total_deduction || 0).toLocaleString()}</td>
+              <tr className="bg-red-50 dark:bg-red-900/20">
+                <td className="px-4 py-2.5 font-bold text-red-800 dark:text-red-400">Total Deductions</td>
+                <td className="px-4 py-2.5 text-right font-bold text-red-800 dark:text-red-400">₹{Number(slip.total_deduction || 0).toLocaleString()}</td>
               </tr>
             </tfoot>
           </table>
@@ -92,23 +92,23 @@ function SlipView({ slip }) {
 
       {/* Employer Contributions (informational) */}
       {employerContribs.length > 0 && (
-        <div className="border border-blue-100 rounded-lg overflow-hidden mb-4">
-          <div className="bg-blue-50 px-4 py-2 text-xs font-bold text-blue-800 uppercase tracking-wider border-b border-blue-100">
+        <div className="border border-blue-100 dark:border-blue-900 rounded-lg overflow-hidden mb-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 text-xs font-bold text-blue-800 dark:text-blue-400 uppercase tracking-wider border-b border-blue-100 dark:border-blue-900">
             Employer Contributions (Informational — not deducted from pay)
           </div>
           <table className="w-full text-sm">
             <tbody>
               {employerContribs.map((d, i) => (
-                <tr key={i} className="border-b border-gray-100 last:border-0">
-                  <td className="px-4 py-2 text-gray-700">{d.component || d.name}</td>
-                  <td className="px-4 py-2 text-right font-medium text-gray-600">₹{Number(d.amount || 0).toLocaleString()}</td>
+                <tr key={i} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                  <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{d.component || d.name}</td>
+                  <td className="px-4 py-2 text-right font-medium text-gray-600 dark:text-gray-400">₹{Number(d.amount || 0).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-blue-50">
-                <td className="px-4 py-2.5 font-bold text-blue-800">CTC (Gross + Employer Contributions)</td>
-                <td className="px-4 py-2.5 text-right font-bold text-blue-800">₹{ctc.toLocaleString()}</td>
+              <tr className="bg-blue-50 dark:bg-blue-900/20">
+                <td className="px-4 py-2.5 font-bold text-blue-800 dark:text-blue-400">CTC (Gross + Employer Contributions)</td>
+                <td className="px-4 py-2.5 text-right font-bold text-blue-800 dark:text-blue-400">₹{ctc.toLocaleString()}</td>
               </tr>
             </tfoot>
           </table>
@@ -256,17 +256,17 @@ export default function SalarySlips({ toast }) {
                 ) : slips.map(s => (
                   <tr key={s.id}>
                     <td><code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">{s.slip_id}</code></td>
-                    <td className="font-medium text-gray-900">{s.employee_name}</td>
-                    <td className="text-gray-600">{MONTHS[s.month - 1]} {s.year}</td>
-                    <td className="text-gray-700">₹{Number(s.gross_pay).toLocaleString()}</td>
-                    <td className="text-red-600">₹{Number(s.total_deduction).toLocaleString()}</td>
-                    <td className="font-semibold text-green-700">₹{Number(s.net_pay).toLocaleString()}</td>
+                    <td className="font-medium text-gray-900 dark:text-white">{s.employee_name}</td>
+                    <td className="text-gray-600 dark:text-gray-400">{MONTHS[s.month - 1]} {s.year}</td>
+                    <td className="text-gray-700 dark:text-gray-300">₹{Number(s.gross_pay).toLocaleString()}</td>
+                    <td className="text-red-600 dark:text-red-400">₹{Number(s.total_deduction).toLocaleString()}</td>
+                    <td className="font-semibold text-green-700 dark:text-green-400">₹{Number(s.net_pay).toLocaleString()}</td>
                     <td><Badge text={s.status} /></td>
                     <td className="flex gap-1">
-                      <button onClick={() => viewSlip(s.id)} className="btn btn-secondary btn-xs gap-1">
+                      <button onClick={() => viewSlip(s.id)} className="btn-action">
                         <Eye size={11} /> View
                       </button>
-                      <button onClick={() => downloadPdf(s.id, s.slip_id)} className="btn btn-secondary btn-xs gap-1">
+                      <button onClick={() => downloadPdf(s.id, s.slip_id)} className="btn-action">
                         <FileDown size={11} /> PDF
                       </button>
                     </td>

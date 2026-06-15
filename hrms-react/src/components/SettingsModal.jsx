@@ -54,15 +54,15 @@ export default function SettingsModal({ open, onClose, toast }) {
           </button>
         </div>
 
-        <div className="flex flex-1 min-h-0">
-          {/* Tab rail */}
-          <div className="w-44 border-r border-gray-100 dark:border-gray-800 p-2 flex-shrink-0">
+        <div className="flex flex-1 min-h-0 flex-col sm:flex-row">
+          {/* Tab rail — horizontal scrolling on mobile, vertical sidebar on sm+ */}
+          <div className="flex sm:flex-col sm:w-44 border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-gray-800 p-2 flex-shrink-0 overflow-x-auto gap-1 sm:gap-0">
             {TABS.map(t => {
               const Icon = t.icon;
               const active = tab === t.key;
               return (
                 <button key={t.key} onClick={() => setTab(t.key)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-left mb-0.5 transition-colors ${active ? 'text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap sm:w-full sm:mb-0.5 transition-colors ${active ? 'text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                   style={active ? { background: 'var(--accent)' } : {}}>
                   <Icon size={15} /> {t.label}
                 </button>
