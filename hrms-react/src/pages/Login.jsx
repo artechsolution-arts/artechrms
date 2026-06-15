@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader2, Eye, EyeOff, ArrowRight, Users, CalendarDays, Clock, TrendingUp, DollarSign, BarChart3, X, Mail, Phone, CheckCircle2 } from 'lucide-react';
 
 /* ── Artech brand palette ── */
@@ -22,16 +22,19 @@ const FEATURES = [
 ];
 
 export default function Login({ onLogin }) {
-  const [mode, setMode]           = useState('checking');
-  const [form, setForm]           = useState({ username: '', password: '', full_name: '', email: '' });
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState('');
-  const [showPass, setShowPass]   = useState(false);
-  const [forgotOpen, setForgotOpen] = useState(false);
+  const [mode, setMode]               = useState('checking');
+  const [revealed, setRevealed]       = useState(false);
+  const [form, setForm]               = useState({ username: '', password: '', full_name: '', email: '' });
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState('');
+  const [showPass, setShowPass]       = useState(false);
+  const [forgotOpen, setForgotOpen]   = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent]   = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [supportOpen, setSupportOpen]   = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const rightPanelRef = useRef(null);
+  const cardRef = useRef(null);
 
   useEffect(() => {
     fetch('/api/auth/needs-setup')
@@ -39,6 +42,16 @@ export default function Login({ onLogin }) {
       .then(d => setMode(d.needs_setup ? 'setup' : 'login'))
       .catch(() => setMode('login'));
   }, []);
+
+  useEffect(() => {
+    if (revealed) {
+      // Reset card scroll after transition completes (autofill scrolls to password field)
+      const t = setTimeout(() => {
+        if (cardRef.current) cardRef.current.scrollTop = 0;
+      }, 980);
+      return () => clearTimeout(t);
+    }
+  }, [revealed]);
 
   const f = v => setForm(prev => ({ ...prev, ...v }));
 
@@ -105,32 +118,46 @@ export default function Login({ onLogin }) {
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .lp { font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; display: flex; }
+        .lp {
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          height: 100vh;
+          display: flex;
+          overflow: hidden;
+        }
 
         /* ── keyframes ── */
-        @keyframes spin        { to   { transform: rotate(360deg); } }
-        @keyframes fadeUp      { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn      { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideRight  { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes meshMove1   { 0%,100% { transform: translate(0,0) scale(1); }   50% { transform: translate(40px,-30px) scale(1.08); } }
-        @keyframes meshMove2   { 0%,100% { transform: translate(0,0) scale(1); }   60% { transform: translate(-30px,35px) scale(1.05); } }
-        @keyframes meshMove3   { 0%,100% { transform: translate(0,0); }            40% { transform: translate(20px,-20px); } }
-        @keyframes floatBadge  { 0%,100% { transform: translateY(0); }             50% { transform: translateY(-5px); } }
-        @keyframes shimmerBar  { from { transform: scaleX(0); transform-origin: left; } to { transform: scaleX(1); transform-origin: left; } }
-        @keyframes countUp     { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes spin       { to   { transform: rotate(360deg); } }
+        @keyframes fadeUp     { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn     { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideRight { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes meshMove1  { 0%,100% { transform: translate(0,0) scale(1); }   50% { transform: translate(40px,-30px) scale(1.08); } }
+        @keyframes meshMove2  { 0%,100% { transform: translate(0,0) scale(1); }   60% { transform: translate(-30px,35px) scale(1.05); } }
+        @keyframes meshMove3  { 0%,100% { transform: translate(0,0); }            40% { transform: translate(20px,-20px); } }
+        @keyframes shimmerBar { from { transform: scaleX(0); transform-origin: left; } to { transform: scaleX(1); transform-origin: left; } }
+        @keyframes countUp    { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes heroUp     { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulseGlow  {
+          0%,100% { box-shadow: 0 0 0 0 rgba(61,199,179,0); }
+          50%     { box-shadow: 0 0 32px 8px rgba(61,199,179,0.35); }
+        }
 
         /* ══ LEFT PANEL ══ */
         .lp-left {
-          display: none;
-          flex-direction: column;
-          width: 55%;
           position: relative;
           overflow: hidden;
           background: ${C.navy};
+          width: 100%;
+          flex-shrink: 0;
+          transition: width 0.92s cubic-bezier(0.7, 0, 0.2, 1);
         }
-        @media (min-width: 1024px) { .lp-left { display: flex; } }
+        .lp-left.revealed { width: 58%; }
 
-        /* animated video background */
+        @media (max-width: 767px) {
+          .lp-left { width: 100%; }
+          .lp-left.revealed { width: 0; }
+        }
+
+        /* video background */
         .lp-video {
           position: absolute;
           inset: 0;
@@ -156,6 +183,7 @@ export default function Login({ onLogin }) {
           border-radius: 50%;
           filter: blur(60px);
           pointer-events: none;
+          z-index: 1;
         }
         .blob-1 {
           width: 500px; height: 500px;
@@ -182,11 +210,12 @@ export default function Login({ onLogin }) {
           animation: meshMove1 16s ease-in-out infinite 2s;
         }
 
-        /* geometric grid overlay */
+        /* grid overlay */
         .lp-left::after {
           content: '';
           position: absolute;
           inset: 0;
+          z-index: 2;
           background-image:
             linear-gradient(rgba(61,199,179,0.04) 1px, transparent 1px),
             linear-gradient(90deg, rgba(61,199,179,0.04) 1px, transparent 1px);
@@ -194,28 +223,133 @@ export default function Login({ onLogin }) {
           pointer-events: none;
         }
 
-        .lp-left-inner {
-          position: relative;
-          z-index: 2;
-          display: flex;
-          flex-direction: column;
-          min-height: 100%;
-          padding: 44px 52px 36px;
-        }
-
-        /* ══ RIGHT PANEL ══ */
-        .lp-right {
-          flex: 1;
+        /* ── Hero overlay (phase 1) ── */
+        .lp-hero {
+          position: absolute;
+          inset: 0;
+          z-index: 10;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 40px 28px;
-          background: ${C.cloud};
-          position: relative;
+          padding: 48px 52px;
+          text-align: center;
+          opacity: 1;
+          transition: opacity 0.45s ease;
+        }
+        .lp-hero.hidden {
+          opacity: 0;
+          pointer-events: none;
         }
 
-        /* subtle right panel texture */
+        /* CTA button */
+        .lp-cta {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 15px 36px;
+          border: none;
+          border-radius: 50px;
+          background: linear-gradient(135deg, ${C.teal} 0%, ${C.blue} 100%);
+          color: ${C.navy};
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 15px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          cursor: pointer;
+          animation: pulseGlow 2.8s ease-in-out infinite;
+          transition: transform 0.2s ease-out, filter 0.2s ease-out;
+        }
+        .lp-cta:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.06); }
+        .lp-cta:active { transform: translateY(0) scale(0.98); }
+
+        /* ── Features panel (phase 2) ── */
+        .lp-left-inner {
+          position: absolute;
+          inset: 0;
+          z-index: 10;
+          display: flex;
+          flex-direction: column;
+          min-height: 100%;
+          padding: 44px 52px 36px;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.5s ease 0.55s;
+        }
+        .lp-left-inner.visible {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        /* stat cards */
+        .lp-stat {
+          flex: 1;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 12px;
+          padding: 14px 12px;
+          text-align: center;
+          animation: countUp 0.5s ease-out both;
+          backdrop-filter: blur(8px);
+          transition: transform 0.22s cubic-bezier(0.23,1,0.32,1), background 0.2s, border-color 0.2s;
+        }
+        .lp-stat:hover {
+          transform: translateY(-3px) scale(1.02);
+          background: rgba(61,199,179,0.12);
+          border-color: rgba(61,199,179,0.3);
+        }
+
+        /* feature grid - 2 columns */
+        .lp-feat-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          flex: 1;
+        }
+        .lp-feat {
+          display: flex; align-items: flex-start; gap: 10px;
+          padding: 12px 12px;
+          animation: slideRight 0.5s ease-out both;
+          border-radius: 10px;
+          border: 1px solid rgba(255,255,255,0.07);
+          background: rgba(255,255,255,0.04);
+          transition: background 0.2s, transform 0.22s cubic-bezier(0.23,1,0.32,1), border-color 0.2s;
+          backdrop-filter: blur(4px);
+        }
+        .lp-feat:hover {
+          background: rgba(61,199,179,0.09);
+          transform: translateY(-2px);
+          border-color: rgba(61,199,179,0.2);
+        }
+
+        /* ══ RIGHT PANEL ══ */
+        .lp-right {
+          width: 0;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          background: ${C.cloud};
+          position: relative;
+          flex-shrink: 0;
+          transition: width 0.92s cubic-bezier(0.7, 0, 0.2, 1);
+        }
+        .lp-right.revealed {
+          width: 42%;
+          padding: 32px 28px;
+          overflow: hidden;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+        }
+
+        @media (max-width: 767px) {
+          .lp-right.revealed { width: 100%; }
+        }
+
+        /* subtle dot texture */
         .lp-right::before {
           content: '';
           position: absolute;
@@ -233,17 +367,19 @@ export default function Login({ onLogin }) {
           max-width: 440px;
           background: #fff;
           border-radius: 20px;
-          overflow: hidden;
-          padding: 38px 38px 32px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          max-height: calc(100vh - 64px);
+          padding: 28px 32px 24px;
           box-shadow:
             0 4px 6px rgba(13,31,78,0.04),
             0 20px 60px rgba(13,31,78,0.12),
             0 0 0 1px rgba(13,31,78,0.06);
-          animation: fadeUp 0.65s ease-out 0.1s both;
-          transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.35s ease;
+          animation: fadeUp 0.55s ease-out both;
+          transition: transform 0.3s cubic-bezier(0.23,1,0.32,1), box-shadow 0.3s ease;
         }
         .lp-card:hover {
-          transform: translateY(-8px) scale(1.012);
+          transform: translateY(-4px) scale(1.006);
           box-shadow:
             0 12px 20px rgba(13,31,78,0.08),
             0 40px 90px rgba(13,31,78,0.2),
@@ -291,7 +427,7 @@ export default function Login({ onLogin }) {
           margin-bottom: 7px;
         }
 
-        /* CTA button */
+        /* submit button */
         .lp-btn {
           width: 100%;
           display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -379,49 +515,17 @@ export default function Login({ onLogin }) {
           margin-bottom: 20px;
         }
 
-        /* feature row */
-        .lp-feat {
-          display: flex; align-items: center; gap: 14px;
-          padding: 11px 10px;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-          animation: slideRight 0.5s ease-out both;
-          border-radius: 10px;
-          transition: background 0.2s, transform 0.25s cubic-bezier(0.34,1.3,0.64,1);
-          cursor: default;
-          margin: 0 -10px;
-        }
-        .lp-feat:last-child { border-bottom: none; }
-        .lp-feat:hover {
-          background: rgba(61,199,179,0.07);
-          transform: translateX(6px);
-          border-bottom-color: transparent;
-        }
-
-        /* stat cards */
-        .lp-stat {
-          flex: 1;
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 12px;
-          padding: 14px 12px;
-          text-align: center;
-          animation: countUp 0.5s ease-out both;
-          backdrop-filter: blur(8px);
-          transition: transform 0.25s cubic-bezier(0.34,1.4,0.64,1), background 0.2s, border-color 0.2s;
-          cursor: default;
-        }
-        .lp-stat:hover {
-          transform: translateY(-4px) scale(1.04);
-          background: rgba(61,199,179,0.12);
-          border-color: rgba(61,199,179,0.3);
-        }
-
         /* checkbox */
         input[type="checkbox"] { accent-color: ${C.blue}; cursor: pointer; width: 14px; height: 14px; }
 
         /* mobile logo */
         .lp-mob { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; animation: fadeUp 0.5s ease-out both; }
-        @media (min-width: 1024px) { .lp-mob { display: none; } }
+        @media (min-width: 768px) { .lp-mob { display: none; } }
+
+        /* reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+        }
 
         /* ── Overlay modals ── */
         .lp-overlay {
@@ -468,17 +572,95 @@ export default function Login({ onLogin }) {
       <div className="lp">
 
         {/* ══════════════════ LEFT PANEL ══════════════════ */}
-        <div className="lp-left">
-          {/* Animated video background */}
+        <div className={`lp-left${revealed ? ' revealed' : ''}`}>
+
+          {/* Video background */}
           <video className="lp-video" autoPlay loop muted playsInline preload="auto">
             <source src="/login-bg.mp4" type="video/mp4" />
           </video>
           <div className="lp-video-tint" />
 
-          <div className="lp-left-inner">
+          {/* Blobs */}
+          <div className="blob blob-1" />
+          <div className="blob blob-2" />
+          <div className="blob blob-3" />
+          <div className="blob blob-4" />
+
+          {/* ── PHASE 1: Hero overlay ── */}
+          <div className={`lp-hero${revealed ? ' hidden' : ''}`}>
 
             {/* Logo */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 52, animation: 'fadeUp 0.5s ease-out both' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 44, animation: 'heroUp 0.6s ease-out 0.1s both' }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 13,
+                background: 'linear-gradient(135deg, rgba(61,199,179,0.2), rgba(26,106,180,0.3))',
+                border: '1px solid rgba(61,199,179,0.35)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <img src="/logo.svg" alt="Artech" style={{ width: 28, height: 28 }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 16, color: '#fff', letterSpacing: '0.01em' }}>Artech HRMS</div>
+                <div style={{ fontSize: 11, color: C.teal, marginTop: 1, letterSpacing: '0.04em', fontWeight: 500 }}>Human Resource Management</div>
+              </div>
+            </div>
+
+            {/* Headline */}
+            <div style={{ marginBottom: 20, animation: 'heroUp 0.65s ease-out 0.18s both' }}>
+              <div style={{
+                height: 4, width: 52, borderRadius: 2, marginBottom: 20, margin: '0 auto 20px',
+                background: `linear-gradient(90deg, ${C.teal}, ${C.blue})`,
+                animation: 'shimmerBar 0.9s ease-out 0.5s both',
+              }} />
+              <h1 style={{
+                fontFamily: "'DM Serif Display', serif",
+                fontSize: 'clamp(2rem, 4vw, 3rem)',
+                lineHeight: 1.2,
+                color: '#fff',
+                marginBottom: 16,
+                letterSpacing: '-0.02em',
+              }}>
+                Empowering{' '}
+                <span style={{ fontStyle: 'italic', color: C.teal }}>People.</span>
+                <br />
+                Enhancing{' '}
+                <span style={{ color: '#6EB5E8' }}>Performance.</span>
+              </h1>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 1.75, maxWidth: 420, margin: '0 auto', fontWeight: 300 }}>
+                A comprehensive HRMS platform built for modern organisations — streamline operations, empower your team, and drive growth.
+              </p>
+            </div>
+
+            {/* Stats */}
+            <div style={{ display: 'flex', gap: 14, marginBottom: 40, animation: 'heroUp 0.6s ease-out 0.28s both' }}>
+              {[
+                { value: '21+', label: 'Employees',  color: C.teal  },
+                { value: '6',   label: 'HR Modules', color: C.blue  },
+                { value: '99%', label: 'Uptime',     color: C.green },
+              ].map(({ value, label, color }, i) => (
+                <div key={i} className="lp-stat" style={{ animationDelay: `${0.32 + i * 0.06}s`, minWidth: 90 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1, fontFamily: "'DM Serif Display', serif" }}>{value}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 5, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 500 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <button
+              className="lp-cta"
+              onClick={() => setRevealed(true)}
+              style={{ animation: 'heroUp 0.6s ease-out 0.4s both' }}
+            >
+              Get Started <ArrowRight size={16} />
+            </button>
+
+          </div>
+
+          {/* ── PHASE 2: Features panel ── */}
+          <div className={`lp-left-inner${revealed ? ' visible' : ''}`}>
+
+            {/* Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40, animation: revealed ? 'fadeUp 0.5s ease-out 0.6s both' : 'none' }}>
               <div style={{
                 width: 42, height: 42, borderRadius: 12,
                 background: 'linear-gradient(135deg, rgba(61,199,179,0.2), rgba(26,106,180,0.3))',
@@ -493,92 +675,67 @@ export default function Login({ onLogin }) {
               </div>
             </div>
 
-            {/* Hero */}
-            <div style={{ marginBottom: 44, animation: 'fadeUp 0.6s ease-out 0.07s both' }}>
-              {/* gradient accent bar */}
-              <div style={{
-                height: 4, width: 52, borderRadius: 2, marginBottom: 18,
-                background: `linear-gradient(90deg, ${C.teal}, ${C.blue})`,
-                animation: 'shimmerBar 0.8s ease-out 0.4s both',
-              }} />
-              <h1 style={{
+            {/* Tagline */}
+            <div style={{ marginBottom: 28, animation: revealed ? 'fadeUp 0.5s ease-out 0.65s both' : 'none' }}>
+              <h2 style={{
                 fontFamily: "'DM Serif Display', serif",
-                fontSize: '2.4rem',
-                lineHeight: 1.22,
+                fontSize: '1.5rem',
                 color: '#fff',
-                marginBottom: 14,
+                marginBottom: 6,
                 letterSpacing: '-0.01em',
+                lineHeight: 1.3,
               }}>
-                Empowering<br />
-                <span style={{
-                  fontStyle: 'italic',
-                  background: `linear-gradient(90deg, ${C.teal}, #6EE7DA)`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}>People.</span>{' '}
-                <span style={{ color: 'rgba(255,255,255,0.9)' }}>Enhancing</span><br />
-                <span style={{
-                  background: `linear-gradient(90deg, ${C.blue}, ${C.teal})`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}>Performance.</span>
-              </h1>
-              <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, maxWidth: 340, fontWeight: 300 }}>
-                A comprehensive HRMS platform built for modern organisations — streamline operations, empower your team, and drive growth.
-              </p>
+                Everything you need<br />
+                <span style={{ fontStyle: 'italic', color: C.teal }}>in one place</span>
+              </h2>
             </div>
 
-            {/* Stats row */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 32, animation: 'fadeUp 0.5s ease-out 0.14s both' }}>
-              {[
-                { value: '21+', label: 'Employees',   color: C.teal  },
-                { value: '6',   label: 'HR Modules',  color: C.blue  },
-                { value: '99%', label: 'Uptime',      color: C.green },
-              ].map(({ value, label, color }, i) => (
-                <div key={i} className="lp-stat" style={{ animationDelay: `${0.18 + i * 0.06}s` }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1, fontFamily: "'DM Serif Display', serif" }}>{value}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 500 }}>{label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Feature list */}
-            <div>
+            {/* Feature rows — 2 column grid */}
+            <div className="lp-feat-grid">
               {FEATURES.map(({ icon: Icon, num, title, desc }, i) => (
-                <div key={num} className="lp-feat" style={{ animationDelay: `${0.2 + i * 0.06}s` }}>
-                  {/* icon badge */}
+                <div key={num} className="lp-feat" style={{ animationDelay: revealed ? `${0.68 + i * 0.06}s` : '0s', flexDirection: 'column', gap: 8 }}>
                   <div style={{
-                    width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
                     background: i % 2 === 0
                       ? 'linear-gradient(135deg, rgba(61,199,179,0.2), rgba(26,106,180,0.15))'
                       : 'linear-gradient(135deg, rgba(26,106,180,0.2), rgba(61,199,179,0.15))',
                     border: `1px solid ${i % 2 === 0 ? 'rgba(61,199,179,0.25)' : 'rgba(26,106,180,0.25)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Icon size={15} color={i % 2 === 0 ? C.teal : '#6EB5E8'} />
+                    <Icon size={14} color={i % 2 === 0 ? C.teal : '#6EB5E8'} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.88)' }}>{title}</div>
-                    <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.35)', marginTop: 1, fontWeight: 300 }}>{desc}</div>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,0.9)', lineHeight: 1.3 }}>{title}</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2, fontWeight: 400, lineHeight: 1.4 }}>{desc}</div>
                   </div>
-                  <div style={{
-                    fontSize: 10, fontWeight: 700, color: C.teal, opacity: 0.5,
-                    fontFamily: "'DM Serif Display', serif", letterSpacing: '0.04em',
-                  }}>{num}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Stats row */}
+            <div style={{ display: 'flex', gap: 10, margin: '24px 0', animation: revealed ? 'fadeUp 0.5s ease-out 1.05s both' : 'none' }}>
+              {[
+                { value: '21+', label: 'Employees',  color: C.teal  },
+                { value: '6',   label: 'HR Modules', color: C.blue  },
+                { value: '99%', label: 'Uptime',     color: C.green },
+              ].map(({ value, label, color }, i) => (
+                <div key={i} className="lp-stat" style={{ animationDelay: `${1.08 + i * 0.06}s` }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1, fontFamily: "'DM Serif Display', serif" }}>{value}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 500 }}>{label}</div>
                 </div>
               ))}
             </div>
 
             {/* Footer */}
             <div style={{
-              marginTop: 28, paddingTop: 20,
+              paddingTop: 18,
               borderTop: '1px solid rgba(255,255,255,0.07)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              animation: revealed ? 'fadeIn 0.5s ease-out 1.1s both' : 'none',
             }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontWeight: 400 }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>
                 © {new Date().getFullYear()} Artech Solutions. All rights reserved.
               </span>
-              {/* teal-blue pill */}
               <div style={{
                 padding: '4px 10px', borderRadius: 20,
                 background: 'linear-gradient(90deg, rgba(61,199,179,0.15), rgba(26,106,180,0.15))',
@@ -590,10 +747,11 @@ export default function Login({ onLogin }) {
             </div>
 
           </div>
+
         </div>
 
         {/* ══════════════════ RIGHT PANEL ══════════════════ */}
-        <div className="lp-right">
+        <div ref={rightPanelRef} className={`lp-right${revealed ? ' revealed' : ''}`}>
 
           {/* Mobile logo */}
           <div className="lp-mob">
@@ -601,9 +759,9 @@ export default function Login({ onLogin }) {
             <span style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>Artech HRMS</span>
           </div>
 
-          <div className="lp-card">
+          <div ref={cardRef} className="lp-card">
 
-            {/* Top accent line */}
+            {/* Top accent bar */}
             <div style={{
               height: 5, borderRadius: '20px 20px 0 0',
               background: `linear-gradient(90deg, ${C.blue} 0%, ${C.teal} 55%, ${C.green} 100%)`,
@@ -611,10 +769,10 @@ export default function Login({ onLogin }) {
             }} />
 
             {/* Header */}
-            <div style={{ marginBottom: 28, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
+            <div style={{ marginBottom: 20, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '4px 10px', borderRadius: 20, marginBottom: 14,
+                padding: '4px 10px', borderRadius: 20, marginBottom: 10,
                 background: `linear-gradient(90deg, rgba(26,106,180,0.08), rgba(61,199,179,0.08))`,
                 border: `1px solid rgba(26,106,180,0.15)`,
               }}>
@@ -633,7 +791,7 @@ export default function Login({ onLogin }) {
               }}>
                 {mode === 'setup' ? 'Create Admin Account' : 'Welcome back!'}
               </h2>
-              <p style={{ fontSize: 13, color: C.steel, fontWeight: 400 }}>
+              <p style={{ fontSize: 13, color: '#5E6B85', fontWeight: 400 }}>
                 {mode === 'setup'
                   ? 'Set up your administrator account to get started'
                   : 'Sign in to your Artech HRMS workspace'}
@@ -703,10 +861,11 @@ export default function Login({ onLogin }) {
                     <input type="checkbox" />
                     <span style={{ fontSize: 12.5, color: C.steel, fontWeight: 500 }}>Remember me</span>
                   </label>
-                  <span style={{ fontSize: 12.5, color: C.blue, cursor: 'pointer', fontWeight: 600 }}
+                  <button type="button"
+                    style={{ background: 'none', border: 'none', fontSize: 12.5, color: C.blue, cursor: 'pointer', fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }}
                     onClick={() => { setForgotOpen(true); setForgotEmail(''); setForgotSent(false); }}>
                     Forgot Password?
-                  </span>
+                  </button>
                 </div>
               )}
 
@@ -767,8 +926,9 @@ export default function Login({ onLogin }) {
             }}>
               <span style={{ fontSize: 11.5, color: C.steel }}>
                 Need help?{' '}
-                <span style={{ color: C.blue, cursor: 'pointer', fontWeight: 600 }}
-                  onClick={() => setSupportOpen(true)}>Contact HR Support</span>
+                <button type="button"
+                  style={{ background: 'none', border: 'none', fontSize: 11.5, color: C.blue, cursor: 'pointer', fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+                  onClick={() => setSupportOpen(true)}>Contact HR Support</button>
               </span>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.teal }} />
@@ -780,11 +940,12 @@ export default function Login({ onLogin }) {
 
           {/* Bottom tagline */}
           <p style={{
-            marginTop: 20, fontSize: 12, color: C.steel, fontFamily: 'Plus Jakarta Sans, sans-serif',
+            marginTop: 20, fontSize: 12, color: '#5E6B85', fontFamily: 'Plus Jakarta Sans, sans-serif',
             animation: 'fadeIn 0.5s ease-out 0.5s both',
           }}>
             © {new Date().getFullYear()} Artech Solutions · All rights reserved
           </p>
+
         </div>
 
       </div>
@@ -817,7 +978,7 @@ export default function Login({ onLogin }) {
                   </div>
                   <p style={{ fontSize: 14, fontWeight: 600, color: C.navy, marginBottom: 8 }}>Request submitted</p>
                   <p style={{ fontSize: 13, color: C.steel, lineHeight: 1.6, marginBottom: 20 }}>
-                    Your HR administrator has been notified and will reset your password shortly. Please check with them directly if you need urgent access.
+                    Your HR administrator has been notified and will reset your password shortly.
                   </p>
                   <div style={{ padding: '12px 14px', background: C.cloud, borderRadius: 10, border: `1px solid ${C.mist}`, marginBottom: 16 }}>
                     <p style={{ fontSize: 12, color: C.steel, margin: 0 }}>
@@ -882,9 +1043,9 @@ export default function Login({ onLogin }) {
               </p>
 
               {[
-                { icon: Mail,  color: C.blue,  bg: 'rgba(26,106,180,0.08)', border: 'rgba(26,106,180,0.15)',
+                { icon: Mail,  color: C.blue, bg: 'rgba(26,106,180,0.08)', border: 'rgba(26,106,180,0.15)',
                   label: 'Email Support', value: 'support@artechsolution.co.in', href: 'mailto:support@artechsolution.co.in' },
-                { icon: Phone, color: C.teal,  bg: 'rgba(61,199,179,0.08)', border: 'rgba(61,199,179,0.2)',
+                { icon: Phone, color: C.teal, bg: 'rgba(61,199,179,0.08)', border: 'rgba(61,199,179,0.2)',
                   label: 'Phone Support', value: '+91 98765 43210', href: 'tel:+919876543210' },
               ].map(({ icon: Icon, color, bg, border, label, value, href }) => (
                 <a key={label} href={href} style={{ textDecoration: 'none', display: 'block' }}>
