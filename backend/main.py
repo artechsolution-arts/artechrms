@@ -154,6 +154,28 @@ with engine.connect() as _conn:
         LEFT JOIN designations ds ON ds.id = e.designation_id
         ORDER BY e.full_name, se.entry_date
         """,
+        # Remove duplicate attendance rows before adding the unique constraint.
+        # Keep the row with the most complete data (highest working_hours) per
+        # employee+date; break ties by lowest id.
+        """
+        DELETE FROM attendance
+        WHERE id NOT IN (
+            SELECT DISTINCT ON (employee_id, date) id
+            FROM attendance
+            ORDER BY employee_id, date, working_hours DESC NULLS LAST, id ASC
+        )
+        """,
+        # Enforce one row per employee per calendar day — prevents future duplicates
+        # from concurrent sync runs.
+        """
+        DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'uq_attendance_emp_date'
+            ) THEN
+                ALTER TABLE attendance ADD CONSTRAINT uq_attendance_emp_date UNIQUE (employee_id, date);
+            END IF;
+        END $$
+        """,
     ]:
         try:
             _conn.execute(text(_stmt))

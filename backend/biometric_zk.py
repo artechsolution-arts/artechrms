@@ -12,6 +12,8 @@ and written into the `attendance` table.
 from datetime import date as _date, datetime
 from collections import defaultdict
 from sqlalchemy.orm import Session
+from sqlalchemy import case as sa_case, func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from backend.models.employee import Employee
 from backend.models.leave import Attendance
@@ -22,7 +24,7 @@ HALF_DAY_HOURS = 4.0
 # Minimum hours gap between first and last punch to treat the last punch as a real
 # checkout. Anything shorter is assumed to be a break/coffee punch — out_time is left
 # blank so the employee isn't wrongly flagged as Half Day.
-MIN_CHECKOUT_HOURS = 2.0
+MIN_CHECKOUT_HOURS = 1.0
 
 
 def _connect(ip: str, port: int = 4370, timeout: int = 10, password: int = 0):
@@ -137,9 +139,11 @@ def sync_device(db: Session, ip: str, port: int, from_date: _date, to_date: _dat
             continue
         grouped[(bio_id, d)].append(ts)
 
-    created = updated = 0
+    processed = 0
     unmatched_ids = set()
     matched_emps = set()
+
+    tbl = Attendance.__table__
 
     for (bio_id, d), times in grouped.items():
         emp = emp_by_bio.get(bio_id)
@@ -157,42 +161,63 @@ def sync_device(db: Session, ip: str, port: int, from_date: _date, to_date: _dat
         gap_hours = (last - first).total_seconds() / 3600.0
         out_time = last.strftime("%H:%M") if gap_hours >= MIN_CHECKOUT_HOURS else None
 
-        hours = 0.0
-        if out_time:
-            hours = round(gap_hours, 2)
+        hours = round(gap_hours, 2) if out_time else 0.0
 
         # status: any punch => Present; both punches but short day => Half Day
         status = "Present"
-        if out_time and hours and hours < HALF_DAY_HOURS:
+        if out_time and hours < HALF_DAY_HOURS:
             status = "Half Day"
 
-        existing = db.query(Attendance).filter(
-            Attendance.employee_id == emp.id,
-            Attendance.date == d,
-        ).first()
+        # Atomic upsert — INSERT or UPDATE in one statement so two concurrent
+        # sync runs (auto-sync + manual sync) can never create duplicate rows.
+        stmt = pg_insert(tbl).values(
+            employee_id=emp.id,
+            date=d,
+            in_time=in_time,
+            out_time=out_time,
+            working_hours=hours,
+            status=status,
+        )
 
-        if existing:
-            existing.in_time = in_time
-            existing.out_time = out_time
-            existing.working_hours = hours
-            # Don't override a manually set leave/WFH unless it was Absent/Present
-            if existing.status in (None, "", "Absent", "Present", "Half Day"):
-                existing.status = status
-            updated += 1
-        else:
-            db.add(Attendance(
-                employee_id=emp.id, date=d, status=status,
-                in_time=in_time, out_time=out_time, working_hours=hours,
-            ))
-            created += 1
+        excl = stmt.excluded  # the new values being proposed
+
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_attendance_emp_date",
+            set_={
+                # Always refresh in_time.
+                "in_time": excl.in_time,
+                # Preserve existing out_time when this sync has no checkout
+                # (mid-day sync, device memory gap, PC-off-overnight scenario).
+                "out_time": func.coalesce(excl.out_time, tbl.c.out_time),
+                # Keep hours consistent with whichever out_time wins.
+                "working_hours": sa_case(
+                    (excl.out_time.isnot(None), excl.working_hours),
+                    else_=tbl.c.working_hours,
+                ),
+                # Don't overwrite a manually set leave/WFH status.
+                # If we're preserving existing out_time, also preserve its status.
+                "status": sa_case(
+                    (tbl.c.status.in_(["On Leave", "WFH"]), tbl.c.status),
+                    (
+                        # New sync has no checkout but DB already has one →
+                        # keep the existing status (could be Half Day).
+                        (excl.out_time.is_(None)) & (tbl.c.out_time.isnot(None)),
+                        tbl.c.status,
+                    ),
+                    else_=excl.status,
+                ),
+            },
+        )
+
+        db.execute(stmt)
+        processed += 1
 
     db.commit()
 
     return {
         "punches_read": len(punches),
         "days_processed": len(grouped),
-        "records_created": created,
-        "records_updated": updated,
+        "records_upserted": processed,
         "employees_matched": len(matched_emps),
         "unmatched_biometric_ids": sorted(unmatched_ids),
     }

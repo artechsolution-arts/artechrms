@@ -33,9 +33,9 @@ def _interval_seconds() -> int:
 
 def _backfill_days() -> int:
     try:
-        return max(0, int(os.getenv("BIOMETRIC_SYNC_BACKFILL_DAYS", "1")))
+        return max(0, int(os.getenv("BIOMETRIC_SYNC_BACKFILL_DAYS", "2")))
     except ValueError:
-        return 1
+        return 2
 
 
 def _collect_devices(db) -> list:
