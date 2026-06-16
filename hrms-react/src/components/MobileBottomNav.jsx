@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, Clock, Menu, X, Bell, Settings, ChevronRight, LogOut, Moon, Sun, Check, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Clock, Menu, X, Bell, Settings, ChevronRight, LogOut, Check, Image as ImageIcon } from 'lucide-react';
 import { api } from '../api';
-import { useTheme, ACCENT_THEMES } from '../hooks/useTheme';
 import { useBackground, BACKGROUNDS } from '../hooks/useBackground';
 
 const PRIORITY_DOT = {
@@ -17,8 +16,6 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
   const [notifs, setNotifs]               = useState([]);
   const [notifsLoading, setNotifsLoading] = useState(false);
 
-  // Theme controls — effects are global DOM mutations, so this works standalone
-  const { accent: accentName, setAccent, darkMode, setDarkMode } = useTheme();
   const { background, setBackground } = useBackground();
 
   const accent = accentColor || 'var(--accent, #2563eb)';
@@ -165,52 +162,6 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
           </button>
         </div>
         <div className="px-4 py-4 space-y-3">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Appearance</div>
-
-          {/* Theme toggle — Dark / Light */}
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-800">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                {darkMode ? <Moon size={15} className="text-indigo-400" /> : <Sun size={15} className="text-amber-500" />}
-              </div>
-              <div>
-                <div className="text-sm font-medium text-gray-800 dark:text-gray-200 text-left">Theme</div>
-                <div className="text-xs text-gray-400 text-left">{darkMode ? 'Dark mode' : 'Light mode'}</div>
-              </div>
-            </div>
-            {/* Toggle switch */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="relative w-12 h-7 rounded-full transition-colors flex-shrink-0"
-              style={{ backgroundColor: darkMode ? accent : '#d1d5db' }}
-              aria-label="Toggle theme"
-            >
-              <span className="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform flex items-center justify-center"
-                style={{ transform: darkMode ? 'translateX(20px)' : 'translateX(0)' }}>
-                {darkMode ? <Moon size={12} className="text-indigo-500" /> : <Sun size={12} className="text-amber-500" />}
-              </span>
-            </button>
-          </div>
-
-          {/* Accent color swatches */}
-          <div className="px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-800">
-            <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-0.5">Accent Color</div>
-            <div className="text-xs text-gray-400 mb-3">Change highlight color</div>
-            <div className="flex items-center gap-3">
-              {ACCENT_THEMES.map(t => (
-                <button
-                  key={t.name}
-                  onClick={() => setAccent(t.name)}
-                  className="relative w-9 h-9 rounded-full transition-transform duration-100 active:scale-95 flex items-center justify-center"
-                  style={{ backgroundColor: t.hex, boxShadow: accentName === t.name ? `0 0 0 2px #fff, 0 0 0 4px ${t.hex}` : 'none' }}
-                  aria-label={t.label}
-                >
-                  {accentName === t.name && <Check size={16} className="text-white" strokeWidth={3} />}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Background picker */}
           <div className="px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-1.5 mb-0.5">

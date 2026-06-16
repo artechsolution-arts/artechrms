@@ -45,7 +45,7 @@ export default function EmployeeApp({ user, logout }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userState, setUserState] = useState(user);
   const { toasts, toast } = useToast();
-  const { accent, setAccent, darkMode, setDarkMode } = useTheme();
+  useTheme();
 
   const { can, allowed } = usePermissions(user?.role);
 
@@ -87,8 +87,6 @@ export default function EmployeeApp({ user, logout }) {
           current={page}
           onNavigate={navigate}
           onToggleSidebar={() => setSidebarOpen(o => !o)}
-          accent={accent} setAccent={setAccent}
-          darkMode={darkMode} setDarkMode={setDarkMode}
         />
 
         <main className="flex-1 overflow-auto flex flex-col pb-16 lg:pb-0">

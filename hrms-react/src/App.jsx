@@ -133,7 +133,7 @@ const PORTAL_PAGES = new Set([
 export default function App() {
   const { toasts, toast }                     = useToast();
   const { token, user, login, logout, isAuthenticated } = useAuth();
-  const { accent, setAccent, darkMode, setDarkMode }    = useTheme();
+  useTheme();
   useBackground();  // re-apply saved background image on load
   const { can, allowed }                      = usePermissions(user?.role);
 
@@ -217,8 +217,6 @@ export default function App() {
             if (window.innerWidth >= 1024) toggleRail();
             else setSidebarOpen(o => !o);
           }}
-          accent={accent} setAccent={setAccent}
-          darkMode={darkMode} setDarkMode={setDarkMode}
         />
 
         <main className="flex-1 overflow-auto flex flex-col pb-16 lg:pb-0">

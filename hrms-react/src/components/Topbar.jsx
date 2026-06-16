@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Menu, Bell, Home, ChevronRight, Palette, Sun, Moon, X } from 'lucide-react';
+import { Menu, Bell, Home, ChevronRight, X } from 'lucide-react';
 import { NAV } from './Sidebar';
 import { EMP_NAV } from './EmployeeSidebar';
 import { CEO_NAV } from './CeoSidebar';
-import { ACCENT_THEMES } from '../hooks/useTheme';
 import { api } from '../api';
 
 const SEEN_KEY  = 'artech_seen_notif_ids';
@@ -84,19 +83,17 @@ const PRIORITY_DOT = {
   low:    'bg-gray-300',
 };
 
-export default function Topbar({ current, onNavigate, onToggleSidebar, accent, setAccent, darkMode, setDarkMode }) {
+export default function Topbar({ current, onNavigate, onToggleSidebar }) {
   const isEmployee = current?.startsWith('emp-');
   const isCeo      = current?.startsWith('ceo-');
   const meta = ALL_NAV.find(n => n.key === current) || { label: current, section: null };
   const homeKey = isEmployee ? 'emp-dashboard' : isCeo ? 'ceo-dashboard' : 'dashboard';
 
-  const [themeOpen, setThemeOpen]   = useState(false);
   const [bellOpen, setBellOpen]     = useState(false);
   const [notifs, setNotifs]         = useState([]);
   const [notifsLoading, setNotifsLoading] = useState(false);
   const [slideNotifs, setSlideNotifs] = useState([]);   // { uid, ...notif }
 
-  const themeRef = useRef(null);
   const bellRef  = useRef(null);
 
   // Shared handler: update notif state + show slide-in toasts for new items
@@ -172,8 +169,7 @@ export default function Topbar({ current, onNavigate, onToggleSidebar, accent, s
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = e => {
-      if (themeRef.current && !themeRef.current.contains(e.target)) setThemeOpen(false);
-      if (bellRef.current  && !bellRef.current.contains(e.target))  setBellOpen(false);
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -292,47 +288,6 @@ export default function Topbar({ current, onNavigate, onToggleSidebar, accent, s
                   </button>
                 </div>
               )}
-            </div>
-          )}
-        </div>
-
-        {/* Theme picker */}
-        <div className="relative" ref={themeRef}>
-          <button
-            onClick={() => setThemeOpen(o => !o)}
-            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
-            title="Appearance"
-          >
-            <Palette size={16} />
-          </button>
-
-          {themeOpen && (
-            <div className="absolute right-0 top-9 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 z-50">
-              <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Dark Mode</span>
-                <button
-                  onClick={() => setDarkMode(!darkMode)}
-                  className={`w-10 h-5 rounded-full transition-colors relative flex items-center ${darkMode ? 'bg-gray-800' : 'bg-gray-200'}`}
-                  style={darkMode ? { backgroundColor: 'var(--accent)' } : {}}
-                >
-                  <span className={`absolute w-4 h-4 rounded-full bg-white shadow transition-transform ${darkMode ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                  {darkMode ? <Moon size={10} className="absolute left-1 text-white" /> : <Sun size={10} className="absolute right-1 text-gray-400" />}
-                </button>
-              </div>
-              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Accent Colour</div>
-              <div className="grid grid-cols-5 gap-1.5">
-                {ACCENT_THEMES.map(t => (
-                  <button
-                    key={t.name}
-                    onClick={() => setAccent(t.name)}
-                    title={t.label}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95"
-                    style={{ backgroundColor: t.hex }}
-                  >
-                    {accent === t.name && <span className="w-2.5 h-2.5 rounded-full bg-white/80" />}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
         </div>

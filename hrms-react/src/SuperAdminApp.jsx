@@ -26,7 +26,7 @@ export default function SuperAdminApp({ user, logout }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const { toasts, toast } = useToast();
-  const { darkMode } = useTheme();
+  useTheme();
 
   const navigate = useCallback(p => {
     setPage(p);

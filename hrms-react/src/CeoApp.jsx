@@ -26,7 +26,7 @@ export default function CeoApp({ user, logout }) {
   const [page, setPage] = useState('ceo-dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { toasts, toast } = useToast();
-  const { accent, setAccent, darkMode, setDarkMode } = useTheme();
+  useTheme();
 
   const navigate = useCallback(p => {
     setPage(p);
@@ -51,8 +51,6 @@ export default function CeoApp({ user, logout }) {
           current={page}
           onNavigate={navigate}
           onToggleSidebar={() => setSidebarOpen(o => !o)}
-          accent={accent} setAccent={setAccent}
-          darkMode={darkMode} setDarkMode={setDarkMode}
         />
 
         <main className="flex-1 overflow-auto flex flex-col pb-16 lg:pb-0">
