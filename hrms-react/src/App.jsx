@@ -92,6 +92,7 @@ const PAGES = {
   'company-docs':      CompanyDocs,
   'work-mode-sheet':   HRWorkMode,
   // ── Employee portal ──
+  'my-dashboard':      EmpDashboard,
   'emp-dashboard':     EmpDashboard,
   'start-journey':     EmpStartJourney,
   'my-profile':        EmpProfile,
@@ -125,7 +126,7 @@ const ROLE_HOME = {
 
 // Portal pages that need PortalGate wrapper
 const PORTAL_PAGES = new Set([
-  'emp-dashboard','start-journey','my-profile','my-leaves','my-salary',
+  'my-dashboard','emp-dashboard','start-journey','my-profile','my-leaves','my-salary',
   'my-attendance','my-documents','my-status','my-work-mode','my-appraisals',
   'my-announcements','my-holidays','my-assets','my-edit-requests','my-resignation',
 ]);

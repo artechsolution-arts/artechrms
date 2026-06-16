@@ -62,6 +62,7 @@ const NAV = [
   { key: 'status-sheets',     label: 'Status Sheets',             icon: ClipboardList,   section: 'Documents' },
   { key: 'company-docs',      label: 'Company Documents',         icon: FolderOpen,      section: 'Documents' },
   // ── Employee Self Service ────────────────────────────────
+  { key: 'my-dashboard',      label: 'My Dashboard',              icon: LayoutDashboard, section: 'Self Service' },
   { key: 'start-journey',     label: 'Start Journey',             icon: ClipboardCheck,  section: 'Self Service' },
   { key: 'my-profile',        label: 'My Profile',                icon: UserCircle,      section: 'Self Service' },
   { key: 'my-leaves',         label: 'My Leaves',                 icon: CalendarDays,    section: 'Self Service' },
@@ -90,69 +91,51 @@ function loadCollapsed() {
 
 export { NAV };
 
-export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout, allowedFeatures, toast, railCollapsed = false, onToggleRail }) {
-  const [confirmLogout, setConfirmLogout] = useState(false);
-  const [collapsed, setCollapsed]         = useState(loadCollapsed);
-  const [userMenuOpen, setUserMenuOpen]   = useState(false);
-  const [settingsOpen, setSettingsOpen]   = useState(false);
-  const rail = railCollapsed;  // icon-only rail mode (desktop)
+/* ─────────────────────────────────────────────────────────────
+   NavBtn — stable top-level component
+───────────────────────────────────────────────────────────── */
+function NavBtn({ item, isActive, onNavigate, onClose, rail = false }) {
+  return (
+    <button
+      onClick={() => { onNavigate(item.key); if (window.innerWidth < 1024) onClose(); }}
+      title={rail ? item.label : undefined}
+      style={{
+        width: rail ? 44 : 'calc(100% - 16px)',
+        height: rail ? 40 : 'auto',
+        margin: rail ? '2px auto' : '1px 8px',
+        display: 'flex', alignItems: 'center', justifyContent: rail ? 'center' : 'flex-start', gap: 8,
+        padding: rail ? 0 : '6px 10px', borderRadius: rail ? 9 : 6,
+        border: 'none', cursor: 'pointer', textAlign: 'left',
+        fontFamily: 'inherit', fontSize: 13, fontWeight: isActive ? 500 : 400,
+        background: isActive ? 'var(--sidebar-active-bg, rgba(26,106,180,0.2))' : 'transparent',
+        color: isActive ? 'var(--sidebar-active-fg, #60A5FA)' : 'var(--sidebar-fg-muted, rgba(255,255,255,0.5))',
+        transition: 'background 0.12s, color 0.12s, transform 100ms cubic-bezier(0.23,1,0.32,1)',
+        position: 'relative',
+      }}
+      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'var(--sidebar-hover-bg, rgba(255,255,255,0.05))'; e.currentTarget.style.color = 'var(--sidebar-fg, rgba(255,255,255,0.82))'; }}}
+      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--sidebar-fg-muted, rgba(255,255,255,0.5))'; } e.currentTarget.style.transform = 'scale(1)'; }}
+      onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+      onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+    >
+      {isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 2.5, height: rail ? 18 : 14, borderRadius: 2, background: 'var(--sidebar-active-fg, #60A5FA)' }} />}
+      <item.icon size={rail ? 17 : 14} style={{ flexShrink: 0, opacity: isActive ? 0.95 : 0.65 }} />
+      {!rail && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
+    </button>
+  );
+}
 
-  const visibleNAV = allowedFeatures
-    ? NAV.filter(item => !item.key || allowedFeatures.includes(item.key))
-    : NAV;
-
-  useEffect(() => {
-    const activeItem = visibleNAV.find(n => n.key === current);
-    if (activeItem?.section && collapsed[activeItem.section]) {
-      const next = { ...collapsed };
-      delete next[activeItem.section];
-      setCollapsed(next);
-      localStorage.setItem('sidebar-collapsed', JSON.stringify(next));
-    }
-  }, [current]);
-
-  const toggleSection = section => {
-    const next = { ...collapsed, [section]: !collapsed[section] };
-    if (!next[section]) delete next[section];
-    setCollapsed(next);
-    localStorage.setItem('sidebar-collapsed', JSON.stringify(next));
-  };
-
-  const sections = {};
-  visibleNAV.forEach(item => {
-    if (!item.section) return;
-    if (!sections[item.section]) sections[item.section] = [];
-    sections[item.section].push(item);
-  });
-
-  // Pick the right top-level dashboard: emp-dashboard for employee, dashboard for others
-  // Only show one — based on what's in allowedFeatures (or all for SuperAdmin)
-  const nullItems = visibleNAV.filter(n => n.section === null);
-  const dashboardItem = nullItems[0]; // first allowed null-section item
-
-  const initials = user?.full_name
-    ? user.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
-    : 'U';
-
-  const grouped = [];
-  let lastSection = null;
-  visibleNAV.filter(item => item.section !== null).forEach(item => {
-    if (item.section !== lastSection) {
-      lastSection = item.section;
-      if (item.section) grouped.push({ type: 'sep', label: item.section });
-    }
-    grouped.push({ type: 'item', ...item });
-  });
-  const drawerItems = [...grouped, { type: 'sep', label: 'Account' }, { type: 'item', key: '__logout__', label: 'Sign Out', icon: LogOut }];
-
-  const handleMobileNav = key => {
-    if (key === '__logout__') { onLogout?.(); return; }
-    onNavigate(key);
-  };
-
-  const SidebarInner = ({ railMode = false }) => {
-    const rail = railMode;
-    return (
+/* ─────────────────────────────────────────────────────────────
+   SidebarContent — TOP-LEVEL component so React never unmounts
+   it on parent re-render, preserving the nav scroll position.
+───────────────────────────────────────────────────────────── */
+function SidebarContent({
+  railMode, dashboardItem, sections, collapsed, toggleSection,
+  current, onNavigate, onClose, onToggleRail,
+  userMenuOpen, setUserMenuOpen, settingsOpen, setSettingsOpen,
+  user, initials, setConfirmLogout, toast,
+}) {
+  const rail = railMode;
+  return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
       {/* Brand */}
@@ -163,7 +146,6 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
             <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--sidebar-fg-strong, #fff)', lineHeight: '1.2', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>Artech HRMS</div>
             <div style={{ fontSize: 11, color: 'var(--sidebar-fg-label, rgba(255,255,255,0.38))', marginTop: 1, whiteSpace: 'nowrap' }}>Human Resources</div>
           </div>
-          {/* Desktop rail toggle */}
           {!rail && onToggleRail && (
             <button onClick={onToggleRail} title="Collapse sidebar"
               className="rail-toggle-desktop"
@@ -173,14 +155,12 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
               <PanelLeftClose size={16} />
             </button>
           )}
-          {/* Mobile close */}
           <button onClick={onClose}
             className="lg:hidden"
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sidebar-fg-label, rgba(255,255,255,0.35))', padding: 4, borderRadius: 5, display: rail ? 'none' : 'flex', marginLeft: rail ? 0 : 4, flexShrink: 0 }}>
             <X size={15} />
           </button>
         </div>
-        {/* Expand button shown when collapsed */}
         {rail && onToggleRail && (
           <button onClick={onToggleRail} title="Expand sidebar"
             style={{ background: 'var(--sidebar-hover-bg, rgba(255,255,255,0.06))', border: 'none', cursor: 'pointer', color: 'var(--sidebar-fg-muted, rgba(255,255,255,0.6))', padding: 6, borderRadius: 7, display: 'flex', margin: '10px auto 0', transition: 'background 0.15s, color 0.15s' }}
@@ -191,10 +171,9 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
         )}
       </div>
 
-      {/* Nav */}
+      {/* Nav — scroll position is preserved because this component never unmounts */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '6px 0', scrollbarWidth: 'thin', scrollbarColor: 'var(--sidebar-scrollbar, rgba(255,255,255,0.1)) transparent' }}>
 
-        {/* ── RAIL MODE: flat icon-only list ── */}
         {rail ? (
           <>
             {dashboardItem && (
@@ -216,71 +195,68 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
             })}
           </>
         ) : (
-        <>
-        {/* Top-level Dashboard (role-specific) */}
-        {dashboardItem && (
-          <div style={{ padding: '2px 8px 8px', borderBottom: '1px solid var(--sidebar-divider, rgba(255,255,255,0.06))', marginBottom: 4 }}>
-            <NavBtn item={dashboardItem} isActive={current === dashboardItem.key} onNavigate={onNavigate} onClose={onClose} />
-          </div>
-        )}
-
-        {/* Sections */}
-        {ALL_SECTIONS.map(section => {
-          const items = sections[section] || [];
-          if (!items.length) return null;
-          const isCollapsed = !!collapsed[section];
-          const hasActive   = items.some(i => i.key === current);
-
-          return (
-            <div key={section} style={{ marginBottom: 2 }}>
-              <button
-                onClick={() => toggleSection(section)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '8px 16px 3px', background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--sidebar-fg-label, rgba(255,255,255,0.3))', fontFamily: 'inherit', transition: 'color 0.12s ease',
-                }}
-                onMouseEnter={e => e.currentTarget.style.color = 'var(--sidebar-fg-muted, rgba(255,255,255,0.55))'}
-                onMouseLeave={e => e.currentTarget.style.color = 'var(--sidebar-fg-label, rgba(255,255,255,0.3))'}
-              >
-                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  {section}
-                </span>
-                <ChevronDown size={11} style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 150ms cubic-bezier(0.23,1,0.32,1)' }} />
-              </button>
-
-              <div style={{ display: 'grid', gridTemplateRows: isCollapsed ? '0fr' : '1fr', transition: 'grid-template-rows 200ms cubic-bezier(0.23,1,0.32,1)' }}>
-                <div style={{ overflow: 'hidden', opacity: isCollapsed ? 0 : 1, transition: 'opacity 150ms ease' }}>
-                  {items.map(item => (
-                    <NavBtn key={item.key} item={item} isActive={current === item.key} onNavigate={onNavigate} onClose={onClose} />
-                  ))}
-                </div>
+          <>
+            {dashboardItem && (
+              <div style={{ padding: '2px 8px 8px', borderBottom: '1px solid var(--sidebar-divider, rgba(255,255,255,0.06))', marginBottom: 4 }}>
+                <NavBtn item={dashboardItem} isActive={current === dashboardItem.key} onNavigate={onNavigate} onClose={onClose} />
               </div>
+            )}
 
-              {isCollapsed && hasActive && (() => {
-                const a = items.find(i => i.key === current);
-                return a ? (
-                  <div style={{
-                    margin: '2px 8px 4px', padding: '6px 10px', borderRadius: 6,
-                    background: 'var(--sidebar-active-bg, rgba(61,199,179,0.1))', display: 'flex',
-                    alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 500, color: 'var(--sidebar-active-fg, #3DC7B3)',
-                  }}>
-                    <a.icon size={13} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.label}</span>
+            {ALL_SECTIONS.map(section => {
+              const items = sections[section] || [];
+              if (!items.length) return null;
+              const isCollapsed = !!collapsed[section];
+              const hasActive   = items.some(i => i.key === current);
+
+              return (
+                <div key={section} style={{ marginBottom: 2 }}>
+                  <button
+                    onClick={() => toggleSection(section)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 16px 3px', background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--sidebar-fg-label, rgba(255,255,255,0.3))', fontFamily: 'inherit', transition: 'color 0.12s ease',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.color = 'var(--sidebar-fg-muted, rgba(255,255,255,0.55))'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'var(--sidebar-fg-label, rgba(255,255,255,0.3))'}
+                  >
+                    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                      {section}
+                    </span>
+                    <ChevronDown size={11} style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 150ms cubic-bezier(0.23,1,0.32,1)' }} />
+                  </button>
+
+                  <div style={{ display: 'grid', gridTemplateRows: isCollapsed ? '0fr' : '1fr', transition: 'grid-template-rows 200ms cubic-bezier(0.23,1,0.32,1)' }}>
+                    <div style={{ overflow: 'hidden', opacity: isCollapsed ? 0 : 1, transition: 'opacity 150ms ease' }}>
+                      {items.map(item => (
+                        <NavBtn key={item.key} item={item} isActive={current === item.key} onNavigate={onNavigate} onClose={onClose} />
+                      ))}
+                    </div>
                   </div>
-                ) : null;
-              })()}
-            </div>
-          );
-        })}
-        </>
+
+                  {isCollapsed && hasActive && (() => {
+                    const a = items.find(i => i.key === current);
+                    return a ? (
+                      <div style={{
+                        margin: '2px 8px 4px', padding: '6px 10px', borderRadius: 6,
+                        background: 'var(--sidebar-active-bg, rgba(61,199,179,0.1))', display: 'flex',
+                        alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 500, color: 'var(--sidebar-active-fg, #3DC7B3)',
+                      }}>
+                        <a.icon size={13} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.label}</span>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              );
+            })}
+          </>
         )}
       </nav>
 
       {/* Footer */}
       <div style={{ padding: '10px 10px 12px', borderTop: '1px solid var(--sidebar-border, rgba(255,255,255,0.08))', flexShrink: 0, position: 'relative' }}>
 
-        {/* Popup menu (Settings + Logout) */}
         {userMenuOpen && (
           <>
             <div onClick={() => setUserMenuOpen(false)}
@@ -301,15 +277,13 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                 <SettingsIcon size={15} /> Settings
               </button>
-              {onLogout && (
-                <button
-                  onClick={() => { setUserMenuOpen(false); setConfirmLogout(true); }}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, color: '#f87171', fontSize: 13, fontWeight: 500, textAlign: 'left' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'none'}>
-                  <LogOut size={15} /> Log out
-                </button>
-              )}
+              <button
+                onClick={() => { setUserMenuOpen(false); setConfirmLogout(true); }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, color: '#f87171', fontSize: 13, fontWeight: 500, textAlign: 'left' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                <LogOut size={15} /> Log out
+              </button>
             </div>
           </>
         )}
@@ -348,17 +322,89 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
       </div>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} toast={toast || (() => {})} />
-
     </div>
-    );
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Sidebar
+───────────────────────────────────────────────────────────── */
+export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout, allowedFeatures, toast, railCollapsed = false, onToggleRail }) {
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [collapsed, setCollapsed]         = useState(loadCollapsed);
+  const [userMenuOpen, setUserMenuOpen]   = useState(false);
+  const [settingsOpen, setSettingsOpen]   = useState(false);
+  const rail = railCollapsed;
+
+  // Always show my-dashboard when the user has any Self Service portal access,
+  // even if the backend permissions list doesn't explicitly include this new key.
+  const hasPortalAccess = !allowedFeatures || allowedFeatures.some(f => f.startsWith('my-') || f === 'emp-dashboard');
+  const visibleNAV = allowedFeatures
+    ? NAV.filter(item => !item.key || allowedFeatures.includes(item.key) || (item.key === 'my-dashboard' && hasPortalAccess))
+    : NAV;
+
+  // Auto-expand the section containing the active page
+  useEffect(() => {
+    const activeItem = visibleNAV.find(n => n.key === current);
+    if (activeItem?.section && collapsed[activeItem.section]) {
+      const next = { ...collapsed };
+      delete next[activeItem.section];
+      setCollapsed(next);
+      localStorage.setItem('sidebar-collapsed', JSON.stringify(next));
+    }
+  }, [current]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleSection = section => {
+    const next = { ...collapsed, [section]: !collapsed[section] };
+    if (!next[section]) delete next[section];
+    setCollapsed(next);
+    localStorage.setItem('sidebar-collapsed', JSON.stringify(next));
+  };
+
+  const sections = {};
+  visibleNAV.forEach(item => {
+    if (!item.section) return;
+    if (!sections[item.section]) sections[item.section] = [];
+    sections[item.section].push(item);
+  });
+
+  const nullItems = visibleNAV.filter(n => n.section === null);
+  const dashboardItem = nullItems[0];
+
+  const initials = user?.full_name
+    ? user.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : 'U';
+
+  const grouped = [];
+  let lastSection = null;
+  visibleNAV.filter(item => item.section !== null).forEach(item => {
+    if (item.section !== lastSection) {
+      lastSection = item.section;
+      if (item.section) grouped.push({ type: 'sep', label: item.section });
+    }
+    grouped.push({ type: 'item', ...item });
+  });
+  const drawerItems = [...grouped, { type: 'sep', label: 'Account' }, { type: 'item', key: '__logout__', label: 'Sign Out', icon: LogOut }];
+
+  const handleMobileNav = key => {
+    if (key === '__logout__') { onLogout?.(); return; }
+    onNavigate(key);
+  };
+
+  // Shared props passed to SidebarContent
+  const contentProps = {
+    dashboardItem, sections, collapsed, toggleSection,
+    current, onNavigate, onClose, onToggleRail,
+    userMenuOpen, setUserMenuOpen, settingsOpen, setSettingsOpen,
+    user, initials, setConfirmLogout, toast,
   };
 
   return (
     <>
-      {/* Desktop */}
+      {/* Desktop — SidebarContent is always mounted here, scroll position persists */}
       <aside className="glass-sidebar sidebar-desktop flex-col fixed inset-y-0 left-0 z-40 flex-shrink-0"
         style={{ width: rail ? 76 : 220, transition: 'width 0.18s cubic-bezier(0.23,1,0.32,1)' }}>
-        <SidebarInner railMode={rail} />
+        <SidebarContent railMode={rail} {...contentProps} />
       </aside>
 
       {/* Mobile overlay */}
@@ -368,7 +414,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
       {mobileOpen && (
         <div className="glass-sidebar lg:hidden fixed inset-y-0 left-0 z-40 w-[240px] flex flex-col"
           style={{ animation: 'sidebarSlideIn 0.28s cubic-bezier(0.32, 0.72, 0, 1) both' }}>
-          <SidebarInner railMode={false} />
+          <SidebarContent railMode={false} {...contentProps} />
         </div>
       )}
 
@@ -384,35 +430,5 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
         onCancel={() => setConfirmLogout(false)}
       />
     </>
-  );
-}
-
-function NavBtn({ item, isActive, onNavigate, onClose, rail = false }) {
-  return (
-    <button
-      onClick={() => { onNavigate(item.key); if (window.innerWidth < 1024) onClose(); }}
-      title={rail ? item.label : undefined}
-      style={{
-        width: rail ? 44 : 'calc(100% - 16px)',
-        height: rail ? 40 : 'auto',
-        margin: rail ? '2px auto' : '1px 8px',
-        display: 'flex', alignItems: 'center', justifyContent: rail ? 'center' : 'flex-start', gap: 8,
-        padding: rail ? 0 : '6px 10px', borderRadius: rail ? 9 : 6,
-        border: 'none', cursor: 'pointer', textAlign: 'left',
-        fontFamily: 'inherit', fontSize: 13, fontWeight: isActive ? 500 : 400,
-        background: isActive ? 'var(--sidebar-active-bg, rgba(26,106,180,0.2))' : 'transparent',
-        color: isActive ? 'var(--sidebar-active-fg, #60A5FA)' : 'var(--sidebar-fg-muted, rgba(255,255,255,0.5))',
-        transition: 'background 0.12s, color 0.12s, transform 100ms cubic-bezier(0.23,1,0.32,1)',
-        position: 'relative',
-      }}
-      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'var(--sidebar-hover-bg, rgba(255,255,255,0.05))'; e.currentTarget.style.color = 'var(--sidebar-fg, rgba(255,255,255,0.82))'; }}}
-      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--sidebar-fg-muted, rgba(255,255,255,0.5))'; } e.currentTarget.style.transform = 'scale(1)'; }}
-      onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
-      onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-    >
-      {isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 2.5, height: rail ? 18 : 14, borderRadius: 2, background: 'var(--sidebar-active-fg, #60A5FA)' }} />}
-      <item.icon size={rail ? 17 : 14} style={{ flexShrink: 0, opacity: isActive ? 0.95 : 0.65 }} />
-      {!rail && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
-    </button>
   );
 }
