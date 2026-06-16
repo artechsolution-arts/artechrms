@@ -156,49 +156,49 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
       {/* Brand */}
-      <div style={{ padding: rail ? '14px 0 12px' : '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+      <div style={{ padding: rail ? '14px 0 12px' : '14px 16px 12px', borderBottom: '1px solid var(--sidebar-border, rgba(255,255,255,0.08))', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: rail ? 'center' : 'flex-start' }}>
           <img src="/logo.svg" alt="Artech" style={{ width: 28, height: 28, flexShrink: 0 }} />
           <div style={{ overflow: 'hidden', opacity: rail ? 0 : 1, maxWidth: rail ? 0 : 200, transition: 'opacity 0.12s ease, max-width 0.18s cubic-bezier(0.23,1,0.32,1)' }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#fff', lineHeight: '1.2', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>Artech HRMS</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 1, whiteSpace: 'nowrap' }}>Human Resources</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--sidebar-fg-strong, #fff)', lineHeight: '1.2', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>Artech HRMS</div>
+            <div style={{ fontSize: 11, color: 'var(--sidebar-fg-label, rgba(255,255,255,0.38))', marginTop: 1, whiteSpace: 'nowrap' }}>Human Resources</div>
           </div>
           {/* Desktop rail toggle */}
           {!rail && onToggleRail && (
             <button onClick={onToggleRail} title="Collapse sidebar"
               className="rail-toggle-desktop"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4, borderRadius: 5, display: 'flex', marginLeft: 'auto', flexShrink: 0, transition: 'color 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}>
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sidebar-fg-label, rgba(255,255,255,0.4))', padding: 4, borderRadius: 5, display: 'flex', marginLeft: 'auto', flexShrink: 0, transition: 'color 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--sidebar-fg, rgba(255,255,255,0.85))'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--sidebar-fg-label, rgba(255,255,255,0.4))'}>
               <PanelLeftClose size={16} />
             </button>
           )}
           {/* Mobile close */}
           <button onClick={onClose}
             className="lg:hidden"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', padding: 4, borderRadius: 5, display: rail ? 'none' : 'flex', marginLeft: rail ? 0 : 4, flexShrink: 0 }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sidebar-fg-label, rgba(255,255,255,0.35))', padding: 4, borderRadius: 5, display: rail ? 'none' : 'flex', marginLeft: rail ? 0 : 4, flexShrink: 0 }}>
             <X size={15} />
           </button>
         </div>
         {/* Expand button shown when collapsed */}
         {rail && onToggleRail && (
           <button onClick={onToggleRail} title="Expand sidebar"
-            style={{ background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', padding: 6, borderRadius: 7, display: 'flex', margin: '10px auto 0', transition: 'background 0.15s, color 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}>
+            style={{ background: 'var(--sidebar-hover-bg, rgba(255,255,255,0.06))', border: 'none', cursor: 'pointer', color: 'var(--sidebar-fg-muted, rgba(255,255,255,0.6))', padding: 6, borderRadius: 7, display: 'flex', margin: '10px auto 0', transition: 'background 0.15s, color 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--sidebar-user-btn-active, rgba(255,255,255,0.12))'; e.currentTarget.style.color = 'var(--sidebar-fg-strong, #fff)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--sidebar-hover-bg, rgba(255,255,255,0.06))'; e.currentTarget.style.color = 'var(--sidebar-fg-muted, rgba(255,255,255,0.6))'; }}>
             <PanelLeftOpen size={16} />
           </button>
         )}
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, overflowY: 'auto', padding: '6px 0', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '6px 0', scrollbarWidth: 'thin', scrollbarColor: 'var(--sidebar-scrollbar, rgba(255,255,255,0.1)) transparent' }}>
 
         {/* ── RAIL MODE: flat icon-only list ── */}
         {rail ? (
           <>
             {dashboardItem && (
-              <div style={{ padding: '2px 0 6px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 4 }}>
+              <div style={{ padding: '2px 0 6px', borderBottom: '1px solid var(--sidebar-divider, rgba(255,255,255,0.06))', marginBottom: 4 }}>
                 <NavBtn item={dashboardItem} isActive={current === dashboardItem.key} onNavigate={onNavigate} onClose={onClose} rail />
               </div>
             )}
@@ -207,7 +207,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
               if (!items.length) return null;
               return (
                 <div key={section} style={{ marginBottom: 4 }}>
-                  {si > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 16px' }} />}
+                  {si > 0 && <div style={{ height: 1, background: 'var(--sidebar-divider, rgba(255,255,255,0.06))', margin: '4px 16px' }} />}
                   {items.map(item => (
                     <NavBtn key={item.key} item={item} isActive={current === item.key} onNavigate={onNavigate} onClose={onClose} rail />
                   ))}
@@ -219,7 +219,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
         <>
         {/* Top-level Dashboard (role-specific) */}
         {dashboardItem && (
-          <div style={{ padding: '2px 8px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 4 }}>
+          <div style={{ padding: '2px 8px 8px', borderBottom: '1px solid var(--sidebar-divider, rgba(255,255,255,0.06))', marginBottom: 4 }}>
             <NavBtn item={dashboardItem} isActive={current === dashboardItem.key} onNavigate={onNavigate} onClose={onClose} />
           </div>
         )}
@@ -238,10 +238,10 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '8px 16px 3px', background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'rgba(255,255,255,0.3)', fontFamily: 'inherit', transition: 'color 0.12s ease',
+                  color: 'var(--sidebar-fg-label, rgba(255,255,255,0.3))', fontFamily: 'inherit', transition: 'color 0.12s ease',
                 }}
-                onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--sidebar-fg-muted, rgba(255,255,255,0.55))'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--sidebar-fg-label, rgba(255,255,255,0.3))'}
               >
                 <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   {section}
@@ -262,8 +262,8 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
                 return a ? (
                   <div style={{
                     margin: '2px 8px 4px', padding: '6px 10px', borderRadius: 6,
-                    background: 'rgba(61,199,179,0.1)', display: 'flex',
-                    alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 500, color: '#3DC7B3',
+                    background: 'var(--sidebar-active-bg, rgba(61,199,179,0.1))', display: 'flex',
+                    alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 500, color: 'var(--sidebar-active-fg, #3DC7B3)',
                   }}>
                     <a.icon size={13} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.label}</span>
@@ -278,7 +278,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: '10px 10px 12px', borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0, position: 'relative' }}>
+      <div style={{ padding: '10px 10px 12px', borderTop: '1px solid var(--sidebar-border, rgba(255,255,255,0.08))', flexShrink: 0, position: 'relative' }}>
 
         {/* Popup menu (Settings + Logout) */}
         {userMenuOpen && (
@@ -288,16 +288,16 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
             <div style={{
               position: 'absolute', bottom: '100%', marginBottom: 6, zIndex: 50,
               ...(rail ? { left: 8, width: 180 } : { left: 10, right: 10 }),
-              background: 'rgba(31,41,55,0.72)', backdropFilter: 'blur(24px) saturate(1.5)', WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
-              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
-              boxShadow: '0 12px 40px rgba(0,0,0,0.45)', overflow: 'hidden', padding: 6,
+              background: 'var(--sidebar-menu-bg, rgba(31,41,55,0.88))', backdropFilter: 'blur(24px) saturate(1.5)', WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+              border: '1px solid var(--sidebar-menu-border, rgba(255,255,255,0.14))', borderRadius: 12,
+              boxShadow: '0 12px 40px var(--sidebar-menu-shadow, rgba(0,0,0,0.45))', overflow: 'hidden', padding: 6,
               animation: 'menuSlideUp 0.15s cubic-bezier(0.23,1,0.32,1) both',
               transformOrigin: 'bottom left',
             }}>
               <button
                 onClick={() => { setUserMenuOpen(false); setSettingsOpen(true); }}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500, textAlign: 'left' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, color: 'var(--sidebar-fg, rgba(255,255,255,0.85))', fontSize: 13, fontWeight: 500, textAlign: 'left' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--sidebar-hover-bg, rgba(255,255,255,0.07))'}
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                 <SettingsIcon size={15} /> Settings
               </button>
@@ -317,9 +317,9 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
         <button
           onClick={() => setUserMenuOpen(o => !o)}
           title={rail ? (user?.full_name || 'User') : undefined}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: rail ? 'center' : 'flex-start', gap: 8, padding: rail ? '6px 0' : '7px 8px', borderRadius: 8, background: userMenuOpen ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
-          onMouseEnter={e => { if (!userMenuOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
-          onMouseLeave={e => { if (!userMenuOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}>
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: rail ? 'center' : 'flex-start', gap: 8, padding: rail ? '6px 0' : '7px 8px', borderRadius: 8, background: userMenuOpen ? 'var(--sidebar-user-btn-active, rgba(255,255,255,0.08))' : 'var(--sidebar-user-btn-bg, rgba(255,255,255,0.04))', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+          onMouseEnter={e => { if (!userMenuOpen) e.currentTarget.style.background = 'var(--sidebar-hover-bg, rgba(255,255,255,0.07))'; }}
+          onMouseLeave={e => { if (!userMenuOpen) e.currentTarget.style.background = 'var(--sidebar-user-btn-bg, rgba(255,255,255,0.04))'; }}>
           {user?.profile_photo ? (
             <img src={user.profile_photo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
           ) : (
@@ -334,14 +334,14 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
           {!rail && (
             <>
               <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--sidebar-fg, rgba(255,255,255,0.85))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user?.full_name || 'User'}
                 </div>
-                <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>
+                <div style={{ fontSize: 10.5, color: 'var(--sidebar-fg-label, rgba(255,255,255,0.35))', marginTop: 1 }}>
                   {user?.role || 'HR'}
                 </div>
               </div>
-              <ChevronRightIcon size={14} style={{ color: 'rgba(255,255,255,0.3)', transform: userMenuOpen ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.15s' }} />
+              <ChevronRightIcon size={14} style={{ color: 'var(--sidebar-fg-label, rgba(255,255,255,0.3))', transform: userMenuOpen ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.15s' }} />
             </>
           )}
         </button>
@@ -400,17 +400,17 @@ function NavBtn({ item, isActive, onNavigate, onClose, rail = false }) {
         padding: rail ? 0 : '6px 10px', borderRadius: rail ? 9 : 6,
         border: 'none', cursor: 'pointer', textAlign: 'left',
         fontFamily: 'inherit', fontSize: 13, fontWeight: isActive ? 500 : 400,
-        background: isActive ? 'rgba(26,106,180,0.2)' : 'transparent',
-        color: isActive ? '#60A5FA' : 'rgba(255,255,255,0.5)',
+        background: isActive ? 'var(--sidebar-active-bg, rgba(26,106,180,0.2))' : 'transparent',
+        color: isActive ? 'var(--sidebar-active-fg, #60A5FA)' : 'var(--sidebar-fg-muted, rgba(255,255,255,0.5))',
         transition: 'background 0.12s, color 0.12s, transform 100ms cubic-bezier(0.23,1,0.32,1)',
         position: 'relative',
       }}
-      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'rgba(255,255,255,0.82)'; }}}
-      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; } e.currentTarget.style.transform = 'scale(1)'; }}
+      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'var(--sidebar-hover-bg, rgba(255,255,255,0.05))'; e.currentTarget.style.color = 'var(--sidebar-fg, rgba(255,255,255,0.82))'; }}}
+      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--sidebar-fg-muted, rgba(255,255,255,0.5))'; } e.currentTarget.style.transform = 'scale(1)'; }}
       onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
       onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
     >
-      {isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 2.5, height: rail ? 18 : 14, borderRadius: 2, background: '#60A5FA' }} />}
+      {isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 2.5, height: rail ? 18 : 14, borderRadius: 2, background: 'var(--sidebar-active-fg, #60A5FA)' }} />}
       <item.icon size={rail ? 17 : 14} style={{ flexShrink: 0, opacity: isActive ? 0.95 : 0.65 }} />
       {!rail && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
     </button>

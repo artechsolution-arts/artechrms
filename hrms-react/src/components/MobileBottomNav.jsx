@@ -68,7 +68,7 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
       )}
 
       {/* ── All-items slide-up drawer ── */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 mobile-only bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl transition-transform duration-300 ${drawerOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+      <div className={`fixed bottom-0 left-0 right-0 z-50 mobile-only glass-mobile-panel rounded-t-2xl shadow-2xl transition-transform duration-300 ${drawerOpen ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">All Sections</span>
           <button onClick={() => setDrawerOpen(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -98,7 +98,7 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
       </div>
 
       {/* ── Notifications slide-up panel ── */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 mobile-only bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl transition-transform duration-300 ${bellOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+      <div className={`fixed bottom-0 left-0 right-0 z-50 mobile-only glass-mobile-panel rounded-t-2xl shadow-2xl transition-transform duration-300 ${bellOpen ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <Bell size={15} style={{ color: accent }} />
@@ -154,7 +154,7 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
       </div>
 
       {/* ── Settings slide-up panel ── */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 mobile-only bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl transition-transform duration-300 ${settingsOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+      <div className={`fixed bottom-0 left-0 right-0 z-50 mobile-only glass-mobile-panel rounded-t-2xl shadow-2xl transition-transform duration-300 ${settingsOpen ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <Settings size={15} className="text-gray-500" />
@@ -267,7 +267,7 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
       </div>
 
       {/* ── Bottom nav bar: Home | Attendance | [More] | Bell | Settings ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 mobile-only bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 mobile-only glass-mobile-nav shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
         <div className="flex items-end justify-around px-1 pt-2 pb-3">
 
           {/* Home */}

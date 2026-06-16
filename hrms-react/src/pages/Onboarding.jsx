@@ -19,6 +19,7 @@ function RowActions({ onEdit, onDelete, editing, onSave, onCancel }) {
         <Save size={11} /> Save
       </button>
       <button onClick={onCancel}
+        className="onb-row-cancel"
         style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: '1px solid #E5E7EB', cursor: 'pointer', background: '#fff', color: '#6B7280', fontSize: 12, fontWeight: 600 }}>
         Cancel
       </button>
@@ -27,6 +28,7 @@ function RowActions({ onEdit, onDelete, editing, onSave, onCancel }) {
   return (
     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
       <button onClick={onEdit} title="Edit"
+        className="onb-row-edit"
         style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid #E5E7EB', cursor: 'pointer', background: '#F9FAFB', color: '#374151', display: 'flex', alignItems: 'center' }}>
         <Pencil size={13} />
       </button>
@@ -73,7 +75,7 @@ const OFF_STEPS = [
 /* ── helpers ── */
 const Input = ({ label, value, onChange, type = 'text', required, placeholder, disabled, hint }) => (
   <div>
-    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5, letterSpacing: '0.01em' }}>
+    <label className="onb-form-label" style={{ display: 'block', fontSize: 11.5, fontWeight: 600, marginBottom: 5, letterSpacing: '0.01em' }}>
       {label}{required && <span style={{ color: '#EF4444', marginLeft: 3 }}>*</span>}
     </label>
     {hint && <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{hint}</div>}
@@ -91,7 +93,7 @@ const Input = ({ label, value, onChange, type = 'text', required, placeholder, d
 
 const Select = ({ label, value, onChange, options, required, disabled }) => (
   <div>
-    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5 }}>
+    <label className="onb-form-label" style={{ display: 'block', fontSize: 11.5, fontWeight: 600, marginBottom: 5 }}>
       {label}{required && <span style={{ color: '#EF4444', marginLeft: 3 }}>*</span>}
     </label>
     <select value={value || ''} onChange={e => onChange(e.target.value)} disabled={disabled}
@@ -104,16 +106,16 @@ const Select = ({ label, value, onChange, options, required, disabled }) => (
 
 const Textarea = ({ label, value, onChange, rows = 3, placeholder }) => (
   <div>
-    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5 }}>{label}</label>
+    <label className="onb-form-label" style={{ display: 'block', fontSize: 11.5, fontWeight: 600, marginBottom: 5 }}>{label}</label>
     <textarea value={value || ''} onChange={e => onChange(e.target.value)}
       rows={rows} placeholder={placeholder || ''} className="form-textarea" style={{ fontSize: 13 }} />
   </div>
 );
 
 const Toggle = ({ label, value, onChange, description }) => (
-  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
+  <div className="onb-toggle-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
     <div>
-      <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{label}</div>
+      <div className="onb-toggle-label" style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{label}</div>
       {description && <div style={{ fontSize: 11.5, color: '#9CA3AF', marginTop: 2 }}>{description}</div>}
     </div>
     <button type="button" onClick={() => onChange(!value)}
@@ -131,8 +133,8 @@ const Toggle = ({ label, value, onChange, description }) => (
 );
 
 const SectionHeader = ({ title, subtitle }) => (
-  <div style={{ marginBottom: 20, paddingBottom: 12, borderBottom: '2px solid #F3F4F6' }}>
-    <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0D1F4E', margin: 0 }}>{title}</h3>
+  <div className="onb-section-header" style={{ marginBottom: 20, paddingBottom: 12, borderBottom: '2px solid #F3F4F6' }}>
+    <h3 className="onb-section-title" style={{ fontSize: 16, fontWeight: 700, color: '#0D1F4E', margin: 0 }}>{title}</h3>
     {subtitle && <p style={{ fontSize: 12.5, color: '#6B7280', marginTop: 4, margin: '4px 0 0' }}>{subtitle}</p>}
   </div>
 );
@@ -1099,17 +1101,17 @@ function WizardModal({ emp, type, onClose }) {
         {/* ── Right: Content ── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Top bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px', borderBottom: '1px solid #F3F4F6', flexShrink: 0 }}>
+          <div className="onb-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px', borderBottom: '1px solid #F3F4F6', flexShrink: 0 }}>
             <div>
               <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 500 }}>Step {step + 1} of {steps.length} &nbsp;·&nbsp; </span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#0D1F4E' }}>{steps[step].label}</span>
+              <span className="onb-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#0D1F4E' }}>{steps[step].label}</span>
               {sections[steps[step].key]?.saved_at && (
                 <span style={{ marginLeft: 8, fontSize: 11, color: '#16A34A', background: '#F0FDF4', padding: '2px 7px', borderRadius: 20, border: '1px solid #BBF7D0' }}>
                   ✓ Saved
                 </span>
               )}
             </div>
-            <button onClick={onClose} style={{ background: '#F3F4F6', border: 'none', borderRadius: 8, padding: 7, cursor: 'pointer', display: 'flex' }}>
+            <button onClick={onClose} className="onb-wizard-close" style={{ background: '#F3F4F6', border: 'none', borderRadius: 8, padding: 7, cursor: 'pointer', display: 'flex' }}>
               <X size={15} color="#6B7280" />
             </button>
           </div>
@@ -1121,7 +1123,7 @@ function WizardModal({ emp, type, onClose }) {
 
           {/* Footer */}
           {!isActivityLog && !isEmpInfo && (
-            <div style={{ padding: '12px 24px', borderTop: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: '#FAFAFA' }}>
+            <div className="onb-wizard-footer" style={{ padding: '12px 24px', borderTop: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: '#FAFAFA' }}>
               <button onClick={() => step > 0 && setStep(s => s - 1)} disabled={step === 0}
                 className="btn btn-secondary btn-sm gap-1.5" style={{ opacity: step === 0 ? 0.4 : 1 }}>
                 <ChevronLeft size={13} /> Previous
@@ -1157,7 +1159,7 @@ function EmpCard({ emp, type, onClick }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         <EmpAvatar name={emp.full_name} photo={emp.profile_photo} size="sm" colorIndex={emp.id} rounded="rounded-full" />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#0D1F4E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.full_name}</div>
+          <div className="onb-emp-name" style={{ fontSize: 13, fontWeight: 600, color: '#0D1F4E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.full_name}</div>
           <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {emp.designation || '—'} · {emp.department || '—'}
           </div>
@@ -1166,7 +1168,7 @@ function EmpCard({ emp, type, onClick }) {
           {emp.progress}/{emp.total}
         </span>
       </div>
-      <div style={{ height: 4, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
+      <div className="onb-progress-track" style={{ height: 4, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 4, transition: 'width 0.5s' }} />
       </div>
       <div style={{ fontSize: 11, color: '#9CA3AF' }}>
@@ -1226,6 +1228,7 @@ export default function Onboarding({ toast }) {
             { key: 'offboarding', label: 'Offboarding', icon: UserMinus, color: '#EF4444' }]
             .map(({ key, label, icon: Icon, color }) => (
               <button key={key} onClick={() => { setTab(key); setSearch(''); }}
+                className={tab !== key ? 'onb-tab-inactive' : ''}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8,
                   border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
