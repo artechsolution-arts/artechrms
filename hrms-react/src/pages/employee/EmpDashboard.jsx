@@ -138,66 +138,115 @@ export default function EmpDashboard({ toast, onNavigate }) {
         {recent_attendance.length === 0 ? (
           <div className="p-6 text-center text-sm text-gray-400">No attendance records yet</div>
         ) : (
-          <div className="p-4 flex items-center gap-2">
-            {/* 7-day circles */}
-            <div className="flex flex-wrap gap-3 flex-1">
-              {recent_attendance.map(a => (
-                <div key={a.date} className="flex flex-col items-center gap-1.5 w-16">
-                  <div className={`w-10 h-10 rounded-full ${STATUS_COLOR[a.status] || 'bg-gray-200'} flex items-center justify-center text-white text-xs font-bold shadow-sm`}>
-                    {a.status[0]}
-                  </div>
-                  <div className="text-[10px] text-gray-500 text-center leading-tight">
-                    {safeFmt(a.date, { day: 'numeric', month: 'short' })}
-                  </div>
-                  <Badge text={a.status} />
+          <>
+            {/* ── Mobile layout: Check In → Expected Out → divider → circles ── */}
+            <div className="md:hidden p-4 space-y-3">
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Today</div>
+
+              {/* Check In */}
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0">
+                  <LogIn size={20} className="text-green-600 dark:text-green-400" />
                 </div>
-              ))}
+                <div>
+                  <div className="text-[11px] text-gray-400 mb-0.5">Check In</div>
+                  <div className="text-lg font-bold text-green-600 dark:text-green-400 leading-none">
+                    {todayRec?.in_time ? fmtTime(todayRec.in_time) : '—'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Expected Out / Check Out */}
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${todayRec?.out_time ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+                  <LogOut size={20} className={todayRec?.out_time ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500 dark:text-amber-400'} />
+                </div>
+                <div>
+                  <div className="text-[11px] text-gray-400 mb-0.5">
+                    {todayRec?.out_time ? 'Check Out' : 'Expected Out'}
+                  </div>
+                  <div className={`text-lg font-bold leading-none ${todayRec?.out_time ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500 dark:text-amber-400'}`}>
+                    {todayRec?.out_time
+                      ? fmtTime(todayRec.out_time)
+                      : todayRec?.in_time
+                        ? expectedLogout(todayRec.in_time)
+                        : '—'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-3">
+                <div className="flex flex-wrap gap-2">
+                  {recent_attendance.map(a => (
+                    <div key={a.date} className="flex flex-col items-center gap-1 w-[13%] min-w-[42px]">
+                      <div className={`w-9 h-9 rounded-full ${STATUS_COLOR[a.status] || 'bg-gray-200'} flex items-center justify-center text-white text-xs font-bold shadow-sm`}>
+                        {a.status[0]}
+                      </div>
+                      <div className="text-[9px] text-gray-500 text-center leading-tight">
+                        {safeFmt(a.date, { day: 'numeric', month: 'short' })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* Divider */}
-            <div className="w-px self-stretch bg-gray-100 dark:bg-gray-700 mx-4 flex-shrink-0" />
-
-            {/* Today's check-in / expected checkout — side by side */}
-            <div className="flex flex-col gap-3 flex-shrink-0">
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Today</div>
-              <div className="flex items-center gap-6">
-                {/* Check In */}
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0">
-                    <LogIn size={22} className="text-green-600 dark:text-green-400" />
+            {/* ── Desktop layout: circles | divider | Check In + Out ── */}
+            <div className="hidden md:flex items-center gap-2 p-4">
+              <div className="flex flex-wrap gap-3 flex-1">
+                {recent_attendance.map(a => (
+                  <div key={a.date} className="flex flex-col items-center gap-1.5 w-16">
+                    <div className={`w-10 h-10 rounded-full ${STATUS_COLOR[a.status] || 'bg-gray-200'} flex items-center justify-center text-white text-xs font-bold shadow-sm`}>
+                      {a.status[0]}
+                    </div>
+                    <div className="text-[10px] text-gray-500 text-center leading-tight">
+                      {safeFmt(a.date, { day: 'numeric', month: 'short' })}
+                    </div>
+                    <Badge text={a.status} />
                   </div>
-                  <div>
-                    <div className="text-xs text-gray-400 mb-1">Check In</div>
-                    <div className="text-xl font-bold text-green-600 dark:text-green-400 leading-none">
-                      {todayRec?.in_time ? fmtTime(todayRec.in_time) : '—'}
+                ))}
+              </div>
+
+              <div className="w-px self-stretch bg-gray-100 dark:bg-gray-700 mx-4 flex-shrink-0" />
+
+              <div className="flex flex-col gap-3 flex-shrink-0">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Today</div>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0">
+                      <LogIn size={22} className="text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400 mb-1">Check In</div>
+                      <div className="text-xl font-bold text-green-600 dark:text-green-400 leading-none">
+                        {todayRec?.in_time ? fmtTime(todayRec.in_time) : '—'}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Thin separator */}
-                <div className="w-px h-10 bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
+                  <div className="w-px h-10 bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
 
-                {/* Check Out / Expected Out */}
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${todayRec?.out_time ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
-                    <LogOut size={22} className={todayRec?.out_time ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500 dark:text-amber-400'} />
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400 mb-1">
-                      {todayRec?.out_time ? 'Check Out' : 'Expected Out'}
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${todayRec?.out_time ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+                      <LogOut size={22} className={todayRec?.out_time ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500 dark:text-amber-400'} />
                     </div>
-                    <div className={`text-xl font-bold leading-none ${todayRec?.out_time ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500 dark:text-amber-400'}`}>
-                      {todayRec?.out_time
-                        ? fmtTime(todayRec.out_time)
-                        : todayRec?.in_time
-                          ? expectedLogout(todayRec.in_time)
-                          : '—'}
+                    <div>
+                      <div className="text-xs text-gray-400 mb-1">
+                        {todayRec?.out_time ? 'Check Out' : 'Expected Out'}
+                      </div>
+                      <div className={`text-xl font-bold leading-none ${todayRec?.out_time ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500 dark:text-amber-400'}`}>
+                        {todayRec?.out_time
+                          ? fmtTime(todayRec.out_time)
+                          : todayRec?.in_time
+                            ? expectedLogout(todayRec.in_time)
+                            : '—'}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       </SectionCard>
 
