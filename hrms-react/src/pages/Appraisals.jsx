@@ -3,37 +3,58 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import Select from '../components/Select';
-import { Plus, RefreshCw, Trash2, ChevronDown, Target, Star, ClipboardCheck,
-         Briefcase, Crown, Eye, X, FileText, Upload, Download, Lock } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, Target, Star, ClipboardCheck,
+         Crown, Eye, X, FileText, Upload, Download, Lock, CalendarDays, Pencil } from 'lucide-react';
 
 // ── Constants ──────────────────────────────────────────────────
-const STATUS_ORDER = ['Goals Set', 'Self Evaluated', 'Manager Evaluated', 'Business Evaluated', 'Completed'];
+const STATUS_ORDER = ['Goals Set', 'Self Evaluated', 'Manager Evaluated', 'CEO Evaluated', 'Completed'];
+
+// Backend may return 'Business Evaluated' for CEO stage — treat as alias
+const DISPLAY_STATUS = s => s === 'Business Evaluated' ? 'CEO Evaluated' : s;
 
 const STATUS_STYLE = {
-  'Goals Set':           'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
-  'Self Evaluated':      'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800',
-  'Manager Evaluated':   'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
-  'Business Evaluated':  'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800',
-  'Completed':           'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
+  'Goals Set':         'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
+  'Self Evaluated':    'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800',
+  'Manager Evaluated': 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+  'CEO Evaluated':     'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800',
+  'Business Evaluated':'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800',
+  'Completed':         'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
 };
 
-// All evaluation stages (in display order)
+// 3-stage evaluation: Self → Manager → CEO
 const STAGE_META = [
-  { key: 'self_eval',     scoreKey: 'self_score',     label: 'Self Evaluation',        icon: Star,           who: 'Employee',          action: null },
-  { key: 'hr_eval',       scoreKey: 'hr_score',       label: 'HR Evaluation',          icon: ClipboardCheck, who: 'HR',                 action: 'hr-eval', roles: ['HR','SuperAdmin'] },
-  { key: 'manager_eval',  scoreKey: 'manager_score',  label: 'Manager Evaluation',     icon: ClipboardCheck, who: 'Manager/HR',         action: 'manager-eval' },
-  { key: 'ceo_eval',      scoreKey: 'ceo_score',      label: 'CEO Evaluation',         icon: Crown,          who: 'CEO',                action: 'ceo-eval', roles: ['CEO','SuperAdmin'] },
-  { key: 'business_eval', scoreKey: 'business_score', label: 'Business Evaluation',    icon: Briefcase,      who: 'Business Reviewer',  action: 'business-eval' },
-  { key: 'biz_head_eval', scoreKey: 'biz_head_score', label: 'Business Head Approval', icon: Crown,          who: 'Business Head',      action: 'biz-head-eval' },
+  { key: 'self_eval',    scoreKey: 'self_score',    label: 'Self Evaluation',    icon: Star,           who: 'Employee',      action: null },
+  { key: 'manager_eval', scoreKey: 'manager_score', label: 'Manager Evaluation', icon: ClipboardCheck, who: 'Manager / HR',  action: 'manager-eval' },
+  { key: 'ceo_eval',     scoreKey: 'ceo_score',     label: 'CEO Evaluation',     icon: Crown,          who: 'CEO',           action: 'ceo-eval', roles: ['CEO', 'SuperAdmin'] },
 ];
 
-function statusIndex(status) {
-  return STATUS_ORDER.indexOf(status);
+// Cycle helpers
+const CYCLE_TYPES = [
+  { value: 'Annual',       label: 'Annual',       desc: 'Jun – May (12 months)' },
+  { value: 'Mid-Year H1',  label: 'Mid-Year H1',  desc: 'Jun – Nov (6 months)'  },
+  { value: 'Mid-Year H2',  label: 'Mid-Year H2',  desc: 'Dec – May (6 months)'  },
+];
+
+function computePeriod(cycleType, fyYear) {
+  const y = parseInt(fyYear);
+  const fy = `FY${y}-${String(y + 1).slice(2)}`;
+  if (cycleType === 'Annual')      return `Annual ${fy}`;
+  if (cycleType === 'Mid-Year H1') return `Mid-Year H1 ${fy}`;
+  if (cycleType === 'Mid-Year H2') return `Mid-Year H2 ${fy}`;
+  return `${cycleType} ${fy}`;
+}
+
+function cycleRange(cycleType, fyYear) {
+  const y = parseInt(fyYear);
+  if (cycleType === 'Annual')      return `1 Jun ${y} – 31 May ${y + 1}`;
+  if (cycleType === 'Mid-Year H1') return `1 Jun ${y} – 30 Nov ${y}`;
+  if (cycleType === 'Mid-Year H2') return `1 Dec ${y} – 31 May ${y + 1}`;
+  return '';
 }
 
 // ── Score display ───────────────────────────────────────────────
 function ScorePill({ score }) {
-  if (score === null || score === undefined) return <span className="text-xs text-gray-300">—</span>;
+  if (score === null || score === undefined) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
   const pct = (score / 5) * 100;
   const color = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-blue-600' : pct >= 40 ? 'text-amber-600' : 'text-red-500';
   return <span className={`text-xs font-bold ${color}`}>{score.toFixed(1)}<span className="text-gray-400 font-normal">/5</span></span>;
@@ -123,15 +144,15 @@ function EvalForm({ goals, onSubmit, submitting }) {
                   onChange={v => update(i, 'score', v)}
                   options={[
                     { value: '', label: '—' },
-                    { value: '1', label: '1', description: 'Poor' },
-                    { value: '2', label: '2', description: 'Below Average' },
-                    { value: '3', label: '3', description: 'Average' },
-                    { value: '4', label: '4', description: 'Good' },
-                    { value: '5', label: '5', description: 'Excellent' },
+                    { value: '1', label: '1 – Poor' },
+                    { value: '2', label: '2 – Below Average' },
+                    { value: '3', label: '3 – Average' },
+                    { value: '4', label: '4 – Good' },
+                    { value: '5', label: '5 – Excellent' },
                   ]}
                   placeholder="—"
                   size="sm"
-                  className="w-28"
+                  className="w-36"
                 />
               </div>
             </div>
@@ -165,8 +186,8 @@ function EvalForm({ goals, onSubmit, submitting }) {
   );
 }
 
-// ── Performance Documents Tab ───────────────────────────────────
-function PerfDocuments({ appraisalId, documents, onRefresh, toast }) {
+// ── Performance Documents ───────────────────────────────────────
+function PerfDocuments({ appraisalId, documents, onRefresh, toast, isHR }) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
 
@@ -202,11 +223,20 @@ function PerfDocuments({ appraisalId, documents, onRefresh, toast }) {
 
   return (
     <div className="space-y-4">
+      {isHR && (
+        <div className="rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-900/10 px-4 py-3 flex items-start gap-3">
+          <Upload size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">HR: Document Upload</p>
+            <p className="text-xs text-blue-500 dark:text-blue-500 mt-0.5">Upload performance-related documents (offer letters, certificates, achievement records). HR does not submit an evaluation rating.</p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{docs.length} Document{docs.length !== 1 ? 's' : ''}</p>
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{docs.length} Document{docs.length !== 1 ? 's' : ''}</p>
         <button onClick={() => fileRef.current?.click()} disabled={uploading}
           className="btn btn-primary btn-xs gap-1.5">
-          <Upload size={11} /> {uploading ? 'Uploading…' : 'Upload'}
+          <Upload size={11} /> {uploading ? 'Uploading…' : 'Upload Document'}
         </button>
         <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.jpg,.png,.xlsx,.pptx" className="hidden" onChange={handleUpload} />
       </div>
@@ -214,7 +244,7 @@ function PerfDocuments({ appraisalId, documents, onRefresh, toast }) {
       {docs.length === 0 ? (
         <div className="text-center py-10 text-sm text-gray-400">
           <FileText size={32} className="mx-auto mb-2 opacity-30" />
-          No performance documents yet. Upload PDFs, Word docs, or images.
+          No documents yet. Upload PDFs, Word docs, or images.
         </div>
       ) : (
         <div className="space-y-2">
@@ -225,7 +255,7 @@ function PerfDocuments({ appraisalId, documents, onRefresh, toast }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{doc.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{doc.type} · {doc.uploaded_by} · {fmt(doc.uploaded_at)}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{doc.uploaded_by} · {fmt(doc.uploaded_at)}</p>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <a href={doc.url} download target="_blank" rel="noreferrer"
@@ -247,13 +277,18 @@ function PerfDocuments({ appraisalId, documents, onRefresh, toast }) {
 
 // ── Detail Modal ────────────────────────────────────────────────
 function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
-  const [detail, setDetail] = useState(null);
-  const [activeTab, setActiveTab] = useState('goals');
+  const [detail, setDetail]         = useState(null);
+  const [activeTab, setActiveTab]   = useState('goals');
   const [submitting, setSubmitting] = useState(false);
+  const [editGoals, setEditGoals]   = useState(false);
+  const [editGoalsList, setEditGoalsList] = useState([]);
+  const [savingGoals, setSavingGoals]     = useState(false);
 
-  // Get current user role from localStorage
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('artech_hrms_user') || '{}'); } catch { return {}; } })();
   const userRole = currentUser.role || '';
+  const isHR = userRole === 'HR' || userRole === 'SuperAdmin';
+
+  const displayStatus = DISPLAY_STATUS(appraisal.status);
 
   const loadDetail = useCallback(async () => {
     try {
@@ -275,19 +310,17 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
     finally { setSubmitting(false); }
   };
 
-  const tabs = [
-    { key: 'goals',     label: 'Goals',                icon: Target },
-    { key: 'perf-docs', label: 'Performance Docs',     icon: FileText },
-    { key: 'evaluation',label: 'Evaluation',            icon: ClipboardCheck },
-  ];
-
-  // Status-based action map for sequential stages
+  // sequential action for current status
   const sequentialActionMap = {
-    'Self Evaluated':     STAGE_META.find(s => s.key === 'manager_eval'),
-    'Manager Evaluated':  STAGE_META.find(s => s.key === 'business_eval'),
-    'Business Evaluated': STAGE_META.find(s => s.key === 'biz_head_eval'),
+    'Self Evaluated':    STAGE_META.find(s => s.key === 'manager_eval'),
+    'Manager Evaluated': STAGE_META.find(s => s.key === 'ceo_eval'),
   };
-  const currentSequentialAction = sequentialActionMap[appraisal.status];
+
+  const tabs = [
+    { key: 'goals',     label: 'Goals',         icon: Target },
+    { key: 'documents', label: 'Documents',      icon: FileText },
+    { key: 'evaluation',label: 'Evaluation',     icon: ClipboardCheck },
+  ];
 
   if (!detail) {
     return (
@@ -300,32 +333,38 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
       <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <div>
             <p className="text-base font-bold text-gray-900 dark:text-white">{appraisal.employee_name}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{appraisal.period} · {appraisal.designation}</p>
+            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+              <CalendarDays size={11} />
+              {appraisal.period}
+              {appraisal.designation && <span className="text-gray-300 dark:text-gray-600">·</span>}
+              {appraisal.designation}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge text={appraisal.status} />
+            <Badge text={displayStatus} />
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
               <X size={15} />
             </button>
           </div>
         </div>
 
-        {/* Score summary bar — 6 stages */}
-        <div className="grid grid-cols-6 divide-x divide-gray-100 dark:divide-gray-800 bg-gray-50 dark:bg-gray-800/50">
+        {/* Score summary — 3 stages */}
+        <div className="grid grid-cols-3 divide-x divide-gray-100 dark:divide-gray-800 bg-gray-50 dark:bg-gray-800/50">
           {STAGE_META.map(s => (
-            <div key={s.key} className="px-2 py-2 text-center">
-              <p className="text-[9px] text-gray-400 mb-0.5 truncate">{s.label.replace(' Evaluation','').replace(' Approval','')}</p>
+            <div key={s.key} className="px-3 py-2.5 text-center">
+              <p className="text-[10px] text-gray-400 mb-1 font-medium">{s.label.replace(' Evaluation', '')}</p>
               <ScorePill score={detail[s.scoreKey]} />
             </div>
           ))}
         </div>
 
-        {/* 3 main tabs */}
-        <div className="flex gap-0 border-b border-gray-100 dark:border-gray-800 px-1">
+        {/* Tabs */}
+        <div className="flex border-b border-gray-100 dark:border-gray-800 px-1">
           {tabs.map(t => {
             const Icon = t.icon;
             return (
@@ -343,18 +382,74 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto p-5">
 
-          {/* ── GOALS TAB ── */}
+          {/* ── GOALS ── */}
           {activeTab === 'goals' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  {(detail.goals || []).length} Goals · Total weight: {(detail.goals || []).reduce((s, g) => s + (g.weight || 0), 0)}%
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {(detail.goals || []).length} Goals · Total weight: {(editGoals ? editGoalsList : detail.goals || []).reduce((s, g) => s + (parseFloat(g.weight) || 0), 0)}%
                 </p>
-                <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${STATUS_STYLE[appraisal.status] || ''}`}>
-                  {appraisal.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${STATUS_STYLE[displayStatus] || ''}`}>
+                    {displayStatus}
+                  </span>
+                  {displayStatus === 'Goals Set' && !editGoals && (
+                    <button
+                      onClick={() => { setEditGoalsList(JSON.parse(JSON.stringify(detail.goals || []))); setEditGoals(true); }}
+                      className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors">
+                      <Pencil size={10} /> Edit Goals
+                    </button>
+                  )}
+                  {editGoals && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={async () => {
+                          const valid = editGoalsList.filter(g => g.title?.trim());
+                          if (!valid.length) return toast('Add at least one goal', 'warning');
+                          setSavingGoals(true);
+                          try {
+                            await api('PUT', `/api/appraisals/${appraisal.id}/goals`, {
+                              goals: valid.map(g => ({ title: g.title.trim(), weight: parseFloat(g.weight) || 10, target: g.target || '' }))
+                            });
+                            toast('Goals updated', 'success');
+                            setEditGoals(false);
+                            await loadDetail();
+                            onRefresh();
+                          } catch (e) { toast(e.message, 'error'); }
+                          finally { setSavingGoals(false); }
+                        }}
+                        disabled={savingGoals}
+                        className="text-xs px-2 py-0.5 rounded-lg bg-[var(--accent)] text-white hover:opacity-90 transition-opacity">
+                        {savingGoals ? 'Saving…' : 'Save'}
+                      </button>
+                      <button onClick={() => setEditGoals(false)} className="text-xs px-2 py-0.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-              {(detail.goals || []).length === 0 ? (
+
+              {editGoals ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[1fr_70px_120px_28px] gap-2 px-1 mb-1">
+                    <p className="text-[10px] text-gray-400">Goal title</p>
+                    <p className="text-[10px] text-gray-400 text-center">Weight %</p>
+                    <p className="text-[10px] text-gray-400">Target / KPI</p>
+                  </div>
+                  {editGoalsList.map((g, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_70px_120px_28px] gap-2 items-center">
+                      <input className="form-input text-sm" value={g.title} onChange={e => setEditGoalsList(prev => prev.map((x, xi) => xi === i ? { ...x, title: e.target.value } : x))} placeholder={`Goal ${i+1}`} />
+                      <input type="number" className="form-input text-sm text-center" min={1} max={100} value={g.weight} onChange={e => setEditGoalsList(prev => prev.map((x, xi) => xi === i ? { ...x, weight: e.target.value } : x))} />
+                      <input className="form-input text-sm" value={g.target || ''} onChange={e => setEditGoalsList(prev => prev.map((x, xi) => xi === i ? { ...x, target: e.target.value } : x))} placeholder="Target / KPI" />
+                      <button type="button" onClick={() => setEditGoalsList(prev => prev.filter((_, xi) => xi !== i))} className="flex items-center justify-center w-7 h-9 text-gray-300 hover:text-red-400 transition-colors"><X size={13} /></button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => setEditGoalsList(prev => [...prev, { title: '', weight: 10, target: '' }])} className="btn btn-secondary btn-sm w-full gap-1.5 mt-1">
+                    <Plus size={12} /> Add Goal
+                  </button>
+                </div>
+              ) : (detail.goals || []).length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-8">No goals set yet</p>
               ) : (
                 detail.goals.map((g, i) => (
@@ -364,7 +459,7 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{g.title}</p>
-                      {g.target && <p className="text-xs text-gray-500 mt-1">🎯 Target: {g.target}</p>}
+                      {g.target && <p className="text-xs text-gray-500 mt-1">Target: {g.target}</p>}
                     </div>
                     <div className="text-right flex-shrink-0">
                       <span className="text-xs font-bold text-[var(--accent)]">{g.weight}%</span>
@@ -376,32 +471,46 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
             </div>
           )}
 
-          {/* ── PERFORMANCE DOCS TAB ── */}
-          {activeTab === 'perf-docs' && (
+          {/* ── DOCUMENTS ── */}
+          {activeTab === 'documents' && (
             <PerfDocuments
               appraisalId={appraisal.id}
               documents={detail.perf_documents}
               onRefresh={loadDetail}
               toast={toast}
+              isHR={isHR}
             />
           )}
 
-          {/* ── EVALUATION TAB ── */}
+          {/* ── EVALUATION ── */}
           {activeTab === 'evaluation' && (
-            <div className="space-y-5">
+            <div className="space-y-4">
+              {/* HR notice — no eval form for HR */}
+              {isHR && userRole === 'HR' && (
+                <div className="rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-900/10 px-4 py-3 flex items-start gap-3">
+                  <FileText size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-400">HR does not submit an evaluation rating. Use the <strong>Documents</strong> tab to upload supporting files.</p>
+                </div>
+              )}
+
               {STAGE_META.map(stage => {
                 const evalData    = detail[stage.key];
                 const isSubmitted = !!evalData;
+
                 // Can this user submit this stage?
-                const canSubmit   = stage.action && (
-                  stage.roles
-                    ? stage.roles.some(r => userRole.includes(r) || r === userRole)
-                    : appraisal.status === { 'manager-eval': 'Self Evaluated', 'business-eval': 'Manager Evaluated', 'biz-head-eval': 'Business Evaluated' }[stage.action]
-                );
+                let canSubmit = false;
+                if (stage.action) {
+                  if (stage.roles) {
+                    canSubmit = stage.roles.some(r => userRole === r);
+                  } else {
+                    // Sequential: only when the previous stage's status is reached
+                    const requiredStatus = stage.key === 'manager_eval' ? 'Self Evaluated' : null;
+                    canSubmit = requiredStatus ? appraisal.status === requiredStatus : false;
+                  }
+                }
 
                 return (
                   <div key={stage.key} className={`rounded-xl border overflow-hidden ${isSubmitted ? 'border-green-100 dark:border-green-900/30' : 'border-gray-100 dark:border-gray-800'}`}>
-                    {/* Stage header */}
                     <div className={`flex items-center justify-between px-4 py-3 ${isSubmitted ? 'bg-green-50 dark:bg-green-900/10' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
                       <div className="flex items-center gap-2">
                         <stage.icon size={13} className={isSubmitted ? 'text-green-600' : 'text-gray-400'} />
@@ -410,18 +519,16 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
                       </div>
                       <div className="flex items-center gap-2">
                         {isSubmitted && <ScorePill score={detail[stage.scoreKey]} />}
-                        {stage.roles && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                        {stage.roles && !isSubmitted && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800">
                             {stage.roles.filter(r => r !== 'SuperAdmin').join(' / ')} only
                           </span>
                         )}
-                        {!canSubmit && !isSubmitted && !stage.roles && (
+                        {!canSubmit && !isSubmitted && !stage.roles && stage.key !== 'self_eval' && (
                           <span className="text-[10px] text-gray-300 flex items-center gap-1"><Lock size={9} /> Pending</span>
                         )}
                       </div>
                     </div>
-
-                    {/* Stage content */}
                     <div className="p-4">
                       {isSubmitted ? (
                         <EvalView evalData={evalData} goals={detail.goals} />
@@ -429,7 +536,7 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
                         <EvalForm
                           goals={detail.goals}
                           submitting={submitting}
-                          onSubmit={evalData => submitEval(stage.action, evalData)}
+                          onSubmit={data => submitEval(stage.action, data)}
                         />
                       ) : (
                         <p className="text-xs text-gray-400 italic py-2">Not submitted yet</p>
@@ -449,21 +556,38 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
 // ── Main page ───────────────────────────────────────────────────
 const STATUS_TABS = ['All', ...STATUS_ORDER];
 
+// FY year options (current FY ± 2)
+function fyYearOptions() {
+  const thisYear = new Date().getFullYear();
+  const thisMonth = new Date().getMonth(); // 0-indexed
+  const currentFY = thisMonth >= 5 ? thisYear : thisYear - 1; // June = month 5
+  return [-1, 0, 1, 2].map(offset => {
+    const y = currentFY + offset;
+    return { value: String(y), label: `FY ${y}–${String(y + 1).slice(2)}` };
+  });
+}
+
 export default function Appraisals({ toast }) {
-  const [rows,    setRows]    = useState([]);
-  const [emps,    setEmps]    = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [tab,     setTab]     = useState('All');
-  const [detail,  setDetail]  = useState(null);  // appraisal row for detail modal
-  const [newOpen, setNewOpen] = useState(false);
-  const [form,    setForm]    = useState({ employee_id: '', period: '' });
-  const [goals,   setGoals]   = useState([
+  const [rows,      setRows]      = useState([]);
+  const [emps,      setEmps]      = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [tab,       setTab]       = useState('All');
+  const [detail,    setDetail]    = useState(null);
+  const [newOpen,   setNewOpen]   = useState(false);
+  const [cycleType, setCycleType] = useState('Annual');
+  const [fyYear,    setFyYear]    = useState(() => {
+    const m = new Date().getMonth();
+    const y = new Date().getFullYear();
+    return String(m >= 5 ? y : y - 1);
+  });
+  const [empId,     setEmpId]     = useState('');
+  const [goals,     setGoals]     = useState([
     { title: '', weight: 25, target: '' },
     { title: '', weight: 25, target: '' },
     { title: '', weight: 25, target: '' },
     { title: '', weight: 25, target: '' },
   ]);
-  const [saving,  setSaving]  = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -480,27 +604,24 @@ export default function Appraisals({ toast }) {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = tab === 'All' ? rows : rows.filter(r => r.status === tab);
-  const f = v => setForm(p => ({ ...p, ...v }));
+  const filtered = tab === 'All' ? rows : rows.filter(r => DISPLAY_STATUS(r.status) === tab);
 
-  const updateGoal = (i, field, val) => {
+  const updateGoal = (i, field, val) =>
     setGoals(prev => prev.map((g, gi) => gi === i ? { ...g, [field]: val } : g));
-  };
-
   const addGoal = () => setGoals(prev => [...prev, { title: '', weight: 10, target: '' }]);
   const removeGoal = i => setGoals(prev => prev.filter((_, gi) => gi !== i));
-
   const totalWeight = goals.reduce((s, g) => s + (parseFloat(g.weight) || 0), 0);
 
   const save = async () => {
-    if (!form.employee_id || !form.period?.trim()) return toast('Employee and period required', 'warning');
+    if (!empId) return toast('Select an employee', 'warning');
     const validGoals = goals.filter(g => g.title.trim());
     if (validGoals.length === 0) return toast('Add at least one goal', 'warning');
+    const period = computePeriod(cycleType, fyYear);
     setSaving(true);
     try {
       await api('POST', '/api/appraisals', {
-        employee_id: parseInt(form.employee_id),
-        period: form.period,
+        employee_id: parseInt(empId),
+        period,
         goals: validGoals,
       });
       toast('Appraisal created', 'success');
@@ -517,19 +638,35 @@ export default function Appraisals({ toast }) {
     catch (e) { toast(e.message, 'error'); }
   };
 
-  const tabCount = t => t === 'All' ? rows.length : rows.filter(r => r.status === t).length;
+  const PIPELINE_STAGES = [
+    { status: 'Goals Set',         icon: Target,        color: 'text-blue-500' },
+    { status: 'Self Evaluated',    icon: Star,          color: 'text-purple-500' },
+    { status: 'Manager Evaluated', icon: ClipboardCheck,color: 'text-amber-500' },
+    { status: 'CEO Evaluated',     icon: Crown,         color: 'text-orange-500' },
+    { status: 'Completed',         icon: Star,          color: 'text-green-500' },
+  ];
+
+  const tabCount = s => s === 'All' ? rows.length : rows.filter(r => DISPLAY_STATUS(r.status) === s).length;
+  const period = computePeriod(cycleType, fyYear);
+  const range  = cycleRange(cycleType, fyYear);
 
   return (
     <>
       <div className="page-head">
         <div>
           <h1 className="page-title">Appraisals</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Goals → Self → Manager → Business → Business Head</p>
+          <p className="text-xs text-gray-400 mt-0.5">Self · Manager · CEO — Annual & Mid-Year cycles (June – May)</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={load} className="btn btn-secondary btn-sm gap-1.5"><RefreshCw size={13} /> Refresh</button>
           <button onClick={() => {
-            setForm({ employee_id: '', period: `Annual ${new Date().getFullYear()}` });
+            setEmpId('');
+            setCycleType('Annual');
+            setFyYear(() => {
+              const m = new Date().getMonth();
+              const y = new Date().getFullYear();
+              return String(m >= 5 ? y : y - 1);
+            });
             setGoals([
               { title: '', weight: 25, target: '' },
               { title: '', weight: 25, target: '' },
@@ -544,40 +681,39 @@ export default function Appraisals({ toast }) {
       </div>
 
       <div className="page-content space-y-4">
-        {/* Stage pipeline visual */}
-        <div className="card p-3 overflow-x-auto">
-          <div className="flex items-center gap-0 min-w-max">
-            {STATUS_ORDER.map((s, i) => {
-              const count = rows.filter(r => r.status === s).length;
-              const meta = STAGE_META[i - 1];
-              const Icon = i === 0 ? Target : meta?.icon || Star;
+
+        {/* Pipeline */}
+        <div className="card p-3">
+          <div className="flex items-center gap-0 overflow-x-auto">
+            {PIPELINE_STAGES.map((s, i) => {
+              const count = rows.filter(r => DISPLAY_STATUS(r.status) === s.status).length;
+              const Icon = s.icon;
+              const active = tab === s.status;
               return (
-                <div key={s} className="flex items-center">
+                <div key={s.status} className="flex items-center flex-shrink-0">
                   <button
-                    onClick={() => setTab(s)}
+                    onClick={() => setTab(s.status)}
                     className={`flex flex-col items-center px-4 py-2 rounded-lg transition-all text-center ${
-                      tab === s ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                      active ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
                   >
-                    <Icon size={14} className="mb-1" />
-                    <span className="text-[11px] font-medium whitespace-nowrap">{s}</span>
-                    {count > 0 && (
-                      <span className={`mt-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                        tab === s ? 'bg-[var(--accent)] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
-                      }`}>{count}</span>
-                    )}
+                    <Icon size={14} className={`mb-1 ${active ? '' : s.color}`} />
+                    <span className="text-[11px] font-medium whitespace-nowrap">{s.status}</span>
+                    <span className={`mt-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold min-w-[18px] ${
+                      active ? 'bg-[var(--accent)] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                    }`}>{count}</span>
                   </button>
-                  {i < STATUS_ORDER.length - 1 && (
-                    <div className="w-6 h-px bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+                  {i < PIPELINE_STAGES.length - 1 && (
+                    <div className="w-5 h-px bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
                   )}
                 </div>
               );
             })}
-            <div className="flex items-center ml-4">
+            <div className="ml-4 flex-shrink-0">
               <button
                 onClick={() => setTab('All')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  tab === 'All' ? 'bg-[var(--accent)] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                  tab === 'All' ? 'bg-[var(--accent)] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-700'
                 }`}
               >
                 All ({rows.length})
@@ -586,7 +722,7 @@ export default function Appraisals({ toast }) {
           </div>
         </div>
 
-        {/* List */}
+        {/* Table */}
         <div className="card overflow-hidden">
           <div className="table-wrap">
             <table className="data-table">
@@ -597,58 +733,57 @@ export default function Appraisals({ toast }) {
                   <th>Status</th>
                   <th className="text-center">Self</th>
                   <th className="text-center">Manager</th>
-                  <th className="text-center">Business</th>
-                  <th className="text-center">BH</th>
+                  <th className="text-center">CEO</th>
                   <th className="text-center">Total</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={9} className="text-center py-10 text-gray-400 text-sm">Loading…</td></tr>
+                  <tr><td colSpan={8} className="text-center py-10 text-gray-400 text-sm">Loading…</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={9}>
+                  <tr><td colSpan={8}>
                     <div className="empty-state">
                       <Star size={32} className="text-gray-200 mb-2" />
                       <p className="text-sm text-gray-400">No appraisals found</p>
                     </div>
                   </td></tr>
-                ) : filtered.map(a => (
-                  <tr key={a.id} className="cursor-pointer" onClick={() => setDetail(a)}>
-                    <td>
-                      <p className="font-semibold text-gray-900 dark:text-white">{a.employee_name}</p>
-                      {a.designation && <p className="text-xs text-gray-400">{a.designation}</p>}
-                    </td>
-                    <td className="text-gray-600 dark:text-gray-400">{a.period}</td>
-                    <td><Badge text={a.status} /></td>
-                    <td className="text-center"><ScorePill score={a.self_score} /></td>
-                    <td className="text-center"><ScorePill score={a.manager_score} /></td>
-                    <td className="text-center"><ScorePill score={a.business_score} /></td>
-                    <td className="text-center"><ScorePill score={a.biz_head_score} /></td>
-                    <td className="text-center">
-                      {a.total_score > 0 ? (
-                        <span className="text-sm font-bold text-[var(--accent)]">{a.total_score.toFixed(1)}</span>
-                      ) : <span className="text-xs text-gray-300">—</span>}
-                    </td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setDetail(a)}
-                          className="btn-action"
-                        >
-                          <Eye size={11} />
-                          {a.status === 'Goals Set' ? 'View' :
-                           a.status === 'Self Evaluated' ? 'Evaluate' :
-                           a.status === 'Manager Evaluated' ? 'Evaluate' :
-                           a.status === 'Business Evaluated' ? 'Evaluate' : 'View'}
-                        </button>
-                        <button onClick={e => del(a.id, e)} className="btn-delete">
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                ) : filtered.map(a => {
+                  const ds = DISPLAY_STATUS(a.status);
+                  return (
+                    <tr key={a.id} className="cursor-pointer" onClick={() => setDetail(a)}>
+                      <td>
+                        <p className="font-semibold text-gray-900 dark:text-white">{a.employee_name}</p>
+                        {a.designation && <p className="text-xs text-gray-400">{a.designation}</p>}
+                      </td>
+                      <td className="text-gray-600 dark:text-gray-400 text-xs">{a.period}</td>
+                      <td>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${STATUS_STYLE[ds] || ''}`}>
+                          {ds}
+                        </span>
+                      </td>
+                      <td className="text-center"><ScorePill score={a.self_score} /></td>
+                      <td className="text-center"><ScorePill score={a.manager_score} /></td>
+                      <td className="text-center"><ScorePill score={a.ceo_score} /></td>
+                      <td className="text-center">
+                        {a.total_score > 0
+                          ? <span className="text-sm font-bold text-[var(--accent)]">{a.total_score.toFixed(1)}</span>
+                          : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+                      </td>
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setDetail(a)} className="btn-action">
+                            <Eye size={11} />
+                            {ds === 'Goals Set' ? 'View' : ds === 'Completed' ? 'View' : 'Evaluate'}
+                          </button>
+                          <button onClick={e => del(a.id, e)} className="btn-delete">
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -674,35 +809,73 @@ export default function Appraisals({ toast }) {
         saving={saving}
         saveLabel="Create Appraisal"
       >
-        <FormSection title="Basic Info">
-          <FormGrid>
-            <Field label="Employee" required>
-              <Select
-                value={form.employee_id || ''}
-                onChange={v => f({ employee_id: v })}
-                options={[{ value: '', label: 'Select Employee' }, ...emps.map(e => ({ value: String(e.id), label: e.full_name }))]}
-                placeholder="Select Employee"
-                searchable
-              />
-            </Field>
-            <Field label="Appraisal Period" required>
-              <input
-                className="form-input"
-                value={form.period || ''}
-                onChange={e => f({ period: e.target.value })}
-                placeholder="e.g. Annual 2025, H1 2025, Q1 2025"
-              />
-            </Field>
-          </FormGrid>
+        <FormSection title="Appraisal Cycle">
+          {/* Cycle type buttons */}
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Evaluation Type</p>
+              <div className="grid grid-cols-3 gap-2">
+                {CYCLE_TYPES.map(ct => (
+                  <button
+                    key={ct.value}
+                    type="button"
+                    onClick={() => setCycleType(ct.value)}
+                    className={`px-3 py-2.5 rounded-xl border text-left transition-all ${
+                      cycleType === ct.value
+                        ? 'border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)]'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                    }`}
+                  >
+                    <p className="text-xs font-semibold">{ct.label}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{ct.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* FY year selector */}
+            <FormGrid>
+              <Field label="Fiscal Year">
+                <Select
+                  value={fyYear}
+                  onChange={v => setFyYear(v)}
+                  options={fyYearOptions()}
+                />
+              </Field>
+              <Field label="Period (auto-computed)">
+                <div className="form-input bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 cursor-default select-none">
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{period}</p>
+                  {range && <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1"><CalendarDays size={10} />{range}</p>}
+                </div>
+              </Field>
+            </FormGrid>
+          </div>
+        </FormSection>
+
+        <FormSection title="Employee">
+          <Field label="Select Employee" required>
+            <Select
+              value={empId || ''}
+              onChange={v => setEmpId(v)}
+              options={[{ value: '', label: 'Select Employee' }, ...emps.map(e => ({ value: String(e.id), label: e.full_name }))]}
+              placeholder="Select Employee"
+              searchable
+            />
+          </Field>
         </FormSection>
 
         <FormSection title="Goals / KRAs">
           <div className="space-y-2">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-gray-400">Define goals with weightage. Total should be 100%.</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-gray-400">Define goals with weightage. Total must be 100%.</p>
               <span className={`text-xs font-semibold ${Math.abs(totalWeight - 100) < 0.1 ? 'text-green-600' : 'text-amber-500'}`}>
                 {totalWeight.toFixed(0)}% / 100%
               </span>
+            </div>
+            <div className="grid grid-cols-[1fr_70px_120px_28px] gap-2 px-0 mb-1">
+              <p className="text-[10px] text-gray-400">Goal title</p>
+              <p className="text-[10px] text-gray-400 text-center">Weight %</p>
+              <p className="text-[10px] text-gray-400">Target / KPI</p>
             </div>
             {goals.map((g, i) => (
               <div key={i} className="grid grid-cols-[1fr_70px_120px_28px] gap-2 items-start">
@@ -712,14 +885,12 @@ export default function Appraisals({ toast }) {
                   value={g.title}
                   onChange={e => updateGoal(i, 'title', e.target.value)}
                 />
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number" min={1} max={100}
-                    className="form-input text-sm text-center"
-                    value={g.weight}
-                    onChange={e => updateGoal(i, 'weight', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
+                <input
+                  type="number" min={1} max={100}
+                  className="form-input text-sm text-center"
+                  value={g.weight}
+                  onChange={e => updateGoal(i, 'weight', parseFloat(e.target.value) || 0)}
+                />
                 <input
                   className="form-input text-sm"
                   placeholder="Target / KPI"
@@ -735,15 +906,10 @@ export default function Appraisals({ toast }) {
                 </button>
               </div>
             ))}
-            <div className="grid grid-cols-[1fr_70px_120px_28px] gap-2 px-0">
-              <p className="text-xs text-gray-400 col-span-1">Goal title</p>
-              <p className="text-xs text-gray-400 text-center">Weight%</p>
-              <p className="text-xs text-gray-400">Target / KPI</p>
-            </div>
             <button
               type="button"
               onClick={addGoal}
-              className="btn btn-secondary btn-sm w-full gap-1.5"
+              className="btn btn-secondary btn-sm w-full gap-1.5 mt-1"
             >
               <Plus size={12} /> Add Goal
             </button>

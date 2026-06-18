@@ -561,6 +561,10 @@ export default function Employees({ toast }) {
   const [showHistoryForm, setShowHistoryForm] = useState(false);
   const [historyForm, setHistoryForm] = useState({});
   const [historySaving, setHistorySaving] = useState(false);
+  const [editEventOpen, setEditEventOpen] = useState(false);
+  const [editEventId, setEditEventId] = useState(null);
+  const [editEventForm, setEditEventForm] = useState({});
+  const [editEventSaving, setEditEventSaving] = useState(false);
   const [empDocs, setEmpDocs] = useState([]);
   const [empDocsLoading, setEmpDocsLoading] = useState(false);
   const [empDocUpload, setEmpDocUpload] = useState(false);
@@ -795,6 +799,46 @@ export default function Employees({ toast }) {
       toast('Event deleted', 'success');
       loadHistory(detailEmp.id);
     } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const openEditEvent = (ev) => {
+    setEditEventId(ev.id);
+    setEditEventForm({
+      change_type: ev.change_type || '',
+      effective_date: ev.effective_date || '',
+      from_designation: ev.from_designation || '',
+      to_designation: ev.to_designation || '',
+      from_department: ev.from_department || '',
+      to_department: ev.to_department || '',
+      salary_before: ev.salary_before ?? '',
+      salary_after: ev.salary_after ?? '',
+      remarks: ev.remarks || '',
+      created_by: ev.created_by || '',
+    });
+    setEditEventOpen(true);
+  };
+
+  const saveEditEvent = async () => {
+    if (!editEventForm.effective_date) return toast('Effective date required', 'warning');
+    setEditEventSaving(true);
+    try {
+      await api('PUT', `/api/hrm/employees/${detailEmp.id}/history/${editEventId}`, {
+        change_type: editEventForm.change_type,
+        effective_date: editEventForm.effective_date,
+        from_designation: editEventForm.from_designation || null,
+        to_designation: editEventForm.to_designation || null,
+        from_department: editEventForm.from_department || null,
+        to_department: editEventForm.to_department || null,
+        salary_before: editEventForm.salary_before !== '' ? parseFloat(editEventForm.salary_before) : null,
+        salary_after: editEventForm.salary_after !== '' ? parseFloat(editEventForm.salary_after) : null,
+        remarks: editEventForm.remarks || null,
+        created_by: editEventForm.created_by || null,
+      });
+      toast('Event updated', 'success');
+      setEditEventOpen(false);
+      loadHistory(detailEmp.id);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setEditEventSaving(false); }
   };
 
   const saveEduExp = async ({ education, experience }) => {
@@ -1848,17 +1892,20 @@ export default function Employees({ toast }) {
                                             {ev.remarks && <p className="text-[11px] text-gray-400 mt-1 italic">{ev.remarks}</p>}
                                           </div>
                                           {!ev._synthetic && (
-                                            <button
-                                              onClick={async () => {
-                                                if (!window.confirm('Delete this history event?')) return;
-                                                try {
-                                                  await api('DELETE', `/api/hrm/employees/${detailEmp.id}/history/${ev.id}`);
-                                                  loadHistory(detailEmp.id);
-                                                } catch(e) { toast(e.message,'error'); }
-                                              }}
-                                              className="flex-shrink-0 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-300 hover:text-red-400 transition-colors">
-                                              <Trash2 size={11} />
-                                            </button>
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                              <button
+                                                onClick={() => openEditEvent(ev)}
+                                                className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-300 hover:text-blue-500 transition-colors"
+                                                title="Edit event">
+                                                <Pencil size={11} />
+                                              </button>
+                                              <button
+                                                onClick={() => deleteHistoryEvent(ev.id)}
+                                                className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-300 hover:text-red-400 transition-colors"
+                                                title="Delete event">
+                                                <Trash2 size={11} />
+                                              </button>
+                                            </div>
                                           )}
                                         </div>
                                       </div>
@@ -3001,6 +3048,101 @@ export default function Employees({ toast }) {
             )}
           </FormSection>
         )}
+      </Modal>
+
+      {/* ── Edit History Event Modal ── */}
+      <Modal
+        open={editEventOpen}
+        title="Edit History Event"
+        onClose={() => setEditEventOpen(false)}
+        onSave={saveEditEvent}
+        saving={editEventSaving}
+        saveLabel="Save Changes"
+      >
+        <FormSection title="Event Details">
+          <FormGrid>
+            <Field label="Event Type">
+              <Select
+                value={editEventForm.change_type || ''}
+                onChange={v => setEditEventForm(p => ({ ...p, change_type: v }))}
+                options={['Joining','Promotion','Demotion','Department Change','Role Change','Transfer','Salary Hike','Status Change','Notice Served','Resignation'].map(t => ({ value: t, label: t }))}
+              />
+            </Field>
+            <Field label="Effective Date" required>
+              <DatePicker
+                value={editEventForm.effective_date || ''}
+                onChange={v => setEditEventForm(p => ({ ...p, effective_date: v }))}
+                placeholder="Select date"
+              />
+            </Field>
+          </FormGrid>
+        </FormSection>
+
+        <FormSection title="Position Change">
+          <FormGrid>
+            <Field label="From Designation">
+              <Select
+                value={editEventForm.from_designation || ''}
+                onChange={v => setEditEventForm(p => ({ ...p, from_designation: v }))}
+                options={[{ value: '', label: '— None —' }, ...desigs.map(d => ({ value: d.name, label: d.name }))]}
+              />
+            </Field>
+            <Field label="To Designation">
+              <Select
+                value={editEventForm.to_designation || ''}
+                onChange={v => setEditEventForm(p => ({ ...p, to_designation: v }))}
+                options={[{ value: '', label: '— None —' }, ...desigs.map(d => ({ value: d.name, label: d.name }))]}
+              />
+            </Field>
+            <Field label="From Department">
+              <Select
+                value={editEventForm.from_department || ''}
+                onChange={v => setEditEventForm(p => ({ ...p, from_department: v }))}
+                options={[{ value: '', label: '— None —' }, ...depts.map(d => ({ value: d.name, label: d.name }))]}
+              />
+            </Field>
+            <Field label="To Department">
+              <Select
+                value={editEventForm.to_department || ''}
+                onChange={v => setEditEventForm(p => ({ ...p, to_department: v }))}
+                options={[{ value: '', label: '— None —' }, ...depts.map(d => ({ value: d.name, label: d.name }))]}
+              />
+            </Field>
+          </FormGrid>
+        </FormSection>
+
+        <FormSection title="Salary & Notes">
+          <FormGrid>
+            <Field label="Salary Before (₹)">
+              <input
+                type="number" className="form-input" placeholder="e.g. 25000"
+                value={editEventForm.salary_before ?? ''}
+                onChange={e => setEditEventForm(p => ({ ...p, salary_before: e.target.value }))}
+              />
+            </Field>
+            <Field label="Salary After (₹)">
+              <input
+                type="number" className="form-input" placeholder="e.g. 30000"
+                value={editEventForm.salary_after ?? ''}
+                onChange={e => setEditEventForm(p => ({ ...p, salary_after: e.target.value }))}
+              />
+            </Field>
+            <Field label="Approved By">
+              <input
+                className="form-input" placeholder="Manager name"
+                value={editEventForm.created_by || ''}
+                onChange={e => setEditEventForm(p => ({ ...p, created_by: e.target.value }))}
+              />
+            </Field>
+            <Field label="Remarks">
+              <input
+                className="form-input" placeholder="Optional notes"
+                value={editEventForm.remarks || ''}
+                onChange={e => setEditEventForm(p => ({ ...p, remarks: e.target.value }))}
+              />
+            </Field>
+          </FormGrid>
+        </FormSection>
       </Modal>
     </>
   );

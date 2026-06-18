@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../api';
 import { fmtDate } from '../../utils/date';
-import { Star, Target, ClipboardCheck, Briefcase, Crown,
-         ChevronDown, CheckCircle2, Clock, Lock, FileText, Upload, Download, Trash2 } from 'lucide-react';
+import { Star, Target, ClipboardCheck, Crown,
+         ChevronDown, CheckCircle2, Lock, FileText, Upload, Download, Trash2 } from 'lucide-react';
 import Select from '../../components/Select';
 
-// ── Stage metadata ──────────────────────────────────────────────
+// ── Stage metadata — Self · Manager · CEO only ──────────────────
 const STAGES = [
-  { key: 'self_eval',     scoreKey: 'self_score',     label: 'Self Evaluation',        icon: Star,           color: 'text-purple-600',  bg: 'bg-purple-50 dark:bg-purple-900/20',  border: 'border-purple-200 dark:border-purple-800' },
-  { key: 'manager_eval',  scoreKey: 'manager_score',  label: 'Manager Evaluation',     icon: ClipboardCheck, color: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-900/20',      border: 'border-blue-200 dark:border-blue-800' },
-  { key: 'business_eval', scoreKey: 'business_score', label: 'Business Evaluation',    icon: Briefcase,      color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/20',    border: 'border-amber-200 dark:border-amber-800' },
-  { key: 'biz_head_eval', scoreKey: 'biz_head_score', label: 'Business Head Approval', icon: Crown,          color: 'text-green-600',   bg: 'bg-green-50 dark:bg-green-900/20',    border: 'border-green-200 dark:border-green-800' },
+  { key: 'self_eval',    scoreKey: 'self_score',    label: 'Self Evaluation',    icon: Star,           color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800' },
+  { key: 'manager_eval', scoreKey: 'manager_score', label: 'Manager Evaluation', icon: ClipboardCheck, color: 'text-blue-600',   bg: 'bg-blue-50 dark:bg-blue-900/20',     border: 'border-blue-200 dark:border-blue-800' },
+  { key: 'ceo_eval',     scoreKey: 'ceo_score',     label: 'CEO Evaluation',     icon: Crown,          color: 'text-amber-600',  bg: 'bg-amber-50 dark:bg-amber-900/20',   border: 'border-amber-200 dark:border-amber-800' },
 ];
 
-const STATUS_ORDER = ['Goals Set', 'Self Evaluated', 'Manager Evaluated', 'Business Evaluated', 'Completed'];
+const STATUS_ORDER = ['Goals Set', 'Self Evaluated', 'Manager Evaluated', 'CEO Evaluated', 'Business Evaluated', 'Completed'];
+const DISPLAY_STATUS = s => s === 'Business Evaluated' ? 'CEO Evaluated' : s;
 
 // ── Score helpers ───────────────────────────────────────────────
 function ScoreBar({ score, max = 5 }) {
@@ -287,7 +287,7 @@ function AppraisalCard({ appraisal, onSelfEval, toast }) {
               appraisal.status === 'Manager Evaluated'  ? 'bg-amber-50 text-amber-700 border-amber-200' :
               'bg-orange-50 text-orange-700 border-orange-200'
             }`}>
-              {appraisal.status}
+              {DISPLAY_STATUS(appraisal.status)}
             </span>
           </div>
           <p className="text-xs text-gray-400 mt-1">{(appraisal.goals || []).length} goals · {fmtDate(appraisal.created_at)}</p>
@@ -304,7 +304,7 @@ function AppraisalCard({ appraisal, onSelfEval, toast }) {
                   }`}>
                     <Icon size={10} className={done ? 'text-white' : 'text-gray-400'} />
                   </div>
-                  {i < 3 && <div className={`w-4 h-px ${done && !!appraisal[STAGES[i+1]?.key] ? 'bg-green-400' : 'bg-gray-200 dark:bg-gray-700'}`} />}
+                  {i < 2 && <div className={`w-4 h-px ${done && !!appraisal[STAGES[i+1]?.key] ? 'bg-green-400' : 'bg-gray-200 dark:bg-gray-700'}`} />}
                 </div>
               );
             })}
@@ -417,7 +417,7 @@ function AppraisalCard({ appraisal, onSelfEval, toast }) {
                 <span className="text-sm text-gray-500 mb-1">/ 5.0</span>
               </div>
               <ScoreBar score={appraisal.total_score} />
-              <p className="text-xs text-gray-500 mt-2">Average of all 4 evaluation stages</p>
+              <p className="text-xs text-gray-500 mt-2">Average of Self, Manager &amp; CEO evaluations</p>
             </div>
           )}
         </div>

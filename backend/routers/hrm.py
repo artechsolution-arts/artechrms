@@ -652,6 +652,7 @@ def get_employee_history(emp_id: int, db: Session = Depends(get_db)):
             "remarks": r.remarks,
             "created_by": r.created_by,
             "created_at": str(r.created_at) if r.created_at else None,
+            "updated_at": str(r.updated_at) if getattr(r, 'updated_at', None) else None,
         }
         for r in records
     ]
@@ -664,6 +665,23 @@ def add_employee_history(
     _employee_or_404(emp_id, db)
     record = EmployeeHistory(employee_id=emp_id, **data.model_dump())
     db.add(record)
+    db.commit()
+    db.refresh(record)
+    return {"id": record.id, "ok": True}
+
+
+@router.put("/employees/{emp_id}/history/{record_id}")
+def update_employee_history(
+    emp_id: int, record_id: int, data: EmployeeHistoryIn, db: Session = Depends(get_db)
+):
+    record = db.query(EmployeeHistory).filter(
+        EmployeeHistory.id == record_id,
+        EmployeeHistory.employee_id == emp_id,
+    ).first()
+    if not record:
+        raise HTTPException(404, "History record not found")
+    for field, val in data.model_dump(exclude_unset=True).items():
+        setattr(record, field, val)
     db.commit()
     db.refresh(record)
     return {"id": record.id, "ok": True}
