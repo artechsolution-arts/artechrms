@@ -7,6 +7,7 @@ from backend.database import get_db
 from backend.models.leave import LeaveType, LeaveApplication, Attendance, LeavePolicy
 from backend.models.hrm import LeaveBalance
 from backend.approval_utils import require_approval_rights
+from backend.utils.email import send_email, leave_status_email
 
 router = APIRouter(prefix="/api/leaves", tags=["Leaves"])
 
@@ -194,6 +195,8 @@ def approve_leave(leave_id: int, request: Request, db: Session = Depends(get_db)
     if bal:
         bal.used = round(bal.used + leave.total_days, 2)
     db.commit()
+    # Notify employee
+    _notify_leave_status(leave, "Approved", db)
     return {"ok": True}
 
 
@@ -207,6 +210,8 @@ def reject_leave(leave_id: int, request: Request, db: Session = Depends(get_db))
     leave.status = "Rejected"
     db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
     db.commit()
+    # Notify employee
+    _notify_leave_status(leave, "Rejected", db)
     return {"ok": True}
 
 
@@ -308,6 +313,27 @@ def reject_leave_edit(leave_id: int, request: Request, db: Session = Depends(get
     leave.edit_reason = None
     db.commit()
     return {"ok": True}
+
+
+def _notify_leave_status(leave, status: str, db: Session) -> None:
+    """Fire-and-forget email to the employee when their leave is approved/rejected."""
+    try:
+        from backend.models.employee import Employee
+        emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
+        if not emp or not emp.email:
+            return
+        leave_type_name = leave.leave_type_rel.name if leave.leave_type_rel else "Leave"
+        subject, html = leave_status_email(
+            employee_name=emp.full_name or emp.email,
+            leave_type=leave_type_name,
+            from_date=leave.from_date,
+            to_date=leave.to_date,
+            days=leave.total_days,
+            status=status,
+        )
+        send_email(emp.email, subject, html)
+    except Exception:
+        pass  # email errors must never break the API response
 
 
 @router.delete("/{leave_id}")

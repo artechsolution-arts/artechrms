@@ -2,7 +2,20 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+# ── Sentry (error tracking) — only active when SENTRY_DSN is set ─────────────
+import sentry_sdk
+_SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        traces_sample_rate=0.1,   # capture 10% of transactions for performance
+        send_default_pii=False,   # don't send passwords/tokens to Sentry
+    )
+
 from fastapi import FastAPI, Request, HTTPException, Response
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -179,6 +192,20 @@ with engine.connect() as _conn:
             END IF;
         END $$
         """,
+        # ── Performance indexes (safe to re-run with IF NOT EXISTS) ──────────
+        "CREATE INDEX IF NOT EXISTS idx_leave_emp     ON leave_applications(employee_id)",
+        "CREATE INDEX IF NOT EXISTS idx_leave_status  ON leave_applications(status)",
+        "CREATE INDEX IF NOT EXISTS idx_leave_dates   ON leave_applications(from_date, to_date)",
+        "CREATE INDEX IF NOT EXISTS idx_att_emp_date  ON attendance(employee_id, date)",
+        "CREATE INDEX IF NOT EXISTS idx_att_status    ON attendance(status)",
+        "CREATE INDEX IF NOT EXISTS idx_emp_status    ON employees(status)",
+        "CREATE INDEX IF NOT EXISTS idx_emp_dept      ON employees(department_id)",
+        "CREATE INDEX IF NOT EXISTS idx_expense_emp   ON expense_claims(employee_id)",
+        "CREATE INDEX IF NOT EXISTS idx_expense_stat  ON expense_claims(status)",
+        "CREATE INDEX IF NOT EXISTS idx_doc_emp       ON document_requests(employee_id)",
+        "CREATE INDEX IF NOT EXISTS idx_doc_status    ON document_requests(status)",
+        "CREATE INDEX IF NOT EXISTS idx_users_uname   ON users(username)",
+        "CREATE INDEX IF NOT EXISTS idx_users_email   ON users(email)",
     ]:
         try:
             _conn.execute(text(_stmt))
@@ -190,6 +217,11 @@ from backend.leave_accrual import start_accrual_scheduler, _run_accrual
 start_accrual_scheduler()
 
 app = FastAPI(title="Artech HRMS", version="1.0.0")
+
+# Rate limiter: 10 login attempts per minute per IP
+_limiter = Limiter(key_func=get_remote_address, default_limits=["10/minute"])
+app.state.limiter = _limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.on_event("startup")

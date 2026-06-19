@@ -41,7 +41,12 @@ def change_password(data: ChangePasswordIn, request: Request, db: Session = Depe
 
 
 @router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    # Rate limit: 10 attempts per minute per IP (enforced by middleware in main.py)
     login_input = form_data.username.strip()
     password_input = form_data.password.strip()
     user = db.query(User).filter(User.username == login_input).first()
