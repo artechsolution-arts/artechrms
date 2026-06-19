@@ -102,6 +102,8 @@ const EVENT_META = {
 };
 
 function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form, setForm, saving, onSave, onDelete }) {
+  const [viewEvent, setViewEvent] = useState(null);
+
   const hasJoining = history.some(r => r.change_type === 'Joining');
   const synthetic = (!hasJoining && emp?.date_of_joining) ? [{
     id: '__synthetic__',
@@ -117,12 +119,6 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
     new Date(b.effective_date) - new Date(a.effective_date)
   );
 
-  const type = form.change_type || '';
-  const needsDesig = ['Promotion', 'Demotion', 'Role Change'].includes(type);
-  const needsDept  = ['Department Change', 'Transfer'].includes(type);
-  const needsSalary = type === 'Salary Hike';
-  const needsLwd    = ['Resignation', 'Notice Served'].includes(type);
-
   return (
     <div className="px-5">
       <div className="flex items-center justify-between mb-4">
@@ -137,67 +133,52 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
       </div>
 
       {showForm && (
-        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
-          <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider">New History Event</h4>
+        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50/40 dark:bg-blue-900/10 dark:border-blue-800 p-4 space-y-3">
+          <h4 className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">New History Event</h4>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs text-gray-500 mb-1">Event Type <span className="text-red-500">*</span></label>
-              <Select
-                value={form.change_type || ''}
-                onChange={v => setForm({ change_type: v })}
-                options={[{ value: '', label: 'Select type' }, ...EVENT_TYPES.map(t => ({ value: t, label: t }))]}
-                placeholder="Select type"
-              />
+              <Select value={form.change_type || ''} onChange={v => setForm({ change_type: v })} options={[{ value: '', label: 'Select type' }, ...EVENT_TYPES.map(t => ({ value: t, label: t }))]} placeholder="Select type" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Effective Date <span className="text-red-500">*</span></label>
               <DatePicker value={form.effective_date || ''} onChange={v => setForm({ effective_date: v })} placeholder="Select date" />
             </div>
-            {needsDesig && (
-              <>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">From Designation</label>
-                  <input className="form-input" value={form.from_designation || ''} onChange={e => setForm({ from_designation: e.target.value })} placeholder="Previous designation" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">To Designation</label>
-                  <input className="form-input" value={form.to_designation || ''} onChange={e => setForm({ to_designation: e.target.value })} placeholder="New designation" />
-                </div>
-              </>
-            )}
-            {needsDept && (
-              <>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">From Department</label>
-                  <input className="form-input" value={form.from_department || ''} onChange={e => setForm({ from_department: e.target.value })} placeholder="Previous department" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">To Department</label>
-                  <input className="form-input" value={form.to_department || ''} onChange={e => setForm({ to_department: e.target.value })} placeholder="New department" />
-                </div>
-              </>
-            )}
-            {needsSalary && (
-              <>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Previous Salary (₹)</label>
-                  <input type="number" className="form-input" value={form.salary_before || ''} onChange={e => setForm({ salary_before: e.target.value })} placeholder="e.g. 30000" min="0" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">New Salary (₹)</label>
-                  <input type="number" className="form-input" value={form.salary_after || ''} onChange={e => setForm({ salary_after: e.target.value })} placeholder="e.g. 35000" min="0" />
-                </div>
-              </>
-            )}
-            {needsLwd && (
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Last Working Date</label>
-                <DatePicker value={form.last_working_date || ''} onChange={v => setForm({ last_working_date: v })} placeholder="Select date" />
-              </div>
-            )}
-            <div className="col-span-2">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Approved By</label>
+              <input className="form-input" value={form.created_by || ''} onChange={e => setForm({ created_by: e.target.value })} placeholder="e.g. Rajesh Kumar" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">From Designation</label>
+              <input className="form-input" value={form.from_designation || ''} onChange={e => setForm({ from_designation: e.target.value })} placeholder="Previous designation" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">To Designation</label>
+              <input className="form-input" value={form.to_designation || ''} onChange={e => setForm({ to_designation: e.target.value })} placeholder="New designation" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">From Department</label>
+              <input className="form-input" value={form.from_department || ''} onChange={e => setForm({ from_department: e.target.value })} placeholder="Previous department" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">To Department</label>
+              <input className="form-input" value={form.to_department || ''} onChange={e => setForm({ to_department: e.target.value })} placeholder="New department" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Salary Before (₹)</label>
+              <input type="number" className="form-input" value={form.salary_before || ''} onChange={e => setForm({ salary_before: e.target.value })} placeholder="e.g. 30000" min="0" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Salary After (₹)</label>
+              <input type="number" className="form-input" value={form.salary_after || ''} onChange={e => setForm({ salary_after: e.target.value })} placeholder="e.g. 35000" min="0" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Last Working Date</label>
+              <DatePicker value={form.last_working_date || ''} onChange={v => setForm({ last_working_date: v })} placeholder="Select date" />
+            </div>
+            <div>
               <label className="block text-xs text-gray-500 mb-1">Remarks</label>
-              <textarea className="form-textarea" rows={2} value={form.remarks || ''} onChange={e => setForm({ remarks: e.target.value })} placeholder="Any notes…" />
+              <input className="form-input" value={form.remarks || ''} onChange={e => setForm({ remarks: e.target.value })} placeholder="Any notes…" />
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -229,7 +210,9 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
                   <div className={`absolute left-0 w-8 h-8 rounded-full ${m.color} flex items-center justify-center flex-shrink-0 ring-2 ring-white dark:ring-gray-900 z-10`}>
                     <Icon size={14} />
                   </div>
-                  <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 min-w-0">
+                  <div
+                    onClick={() => setViewEvent(ev)}
+                    className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 min-w-0 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ev.change_type}</p>
@@ -267,7 +250,7 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
                       </div>
                       {!ev._synthetic && (
                         <button
-                          onClick={() => onDelete(ev.id)}
+                          onClick={e => { e.stopPropagation(); onDelete(ev.id); }}
                           className="p-1 rounded-lg hover:bg-red-100 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
                           title="Delete event"
                         >
@@ -310,6 +293,67 @@ function EduCard({ item, onDelete }) {
           <Trash2 size={13} />
         </button>
       )}
+
+      {/* ── Event Detail Popup ── */}
+      {viewEvent && (() => {
+        const ev = viewEvent;
+        const m = EVENT_META[ev.change_type] || { icon: Clock, color: 'bg-gray-100 text-gray-600' };
+        const Icon = m.icon;
+        const showDesig  = ['Promotion','Demotion','Role Change','Joining'].includes(ev.change_type) || ev.from_designation || ev.to_designation;
+        const showDept   = ['Department Change','Transfer','Joining'].includes(ev.change_type) || ev.from_department || ev.to_department;
+        const showSalary = ev.change_type === 'Salary Hike' || ev.salary_before != null || ev.salary_after != null;
+        const showLwd    = ['Resignation','Notice Served'].includes(ev.change_type) || ev.last_working_date;
+        const Row = ({ label, value, highlight }) => value ? (
+          <div className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
+            <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
+            <span className={`text-xs font-semibold flex-1 ${highlight || 'text-gray-800 dark:text-gray-200'}`}>{value}</span>
+          </div>
+        ) : null;
+        const ChangeRow = ({ label, from, to, green }) => (
+          <div className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+            <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
+            <div className="flex-1 flex items-center gap-2 flex-wrap">
+              {from ? <span className="text-xs text-gray-400 line-through">{from}</span> : <span className="text-xs text-gray-300 dark:text-gray-600 italic">—</span>}
+              <span className="text-gray-300 dark:text-gray-600">→</span>
+              {to ? <span className={`text-xs font-semibold ${green ? 'text-green-600 dark:text-green-400' : 'text-gray-800 dark:text-gray-200'}`}>{to}</span> : <span className="text-xs text-gray-300 dark:text-gray-600 italic">—</span>}
+            </div>
+          </div>
+        );
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setViewEvent(null)}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="px-5 py-4 flex items-center gap-3 border-b border-gray-100 dark:border-gray-800">
+                <div className={`w-9 h-9 rounded-full ${m.color} flex items-center justify-center flex-shrink-0`}>
+                  <Icon size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{ev.change_type}</p>
+                  <p className="text-xs text-gray-400">Effective {fmtDate(ev.effective_date)}</p>
+                </div>
+                <button onClick={() => setViewEvent(null)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {showDesig  && <ChangeRow label="Designation" from={ev.from_designation} to={ev.to_designation} />}
+                {showDept   && <ChangeRow label="Department"  from={ev.from_department}  to={ev.to_department} />}
+                {showSalary && <ChangeRow label="Salary"
+                  from={ev.salary_before != null ? `₹${Number(ev.salary_before).toLocaleString('en-IN')}` : null}
+                  to={ev.salary_after   != null ? `₹${Number(ev.salary_after).toLocaleString('en-IN')}` : null}
+                  green />}
+                {showLwd && <Row label="Last Working Date" value={ev.last_working_date ? fmtDate(ev.last_working_date) : '—'} highlight={ev.last_working_date ? 'text-red-500 dark:text-red-400' : 'text-gray-300 dark:text-gray-600 italic font-normal'} />}
+                <Row label="Approved By" value={ev.created_by || '—'} highlight={ev.created_by ? undefined : 'text-gray-300 dark:text-gray-600 italic font-normal'} />
+                <Row label="Remarks"     value={ev.remarks || '—'} highlight={ev.remarks ? 'text-gray-500 dark:text-gray-400 italic font-normal' : 'text-gray-300 dark:text-gray-600 italic font-normal'} />
+                <Row label="Logged On"   value={ev.created_at ? new Date(ev.created_at).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : null} highlight="text-gray-400 dark:text-gray-500 font-normal" />
+                {ev.updated_at && ev.updated_at !== ev.created_at && (
+                  <Row label="Last Edited" value={new Date(ev.updated_at).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })} highlight="text-gray-400 dark:text-gray-500 font-normal" />
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -1514,7 +1558,7 @@ export default function Employees({ toast }) {
 
             {/* ── Tab bar ── */}
             {!detailLoading && (
-              <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 px-6 overflow-x-auto">
+              <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 px-6 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{scrollbarWidth:'none'}}>
                 {[
                   { key: 'overview',    label: 'Overview' },
                   { key: 'job-info',    label: 'Job Info', icon: Briefcase },
@@ -1523,7 +1567,6 @@ export default function Employees({ toast }) {
                   { key: 'attendance',  label: 'Attendance' },
                   { key: 'leaves',      label: 'Leave' },
                   { key: 'edu-exp',     label: 'Education', icon: GraduationCap },
-                  { key: 'history',     label: 'History', icon: History },
                   { key: 'payroll',     label: 'Payroll' },
                   { key: 'assets',      label: 'Assets' },
                 ].map(tab => (
@@ -2352,20 +2395,6 @@ export default function Employees({ toast }) {
                   emp={detailEmp}
                   onSave={saveEduExp}
                   saving={eduExpSaving}
-                />
-
-              ) : detailTab === 'history' ? (
-                <EmployeeHistoryTab
-                  emp={detailEmp}
-                  history={history}
-                  loading={historyLoading}
-                  showForm={showHistoryForm}
-                  setShowForm={setShowHistoryForm}
-                  form={historyForm}
-                  setForm={hf}
-                  saving={historySaving}
-                  onSave={saveHistoryEvent}
-                  onDelete={deleteHistoryEvent}
                 />
 
               ) : detailTab === 'payroll' ? (
