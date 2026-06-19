@@ -9,33 +9,50 @@ const PRIORITY_DOT = {
   low:    'bg-gray-300',
 };
 
+const NOTIF_ICON = {
+  approval_request: '📋',
+  approval_result:  '✅',
+  info:             'ℹ️',
+  alert:            '⚠️',
+};
+
 export default function MobileBottomNav({ primaryItems, allItems, current, onNavigate, accentColor, onOpenSettings, onLogout }) {
   const [drawerOpen, setDrawerOpen]       = useState(false);
   const [bellOpen, setBellOpen]           = useState(false);
   const [settingsOpen, setSettingsOpen]   = useState(false);
   const [notifs, setNotifs]               = useState([]);
+  const [unreadCount, setUnreadCount]     = useState(0);
   const [notifsLoading, setNotifsLoading] = useState(false);
 
   const { background, setBackground } = useBackground();
 
   const accent = accentColor || 'var(--accent, #2563eb)';
 
+  // Fetch unread badge count (lightweight — runs on poll interval)
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const data = await api('GET', '/api/notifications/unread-count');
+      setUnreadCount(data?.count ?? 0);
+    } catch { /* silent */ }
+  }, []);
+
+  // Fetch full persistent notification list (only when panel is opened)
   const fetchNotifs = useCallback(async () => {
     setNotifsLoading(true);
     try {
-      const data = await api('GET', '/api/notifications');
+      const data = await api('GET', '/api/notifications/persistent?limit=30');
       setNotifs(Array.isArray(data) ? data : []);
+      setUnreadCount((Array.isArray(data) ? data : []).filter(n => !n.is_read).length);
     } catch { setNotifs([]); }
     finally { setNotifsLoading(false); }
   }, []);
 
   useEffect(() => {
-    // Skip polling on desktop — Topbar SSE already handles notifications there
     if (window.innerWidth >= 1024) return;
-    fetchNotifs();
-    const id = setInterval(fetchNotifs, 60000);
+    fetchUnreadCount();
+    const id = setInterval(fetchUnreadCount, 60000);
     return () => clearInterval(id);
-  }, [fetchNotifs]);
+  }, [fetchUnreadCount]);
 
   const handleNav = key => {
     onNavigate(key);
@@ -44,12 +61,28 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
     setSettingsOpen(false);
   };
 
-  const handleNotifClick = notif => {
-    if (notif.action) onNavigate(notif.action);
-    setBellOpen(false);
+  const handleNotifClick = async notif => {
+    // Mark as read via API then update local state
+    if (!notif.is_read) {
+      try {
+        await api('POST', `/api/notifications/${notif.id}/read`);
+        setNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch { /* silent */ }
+    }
+    if (notif.action) {
+      onNavigate(notif.action);
+      setBellOpen(false);
+    }
   };
 
-  const unreadCount = notifs.length;
+  const handleMarkAllRead = async () => {
+    try {
+      await api('POST', '/api/notifications/read-all');
+      setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch { /* silent */ }
+  };
 
   // Determine home key from primaryItems
   const homeItem = primaryItems?.[0] || { key: 'dashboard', label: 'Home', icon: LayoutDashboard };
@@ -104,15 +137,15 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Notifications</span>
             {unreadCount > 0 && (
               <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: accent }}>
-                {unreadCount}
+                {unreadCount} new
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
             {unreadCount > 0 && (
-              <button onClick={() => { setNotifs([]); setBellOpen(false); }}
+              <button onClick={handleMarkAllRead}
                 className="text-xs font-medium hover:underline" style={{ color: accent }}>
-                Clear all
+                Mark all read
               </button>
             )}
             <button onClick={() => setBellOpen(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -133,15 +166,32 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
             <div className="divide-y divide-gray-100 dark:divide-gray-800 py-1">
               {notifs.map(n => (
                 <button key={n.id} onClick={() => handleNotifClick(n)}
-                  className="w-full px-4 py-3.5 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 transition-colors text-left">
-                  <span className="text-xl flex-shrink-0 mt-0.5">{n.icon}</span>
+                  className={`w-full px-4 py-3.5 flex items-start gap-3 active:bg-gray-100 dark:active:bg-gray-700 transition-colors text-left ${
+                    n.is_read
+                      ? 'hover:bg-gray-50 dark:hover:bg-gray-800/60'
+                      : 'bg-blue-50/60 dark:bg-blue-900/10 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                  }`}>
+                  {/* Unread dot */}
+                  <div className="flex-shrink-0 mt-1.5">
+                    {!n.is_read
+                      ? <span className={`w-2 h-2 rounded-full block ${PRIORITY_DOT[n.priority] || 'bg-blue-500'}`} />
+                      : <span className="w-2 h-2 block" />
+                    }
+                  </div>
+                  <span className="text-xl flex-shrink-0 mt-0.5">
+                    {n.icon || NOTIF_ICON[n.notif_type] || '🔔'}
+                  </span>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-tight">{n.title}</span>
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[n.priority] || 'bg-gray-300'}`} />
-                    </div>
+                    <p className={`text-sm leading-tight mb-0.5 ${n.is_read ? 'font-normal text-gray-600 dark:text-gray-400' : 'font-semibold text-gray-800 dark:text-gray-200'}`}>
+                      {n.title}
+                    </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug line-clamp-2">{n.message}</p>
-                    {n.time && <p className="text-[11px] text-gray-400 mt-1">{n.time}</p>}
+                    {n.created_at && (
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        {new Date(n.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
+                    {n.is_cc && <span className="text-[10px] text-gray-400 italic">CC</span>}
                   </div>
                   {n.action && <ChevronRight size={15} className="flex-shrink-0 text-gray-300 mt-1" />}
                 </button>
@@ -241,7 +291,7 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
 
           {/* Notifications */}
           <div className="flex flex-col items-center gap-1 px-2 py-1">
-            <button onClick={() => { setBellOpen(o => !o); setDrawerOpen(false); setSettingsOpen(false); if (!bellOpen) fetchNotifs(); }}
+            <button onClick={() => { const opening = !bellOpen; setBellOpen(opening); setDrawerOpen(false); setSettingsOpen(false); if (opening) fetchNotifs(); }}
               className="relative w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition-transform duration-100"
               style={bellOpen ? { backgroundColor: accent + '22' } : {}}>
               <Bell size={20} style={bellOpen ? { color: accent } : {}} className={bellOpen ? '' : 'text-gray-400 dark:text-gray-500'} />
