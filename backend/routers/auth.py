@@ -1,10 +1,18 @@
+import os, json
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+import httpx
 from backend.database import get_db
 from backend.models.auth import User
 from backend.auth_utils import get_password_hash, verify_password, create_access_token
+
+MS_CLIENT_ID     = os.getenv("MS_CLIENT_ID", "")
+MS_CLIENT_SECRET = os.getenv("MS_CLIENT_SECRET", "")
+MS_TENANT_ID     = os.getenv("MS_TENANT_ID", "common")
+MS_REDIRECT_URI  = os.getenv("MS_REDIRECT_URI", "http://localhost:8000/api/auth/microsoft/callback")
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
@@ -148,3 +156,76 @@ def list_users(db: Session = Depends(get_db)):
 @router.get("/needs-setup")
 def check_setup(db: Session = Depends(get_db)):
     return {"needs_setup": db.query(User).count() == 0}
+
+
+# ── Microsoft SSO ──────────────────────────────────────────────────────────
+
+@router.get("/microsoft")
+def ms_login():
+    """Redirect user to Microsoft login page."""
+    if not MS_CLIENT_ID:
+        raise HTTPException(500, "Microsoft SSO is not configured")
+    params = (
+        f"client_id={MS_CLIENT_ID}"
+        f"&response_type=code"
+        f"&redirect_uri={MS_REDIRECT_URI}"
+        f"&scope=openid+profile+email+User.Read"
+        f"&response_mode=query"
+    )
+    url = f"https://login.microsoftonline.com/{MS_TENANT_ID}/oauth2/v2.0/authorize?{params}"
+    return RedirectResponse(url)
+
+
+@router.get("/microsoft/callback")
+def ms_callback(code: str = None, error: str = None, db: Session = Depends(get_db)):
+    """Exchange Microsoft auth code for our JWT."""
+    if error or not code:
+        return RedirectResponse(f"/?sso_error={error or 'no_code'}")
+
+    # Exchange code for tokens
+    token_url = f"https://login.microsoftonline.com/{MS_TENANT_ID}/oauth2/v2.0/token"
+    with httpx.Client() as client:
+        token_resp = client.post(token_url, data={
+            "client_id":     MS_CLIENT_ID,
+            "client_secret": MS_CLIENT_SECRET,
+            "code":          code,
+            "redirect_uri":  MS_REDIRECT_URI,
+            "grant_type":    "authorization_code",
+        })
+        if not token_resp.is_success:
+            return RedirectResponse("/?sso_error=token_exchange_failed")
+
+        access_token = token_resp.json().get("access_token")
+
+        # Fetch user profile from Microsoft Graph
+        graph_resp = client.get(
+            "https://graph.microsoft.com/v1.0/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if not graph_resp.is_success:
+            return RedirectResponse("/?sso_error=graph_api_failed")
+
+        profile = graph_resp.json()
+
+    email = (profile.get("mail") or profile.get("userPrincipalName") or "").lower().strip()
+    if not email:
+        return RedirectResponse("/?sso_error=no_email")
+
+    # Match to existing user by email
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    if not user:
+        return RedirectResponse(f"/?sso_error=user_not_found&email={email}")
+
+    if not user.is_active:
+        return RedirectResponse("/?sso_error=account_deactivated")
+
+    jwt_token = create_access_token(user.username)
+    user_json  = json.dumps({
+        "id": user.id, "username": user.username,
+        "full_name": user.full_name, "role": user.role, "email": user.email,
+    })
+    import urllib.parse
+    return RedirectResponse(
+        f"/?sso_token={urllib.parse.quote(jwt_token)}"
+        f"&sso_user={urllib.parse.quote(user_json)}"
+    )
