@@ -1,11 +1,18 @@
 """
-Computed notifications endpoint — returns role-aware notifications for the bell icon.
-No separate DB table; notifications are derived from existing data in real time.
-Supports both REST polling (/api/notifications) and SSE push (/api/notifications/stream).
+Notifications layer — two complementary systems:
+
+1. Computed (legacy): derived on-the-fly from existing tables.
+   Used by the SSE stream and the main bell-icon GET endpoint.
+   No DB table — always fresh, never stale.
+
+2. Persistent (new): rows in the `notifications` table.
+   Supports read/unread, filtering by type, and badge counts.
+   Created by notification_service.push() from anywhere in the app.
 """
 import asyncio
 import json
-from fastapi import APIRouter, Request, Depends
+from typing import Optional
+from fastapi import APIRouter, Request, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
@@ -20,6 +27,7 @@ from backend.models.document_request import DocumentRequest
 from backend.models.recruitment import JobApplicant
 from backend.models.profile_update_log import ProfileUpdateLog
 from backend.models.resignation import Resignation
+from backend.models.notification import Notification
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
@@ -271,6 +279,76 @@ def _compute_notifications(user: User, db: Session) -> list:
     notifications = sorted(notifications, key=lambda n: (priority_order.get(n["priority"], 3), ""))
     return notifications[:20]
 
+
+# ── Persistent notification endpoints ─────────────────────────────────────────
+
+@router.get("/persistent")
+def get_persistent_notifications(
+    request: Request,
+    db: Session = Depends(get_db),
+    unread_only: bool = False,
+    entity_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """Persistent in-app notifications with read/unread status and type filtering."""
+    user = _get_user(request, db)
+    if not user:
+        return []
+    from backend.services.notification_service import get_notifications
+    notifs = get_notifications(db, user.id, unread_only=unread_only, entity_type=entity_type,
+                               limit=limit, offset=offset)
+    return [
+        {
+            "id": n.id,
+            "entity_type": n.entity_type,
+            "entity_id": n.entity_id,
+            "notif_type": n.notif_type,
+            "title": n.title,
+            "message": n.message,
+            "action": n.action,
+            "priority": n.priority,
+            "is_read": n.is_read,
+            "is_cc": n.is_cc,
+            "created_at": str(n.created_at)[:19] if n.created_at else None,
+        }
+        for n in notifs
+    ]
+
+
+@router.get("/unread-count")
+def get_unread_count(request: Request, db: Session = Depends(get_db)):
+    """Badge count for the notification bell."""
+    user = _get_user(request, db)
+    if not user:
+        return {"count": 0}
+    from backend.services.notification_service import unread_count
+    return {"count": unread_count(db, user.id)}
+
+
+@router.post("/{notification_id}/read")
+def mark_notification_read(notification_id: int, request: Request, db: Session = Depends(get_db)):
+    """Mark a single persistent notification as read."""
+    user = _get_user(request, db)
+    if not user:
+        return {"ok": False}
+    from backend.services.notification_service import mark_read
+    ok = mark_read(db, notification_id, user.id)
+    return {"ok": ok}
+
+
+@router.post("/read-all")
+def mark_all_notifications_read(request: Request, db: Session = Depends(get_db)):
+    """Mark all persistent notifications as read for the current user."""
+    user = _get_user(request, db)
+    if not user:
+        return {"ok": False, "count": 0}
+    from backend.services.notification_service import mark_all_read
+    count = mark_all_read(db, user.id)
+    return {"ok": True, "count": count}
+
+
+# ── Existing endpoints ──────────────────────────────────────────────────────────
 
 @router.post("/profile-update/{log_id}/seen")
 def mark_profile_update_seen(log_id: int, request: Request, db: Session = Depends(get_db)):

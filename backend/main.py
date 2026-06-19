@@ -37,6 +37,7 @@ from backend.routers import onboarding as onboarding_router
 from backend.routers import biometric as biometric_router
 from backend.routers import reports as reports_router
 from backend.routers import health as health_router
+from backend.routers import approvals as approvals_router
 from backend.models import onboarding as _onboarding_models  # ensure tables created
 from backend.models import biometric as _biometric_models    # ensure tables created
 from backend.routers.reports import Report as _ReportModel  # ensure table created
@@ -206,6 +207,59 @@ with engine.connect() as _conn:
         "CREATE INDEX IF NOT EXISTS idx_doc_status    ON document_requests(status)",
         "CREATE INDEX IF NOT EXISTS idx_users_uname   ON users(username)",
         "CREATE INDEX IF NOT EXISTS idx_users_email   ON users(email)",
+        # ── Notification + Approval tables (safe with IF NOT EXISTS) ─────────
+        """CREATE TABLE IF NOT EXISTS notifications (
+            id SERIAL PRIMARY KEY,
+            recipient_user_id INTEGER NOT NULL,
+            entity_type VARCHAR(50) NOT NULL,
+            entity_id INTEGER,
+            notif_type VARCHAR(30) NOT NULL DEFAULT 'info',
+            title VARCHAR(300) NOT NULL,
+            message TEXT NOT NULL,
+            action VARCHAR(100),
+            priority VARCHAR(10) DEFAULT 'medium',
+            is_read BOOLEAN DEFAULT FALSE,
+            is_cc BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_notif_user    ON notifications(recipient_user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_notif_read    ON notifications(recipient_user_id, is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_notif_type    ON notifications(entity_type)",
+        """CREATE TABLE IF NOT EXISTS approval_workflows (
+            id SERIAL PRIMARY KEY,
+            module VARCHAR(50) UNIQUE NOT NULL,
+            levels JSONB NOT NULL,
+            cc_roles JSONB DEFAULT '[]'::jsonb,
+            is_active BOOLEAN DEFAULT TRUE,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )""",
+        """CREATE TABLE IF NOT EXISTS approval_requests (
+            id SERIAL PRIMARY KEY,
+            module VARCHAR(50) NOT NULL,
+            entity_id INTEGER,
+            requested_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            current_level INTEGER DEFAULT 1,
+            status VARCHAR(20) DEFAULT 'pending',
+            payload JSONB,
+            remarks TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_apprv_module  ON approval_requests(module)",
+        "CREATE INDEX IF NOT EXISTS idx_apprv_status  ON approval_requests(status)",
+        """CREATE TABLE IF NOT EXISTS approval_steps (
+            id SERIAL PRIMARY KEY,
+            approval_request_id INTEGER NOT NULL REFERENCES approval_requests(id) ON DELETE CASCADE,
+            level INTEGER NOT NULL,
+            approver_role VARCHAR(50) NOT NULL,
+            approver_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            status VARCHAR(20) DEFAULT 'pending',
+            remarks TEXT,
+            actioned_at TIMESTAMP WITH TIME ZONE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_step_req      ON approval_steps(approval_request_id)",
+        "CREATE INDEX IF NOT EXISTS idx_step_role     ON approval_steps(approver_role, status)",
     ]:
         try:
             _conn.execute(text(_stmt))
@@ -215,6 +269,20 @@ with engine.connect() as _conn:
 
 from backend.leave_accrual import start_accrual_scheduler, _run_accrual
 start_accrual_scheduler()
+
+from backend.work_hours_scheduler import start_work_hours_scheduler
+start_work_hours_scheduler()
+
+# Seed default approval workflow configs
+from backend.database import SessionLocal as _SL
+_seed_db = _SL()
+try:
+    from backend.services.approval_service import seed_workflows
+    seed_workflows(_seed_db)
+except Exception:
+    pass
+finally:
+    _seed_db.close()
 
 app = FastAPI(title="Artech HRMS", version="1.0.0")
 
@@ -264,6 +332,7 @@ _EMPLOYEE_ALLOWED_PREFIXES = (
     "/api/ai/",
     "/api/auth/",
     "/api/notifications",
+    "/api/approvals/history",   # employees can view outcomes of their own requests
 )
 
 # SuperAdmin-only paths
@@ -326,6 +395,7 @@ app.include_router(notice_period_config_router.router)
 app.include_router(biometric_router.router)
 app.include_router(reports_router.router)
 app.include_router(health_router.router)
+app.include_router(approvals_router.router)
 
 # Serve uploaded profile photos
 UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")

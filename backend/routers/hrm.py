@@ -496,6 +496,7 @@ def approve_expense(
     expense.remarks = data.remarks
     expense.approved_on = date.today()
     db.commit()
+    _notify_expense_result(db, expense, "Approved")
     return {"ok": True}
 
 
@@ -510,7 +511,30 @@ def reject_expense(
     expense.remarks = data.remarks
     expense.approved_on = date.today()
     db.commit()
+    _notify_expense_result(db, expense, "Rejected")
     return {"ok": True}
+
+
+def _notify_expense_result(db, expense, status: str) -> None:
+    """In-app notification to the employee when their expense claim is actioned."""
+    try:
+        emp = db.query(Employee).filter(Employee.id == expense.employee_id).first()
+        if not emp or not emp.user_id:
+            return
+        from backend.services.notification_service import push
+        push(
+            db, emp.user_id, "expense",
+            f"Expense Claim {status}",
+            f"Your ₹{int(expense.amount):,} {expense.expense_type} claim has been {status.lower()}"
+            + (f": {expense.remarks}" if expense.remarks else "."),
+            entity_id=expense.id,
+            notif_type="approval_result",
+            action="emp-expenses",
+            priority="high" if status == "Rejected" else "medium",
+        )
+        db.commit()
+    except Exception:
+        pass
 
 
 @router.delete("/expenses/{expense_id}")

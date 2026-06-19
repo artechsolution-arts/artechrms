@@ -1,5 +1,5 @@
 import time
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from backend import storage
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -8,6 +8,11 @@ from pydantic import BaseModel
 from datetime import date
 from backend.database import get_db
 from backend.models.employee import Employee, Department, Designation
+
+_SALARY_FIELDS = frozenset({
+    "basic_salary", "hra_percent", "special_allowance",
+    "lta", "other_allowance", "ca_allowance",
+})
 
 router = APIRouter(prefix="/api/employees", tags=["Employees"])
 
@@ -321,10 +326,11 @@ def create_employee(data: EmployeeCreateIn, db: Session = Depends(get_db)):
 
 
 @router.put("/{emp_id}")
-def update_employee(emp_id: int, data: EmployeeIn, db: Session = Depends(get_db)):
+def update_employee(emp_id: int, data: EmployeeIn, request: Request, db: Session = Depends(get_db)):
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(404, "Employee not found")
+
     dump = data.model_dump(exclude_unset=True)
     if "employee_id" in dump and dump["employee_id"]:
         conflict = db.query(Employee).filter(
@@ -333,6 +339,57 @@ def update_employee(emp_id: int, data: EmployeeIn, db: Session = Depends(get_db)
         ).first()
         if conflict:
             raise HTTPException(400, f"Employee ID '{dump['employee_id']}' is already in use")
+
+    # ── Salary change approval gate ────────────────────────────────────────
+    salary_changes = {k: v for k, v in dump.items() if k in _SALARY_FIELDS}
+    requester_role = getattr(request.state, "user_role", "Employee")
+
+    if salary_changes and requester_role == "HR":
+        # Check whether the proposed values actually differ from current
+        real_changes = {
+            k: v for k, v in salary_changes.items()
+            if v != getattr(emp, k, None)
+        }
+        if real_changes:
+            # Route through CEO approval — do NOT apply yet
+            from backend.models.auth import User
+            from backend.auth_utils import decode_token
+            from backend.services.approval_service import create_request
+            username = getattr(request.state, "username", None)
+            requester_user = db.query(User).filter(User.username == username).first() if username else None
+
+            try:
+                ar = create_request(
+                    db,
+                    module="salary_change",
+                    entity_id=emp.id,
+                    requested_by_user_id=requester_user.id if requester_user else None,
+                    payload=real_changes,
+                )
+            except Exception as exc:
+                raise HTTPException(500, f"Failed to create approval request: {exc}")
+
+            # Apply non-salary fields immediately
+            non_salary = {k: v for k, v in dump.items() if k not in _SALARY_FIELDS}
+            if "pf_applicable" in non_salary:
+                non_salary["pf_applicable"] = 1 if non_salary["pf_applicable"] else 0
+            if "esi_applicable" in non_salary:
+                non_salary["esi_applicable"] = 1 if non_salary["esi_applicable"] else 0
+            for k, v in non_salary.items():
+                setattr(emp, k, v)
+            emp.full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
+            db.commit()
+
+            return {
+                "ok": True,
+                "salary_approval": {
+                    "status": "pending_ceo_approval",
+                    "approval_id": ar.id,
+                    "pending_changes": real_changes,
+                    "message": "Salary changes submitted for CEO approval. They will apply once approved.",
+                },
+            }
+    # ── Non-salary (or CEO/SuperAdmin making change) — apply immediately ───
     if "pf_applicable" in dump:
         dump["pf_applicable"] = 1 if dump["pf_applicable"] else 0
     if "esi_applicable" in dump:

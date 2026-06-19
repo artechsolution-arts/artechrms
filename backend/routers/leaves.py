@@ -8,6 +8,7 @@ from backend.models.leave import LeaveType, LeaveApplication, Attendance, LeaveP
 from backend.models.hrm import LeaveBalance
 from backend.approval_utils import require_approval_rights
 from backend.utils.email import send_email, leave_status_email
+from backend.services import notification_service as _notif
 
 router = APIRouter(prefix="/api/leaves", tags=["Leaves"])
 
@@ -173,6 +174,25 @@ def create_leave(data: LeaveAppIn, db: Session = Depends(get_db)):
     db.add(leave)
     db.commit()
     db.refresh(leave)
+    # Notify HR (TO) and CEO (CC) of the new leave request
+    try:
+        from backend.models.employee import Employee
+        emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
+        emp_name = emp.full_name if emp else "An employee"
+        days_label = f"{total:.1f} day{'s' if total != 1 else ''}"
+        _notif.push_to_role(
+            db, "HR", "leave", f"Leave Request — {emp_name}",
+            f"{emp_name} applied for {days_label} leave ({leave.from_date} – {leave.to_date}).",
+            entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
+        )
+        _notif.push_to_role(
+            db, "CEO", "leave", f"[CC] Leave Request — {emp_name}",
+            f"{emp_name} applied for {days_label} leave ({leave.from_date} – {leave.to_date}).",
+            entity_id=leave.id, notif_type="info", action="leaves", priority="low", is_cc=True,
+        )
+        db.commit()
+    except Exception:
+        pass
     return {"id": leave.id, "total_days": leave.total_days}
 
 
@@ -316,24 +336,42 @@ def reject_leave_edit(leave_id: int, request: Request, db: Session = Depends(get
 
 
 def _notify_leave_status(leave, status: str, db: Session) -> None:
-    """Fire-and-forget email to the employee when their leave is approved/rejected."""
+    """Email + in-app notification to the employee when their leave is approved/rejected."""
     try:
         from backend.models.employee import Employee
         emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
-        if not emp or not emp.email:
+        if not emp:
             return
         leave_type_name = leave.leave_type_rel.name if leave.leave_type_rel else "Leave"
-        subject, html = leave_status_email(
-            employee_name=emp.full_name or emp.email,
-            leave_type=leave_type_name,
-            from_date=leave.from_date,
-            to_date=leave.to_date,
-            days=leave.total_days,
-            status=status,
-        )
-        send_email(emp.email, subject, html)
+        days_label = f"{leave.total_days:.1f} day{'s' if leave.total_days != 1 else ''}"
+        icon = "approved" if status == "Approved" else "rejected"
+
+        # In-app persistent notification
+        if emp.user_id:
+            _notif.push(
+                db, emp.user_id, "leave",
+                f"Leave {status}",
+                f"Your {leave_type_name} ({days_label}, {leave.from_date} – {leave.to_date}) was {status.lower()}.",
+                entity_id=leave.id,
+                notif_type="approval_result",
+                action="emp-leaves",
+                priority="high" if status == "Rejected" else "medium",
+            )
+            db.commit()
+
+        # Email (existing behaviour — no-op if SMTP not set)
+        if emp.email:
+            subject, html = leave_status_email(
+                employee_name=emp.full_name or emp.email,
+                leave_type=leave_type_name,
+                from_date=leave.from_date,
+                to_date=leave.to_date,
+                days=leave.total_days,
+                status=status,
+            )
+            send_email(emp.email, subject, html)
     except Exception:
-        pass  # email errors must never break the API response
+        pass  # notification errors must never break the API response
 
 
 @router.delete("/{leave_id}")

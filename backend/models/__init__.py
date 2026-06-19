@@ -24,3 +24,5 @@ from .hrm import (  # noqa: F401
     EmployeeHistory,
     LetterheadTemplate,
 )
+from .notification import Notification  # noqa: F401
+from .approval import ApprovalWorkflow, ApprovalRequest, ApprovalStep  # noqa: F401
