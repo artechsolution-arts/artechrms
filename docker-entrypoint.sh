@@ -16,9 +16,9 @@ except Exception as e:
 done
 
 echo ""
-echo "PostgreSQL ready. Starting Artech HRMS..."
+echo "PostgreSQL ready. Starting AR Peopliz..."
 
 exec python3 -m uvicorn backend.main:app \
     --host 0.0.0.0 \
-    --port 8000 \
+    --port "${PORT:-8000}" \
     --workers 2
