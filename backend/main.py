@@ -22,8 +22,10 @@ from backend.routers import resignations as resignations_router
 from backend.routers import notice_period_config as notice_period_config_router
 from backend.routers import onboarding as onboarding_router
 from backend.routers import biometric as biometric_router
+from backend.routers import reports as reports_router
 from backend.models import onboarding as _onboarding_models  # ensure tables created
 from backend.models import biometric as _biometric_models    # ensure tables created
+from backend.routers.reports import Report as _ReportModel  # ensure table created
 from backend.auth_utils import decode_token
 from backend.database import SessionLocal
 from backend.models.auth import User
@@ -288,6 +290,7 @@ app.include_router(resignations_router.router)
 app.include_router(onboarding_router.router)
 app.include_router(notice_period_config_router.router)
 app.include_router(biometric_router.router)
+app.include_router(reports_router.router)
 
 # Serve uploaded profile photos
 UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")

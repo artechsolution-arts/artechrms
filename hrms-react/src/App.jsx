@@ -38,6 +38,7 @@ import Resignations      from './pages/Resignations';
 import HRStatusSheet     from './pages/HRStatusSheet';
 import HRWorkMode        from './pages/HRWorkMode';
 import CompanyDocs       from './pages/CompanyDocs';
+import Reports           from './pages/Reports';
 
 // ── Employee portal pages ──────────────────────────────────────
 import EmpDashboard      from './pages/employee/EmpDashboard';
@@ -91,6 +92,7 @@ const PAGES = {
   'status-sheets':     HRStatusSheet,
   'company-docs':      CompanyDocs,
   'work-mode-sheet':   HRWorkMode,
+  'reports':           Reports,
   // ── Employee portal ──
   'my-dashboard':      EmpDashboard,
   'emp-dashboard':     EmpDashboard,

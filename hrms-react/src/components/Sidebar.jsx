@@ -6,7 +6,7 @@ import {
   Monitor, BookOpen, FileDown, UserCircle, Receipt, Wallet, ClipboardList, CalendarCheck2,
   ChevronDown, ChevronRight, FilePenLine, UserMinus, FolderOpen, ClipboardCheck,
   ShieldCheck, Key, Crown, Settings as SettingsIcon, ChevronRight as ChevronRightIcon,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, BarChart2,
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -47,6 +47,7 @@ const NAV = [
   { key: 'assets',            label: 'Asset Management',          icon: Monitor,         section: 'HR' },
   { key: 'edit-requests',     label: 'Edit Requests',             icon: FilePenLine,     section: 'HR' },
   { key: 'resignations',      label: 'Resignations',              icon: UserMinus,       section: 'HR' },
+  { key: 'reports',           label: 'Reports',                   icon: BarChart2,        section: 'HR' },
   // ── Payroll ─────────────────────────────────────────────
   { key: 'salary-slips',      label: 'Salary Slips',              icon: DollarSign,      section: 'Payroll' },
   { key: 'payroll-entry',     label: 'Payroll Entry',             icon: FileText,        section: 'Payroll' },

@@ -30,25 +30,22 @@ const STAGE_META = [
 
 // Cycle helpers
 const CYCLE_TYPES = [
-  { value: 'Annual',       label: 'Annual',       desc: 'Jun – May (12 months)' },
-  { value: 'Mid-Year H1',  label: 'Mid-Year H1',  desc: 'Jun – Nov (6 months)'  },
-  { value: 'Mid-Year H2',  label: 'Mid-Year H2',  desc: 'Dec – May (6 months)'  },
+  { value: 'Annual',    label: 'Annual',    desc: 'Jun – May (12 months)' },
+  { value: 'Mid-Year',  label: 'Mid-Year',  desc: 'Jun – Nov (6 months)'  },
 ];
 
 function computePeriod(cycleType, fyYear) {
   const y = parseInt(fyYear);
   const fy = `FY${y}-${String(y + 1).slice(2)}`;
-  if (cycleType === 'Annual')      return `Annual ${fy}`;
-  if (cycleType === 'Mid-Year H1') return `Mid-Year H1 ${fy}`;
-  if (cycleType === 'Mid-Year H2') return `Mid-Year H2 ${fy}`;
+  if (cycleType === 'Annual')    return `Annual ${fy}`;
+  if (cycleType === 'Mid-Year') return `Mid-Year ${fy}`;
   return `${cycleType} ${fy}`;
 }
 
 function cycleRange(cycleType, fyYear) {
   const y = parseInt(fyYear);
-  if (cycleType === 'Annual')      return `1 Jun ${y} – 31 May ${y + 1}`;
-  if (cycleType === 'Mid-Year H1') return `1 Jun ${y} – 30 Nov ${y}`;
-  if (cycleType === 'Mid-Year H2') return `1 Dec ${y} – 31 May ${y + 1}`;
+  if (cycleType === 'Annual')    return `1 Jun ${y} – 31 May ${y + 1}`;
+  if (cycleType === 'Mid-Year') return `1 Jun ${y} – 30 Nov ${y}`;
   return '';
 }
 

@@ -21,6 +21,7 @@ HR_FEATURES = [
     "salary-slips", "payroll-entry", "payroll-rules",
     "onboarding", "job-openings", "applicants", "appraisals",
     "edit-requests", "resignations", "document-requests", "status-sheets", "company-docs",
+    "reports",
 ] + PORTAL_FEATURES
 
 # Employee-portal features
