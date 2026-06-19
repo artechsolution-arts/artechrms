@@ -1,0 +1,64 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PRODUCTION docker-compose — uses the pre-built image from GitHub Container
+# Registry (ghcr.io) instead of building from source.
+#
+# One-time server setup:
+#   mkdir -p /opt/artechrms
+#   cp docker-compose.prod.yml /opt/artechrms/
+#   cp .env.example /opt/artechrms/.env   # then fill in real values
+#
+# Daily usage (done automatically by GitHub Actions on push to main):
+#   docker compose -f docker-compose.prod.yml pull app
+#   docker compose -f docker-compose.prod.yml up -d --remove-orphans
+#
+# Env vars are read from a .env file in the same directory as this file.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: artechrms_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: ghcr.io/artechsolution-arts/artechrms:latest
+    container_name: artechrms_app
+    restart: unless-stopped
+    depends_on:
+      minio:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL:               ${DATABASE_URL}
+      SECRET_KEY:                 ${SECRET_KEY}
+      ALLOWED_ORIGINS:            ${ALLOWED_ORIGINS:-*}
+      MINIO_ENDPOINT:             minio:9000
+      MINIO_ACCESS_KEY:           ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY:           ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET:               ${MINIO_BUCKET:-hrms}
+      MINIO_PUBLIC_URL:           ${MINIO_PUBLIC_URL:-http://localhost:9000}
+      BIOMETRIC_DEVICE_IP:        ${BIOMETRIC_DEVICE_IP:-}
+      BIOMETRIC_DEVICE_PASSWORD:  ${BIOMETRIC_DEVICE_PASSWORD:-}
+      BIOMETRIC_SYNC_INTERVAL_MIN: ${BIOMETRIC_SYNC_INTERVAL_MIN:-5}
+      BIOMETRIC_SYNC_BACKFILL_DAYS: ${BIOMETRIC_SYNC_BACKFILL_DAYS:-3}
+    volumes:
+      - uploads_data:/app/static/uploads
+
+volumes:
+  minio_data:
+  uploads_data:

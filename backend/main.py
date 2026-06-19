@@ -23,6 +23,7 @@ from backend.routers import notice_period_config as notice_period_config_router
 from backend.routers import onboarding as onboarding_router
 from backend.routers import biometric as biometric_router
 from backend.routers import reports as reports_router
+from backend.routers import health as health_router
 from backend.models import onboarding as _onboarding_models  # ensure tables created
 from backend.models import biometric as _biometric_models    # ensure tables created
 from backend.routers.reports import Report as _ReportModel  # ensure table created
@@ -217,6 +218,7 @@ _PUBLIC_PREFIXES = (
     "/api/auth/login", "/api/auth/setup", "/api/auth/needs-setup",
     "/api/social/callback/",
     "/api/notifications/stream",  # SSE: auth handled inside via ?token= query param
+    "/health",                    # uptime monitoring / load balancer
 )
 
 # Paths accessible by Employee role only
@@ -291,6 +293,7 @@ app.include_router(onboarding_router.router)
 app.include_router(notice_period_config_router.router)
 app.include_router(biometric_router.router)
 app.include_router(reports_router.router)
+app.include_router(health_router.router)
 
 # Serve uploaded profile photos
 UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")
