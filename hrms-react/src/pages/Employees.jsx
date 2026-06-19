@@ -105,12 +105,23 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
   const [viewEvent, setViewEvent] = useState(null);
 
   const hasJoining = history.some(r => r.change_type === 'Joining');
+
+  // Find original designation/department from oldest history record (before any changes)
+  const oldestRecord = [...history]
+    .sort((a, b) => new Date(a.effective_date) - new Date(b.effective_date))[0];
+  const joiningDesig = history.length > 0
+    ? (oldestRecord?.from_designation || emp.designation || null)
+    : (emp.designation || null);
+  const joiningDept = history.length > 0
+    ? (oldestRecord?.from_department || emp.department || null)
+    : (emp.department || null);
+
   const synthetic = (!hasJoining && emp?.date_of_joining) ? [{
     id: '__synthetic__',
     change_type: 'Joining',
     effective_date: emp.date_of_joining,
-    to_designation: emp.designation || null,
-    to_department: emp.department || null,
+    to_designation: joiningDesig,
+    to_department: joiningDept,
     remarks: 'Joined the organization',
     _synthetic: true,
   }] : [];
@@ -215,11 +226,11 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
                     className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 min-w-0 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ev.change_type}</p>
+                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ev.change_type === 'Joining' ? 'Hired' : ev.change_type}</p>
                         <p className="text-[11px] text-gray-400 mt-0.5">{fmtDate(ev.effective_date)}</p>
                         {(ev.from_designation || ev.to_designation) && (
                           <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1 flex-wrap">
-                            {ev.from_designation && <span className="line-through text-gray-400">{ev.from_designation}</span>}
+                            {ev.from_designation && <span className="text-gray-400">{ev.from_designation}</span>}
                             {ev.from_designation && ev.to_designation && <span className="text-gray-400">→</span>}
                             {ev.to_designation && <span>{ev.to_designation}</span>}
                           </p>
@@ -313,7 +324,7 @@ function EduCard({ item, onDelete }) {
           <div className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
             <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
             <div className="flex-1 flex items-center gap-2 flex-wrap">
-              {from ? <span className="text-xs text-gray-400 line-through">{from}</span> : <span className="text-xs text-gray-300 dark:text-gray-600 italic">—</span>}
+              {from ? <span className="text-xs text-gray-400">{from}</span> : <span className="text-xs text-gray-300 dark:text-gray-600 italic">—</span>}
               <span className="text-gray-300 dark:text-gray-600">→</span>
               {to ? <span className={`text-xs font-semibold ${green ? 'text-green-600 dark:text-green-400' : 'text-gray-800 dark:text-gray-200'}`}>{to}</span> : <span className="text-xs text-gray-300 dark:text-gray-600 italic">—</span>}
             </div>
@@ -328,7 +339,7 @@ function EduCard({ item, onDelete }) {
                   <Icon size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">{ev.change_type}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{ev.change_type === 'Joining' ? 'Hired' : ev.change_type}</p>
                   <p className="text-xs text-gray-400">Effective {fmtDate(ev.effective_date)}</p>
                 </div>
                 <button onClick={() => setViewEvent(null)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
@@ -1652,12 +1663,16 @@ export default function Employees({ toast }) {
                   };
 
                   const hasJoining = history.some(e => e.change_type === 'Joining');
+                  // Find original designation/dept from oldest history record
+                  const _oldest = [...history].sort((a,b) => new Date(a.effective_date)-new Date(b.effective_date))[0];
+                  const _joinDesig = history.length > 0 ? (_oldest?.from_designation || detailEmp.designation) : detailEmp.designation;
+                  const _joinDept  = history.length > 0 ? (_oldest?.from_department  || detailEmp.department)  : detailEmp.department;
                   const allEv = hasJoining ? [...history] : [
                     ...(detailEmp.date_of_joining ? [{
                       id:'__join__', _synthetic:true, change_type:'Joining',
                       effective_date: detailEmp.date_of_joining,
-                      to_designation: detailEmp.designation,
-                      to_department:  detailEmp.department,
+                      to_designation: _joinDesig,
+                      to_department:  _joinDept,
                     }] : []),
                     ...history,
                   ];
@@ -1907,11 +1922,11 @@ export default function Employees({ toast }) {
                                         className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 min-w-0 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
                                         <div className="flex items-start justify-between gap-2">
                                           <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ev.change_type}</p>
+                                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ev.change_type === 'Joining' ? 'Hired' : ev.change_type}</p>
                                             <p className="text-[11px] text-gray-400 mt-0.5">{fmtDate(ev.effective_date)}</p>
                                             {(ev.from_designation || ev.to_designation) && (
                                               <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1 flex-wrap">
-                                                {ev.from_designation && <span className="line-through text-gray-400">{ev.from_designation}</span>}
+                                                {ev.from_designation && <span className="text-gray-400">{ev.from_designation}</span>}
                                                 {ev.from_designation && ev.to_designation && <span className="text-gray-400">→</span>}
                                                 {ev.to_designation && <span>{ev.to_designation}</span>}
                                               </p>
@@ -3102,7 +3117,7 @@ export default function Employees({ toast }) {
                   <Icon size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">{ev.change_type}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{ev.change_type === 'Joining' ? 'Hired' : ev.change_type}</p>
                   <p className="text-xs text-gray-400">Effective {fmtDate(ev.effective_date)}</p>
                 </div>
                 <button onClick={() => setViewEvent(null)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
@@ -3120,7 +3135,7 @@ export default function Employees({ toast }) {
                     <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
                     <div className="flex-1 flex items-center gap-2 flex-wrap">
                       {from
-                        ? <span className="text-xs text-gray-400 line-through">{from}</span>
+                        ? <span className="text-xs text-gray-400">{from}</span>
                         : <span className="text-xs text-gray-300 dark:text-gray-600 italic">—</span>}
                       <span className="text-gray-300 dark:text-gray-600">→</span>
                       {to

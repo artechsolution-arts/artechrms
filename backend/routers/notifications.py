@@ -38,6 +38,14 @@ def _get_employee(user: User, db: Session):
     return db.query(Employee).filter(Employee.email == user.email).first()
 
 
+def _emp_name_map(emp_ids: list, db: Session) -> dict:
+    """Fetch employee names for a list of IDs in ONE query — eliminates N+1."""
+    if not emp_ids:
+        return {}
+    rows = db.query(Employee.id, Employee.full_name).filter(Employee.id.in_(emp_ids)).all()
+    return {r.id: r.full_name for r in rows}
+
+
 def _compute_notifications(user: User, db: Session) -> list:
     """Core logic: build notification list for a given user. Shared by REST + SSE."""
     notifications = []
@@ -50,14 +58,47 @@ def _compute_notifications(user: User, db: Session) -> list:
             LeaveApplication.status == "Pending"
         ).order_by(LeaveApplication.created_at.desc()).limit(10).all()
 
+        cancel_requests = db.query(LeaveApplication).filter(
+            LeaveApplication.status == "Cancellation Requested"
+        ).order_by(LeaveApplication.created_at.desc()).limit(10).all()
+
+        edit_requests = db.query(LeaveApplication).filter(
+            LeaveApplication.status == "Edit Requested"
+        ).order_by(LeaveApplication.created_at.desc()).limit(10).all()
+
+        pending_expenses = db.query(ExpenseClaim).filter(
+            ExpenseClaim.status == "Pending"
+        ).order_by(ExpenseClaim.created_at.desc()).limit(5).all()
+
+        pending_docs = db.query(DocumentRequest).filter(
+            DocumentRequest.status == "Pending"
+        ).order_by(DocumentRequest.requested_at.desc()).limit(5).all()
+
+        pending_resignations = db.query(Resignation).filter(
+            Resignation.status == "Pending"
+        ).order_by(Resignation.created_at.desc()).limit(10).all()
+
+        profile_updates = db.query(ProfileUpdateLog).filter(
+            ProfileUpdateLog.seen_by_hr == False  # noqa: E712
+        ).order_by(ProfileUpdateLog.changed_at.desc()).limit(10).all()
+
+        # Collect all employee IDs, then fetch names in ONE query
+        all_emp_ids = list({
+            *[l.employee_id for l in pending_leaves],
+            *[l.employee_id for l in cancel_requests],
+            *[l.employee_id for l in edit_requests],
+            *[e.employee_id for e in pending_expenses],
+            *[d.employee_id for d in pending_docs],
+            *[r.employee_id for r in pending_resignations],
+            *[p.employee_id for p in profile_updates],
+        })
+        emp_names = _emp_name_map(all_emp_ids, db)
+
         for leave in pending_leaves:
-            emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
-            emp_name = emp.full_name if emp else "An employee"
+            emp_name = emp_names.get(leave.employee_id, "An employee")
             days = (leave.to_date - leave.from_date).days + 1 if leave.from_date and leave.to_date else 1
             notifications.append({
-                "id": f"leave-{leave.id}",
-                "type": "leave",
-                "icon": "🗓️",
+                "id": f"leave-{leave.id}", "type": "leave", "icon": "🗓️",
                 "title": "Leave Request Pending",
                 "message": f"{emp_name} applied for {days} day{'s' if days > 1 else ''} leave",
                 "action": "leaves",
@@ -65,18 +106,11 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "priority": "high",
             })
 
-        cancel_requests = db.query(LeaveApplication).filter(
-            LeaveApplication.status == "Cancellation Requested"
-        ).order_by(LeaveApplication.created_at.desc()).limit(10).all()
-
         for leave in cancel_requests:
-            emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
-            emp_name = emp.full_name if emp else "An employee"
+            emp_name = emp_names.get(leave.employee_id, "An employee")
             days = (leave.to_date - leave.from_date).days + 1 if leave.from_date and leave.to_date else 1
             notifications.append({
-                "id": f"cancel-{leave.id}",
-                "type": "cancel_request",
-                "icon": "🔄",
+                "id": f"cancel-{leave.id}", "type": "cancel_request", "icon": "🔄",
                 "title": "Leave Cancellation Request",
                 "message": f"{emp_name} wants to cancel {days} day{'s' if days > 1 else ''} leave",
                 "action": "leaves",
@@ -84,17 +118,10 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "priority": "high",
             })
 
-        edit_requests = db.query(LeaveApplication).filter(
-            LeaveApplication.status == "Edit Requested"
-        ).order_by(LeaveApplication.created_at.desc()).limit(10).all()
-
         for leave in edit_requests:
-            emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
-            emp_name = emp.full_name if emp else "An employee"
+            emp_name = emp_names.get(leave.employee_id, "An employee")
             notifications.append({
-                "id": f"edit-{leave.id}",
-                "type": "edit_request",
-                "icon": "✏️",
+                "id": f"edit-{leave.id}", "type": "edit_request", "icon": "✏️",
                 "title": "Leave Date Change Request",
                 "message": f"{emp_name} wants to change approved leave dates",
                 "action": "leaves",
@@ -102,17 +129,10 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "priority": "high",
             })
 
-        pending_expenses = db.query(ExpenseClaim).filter(
-            ExpenseClaim.status == "Pending"
-        ).order_by(ExpenseClaim.created_at.desc()).limit(5).all()
-
         for exp in pending_expenses:
-            emp = db.query(Employee).filter(Employee.id == exp.employee_id).first()
-            emp_name = emp.full_name if emp else "An employee"
+            emp_name = emp_names.get(exp.employee_id, "An employee")
             notifications.append({
-                "id": f"expense-{exp.id}",
-                "type": "expense",
-                "icon": "💰",
+                "id": f"expense-{exp.id}", "type": "expense", "icon": "💰",
                 "title": "Expense Claim Pending",
                 "message": f"{emp_name} submitted ₹{int(exp.amount):,} for {exp.expense_type}",
                 "action": "expenses",
@@ -120,17 +140,10 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "priority": "medium",
             })
 
-        pending_docs = db.query(DocumentRequest).filter(
-            DocumentRequest.status == "Pending"
-        ).order_by(DocumentRequest.requested_at.desc()).limit(5).all()
-
         for doc in pending_docs:
-            emp = db.query(Employee).filter(Employee.id == doc.employee_id).first()
-            emp_name = emp.full_name if emp else "An employee"
+            emp_name = emp_names.get(doc.employee_id, "An employee")
             notifications.append({
-                "id": f"doc-{doc.id}",
-                "type": "document",
-                "icon": "📄",
+                "id": f"doc-{doc.id}", "type": "document", "icon": "📄",
                 "title": "Document Request",
                 "message": f"{emp_name} requested {doc.doc_type}",
                 "action": "document-requests",
@@ -138,18 +151,11 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "priority": "medium",
             })
 
-        pending_resignations = db.query(Resignation).filter(
-            Resignation.status == "Pending"
-        ).order_by(Resignation.created_at.desc()).limit(10).all()
-
         for res in pending_resignations:
-            emp = db.query(Employee).filter(Employee.id == res.employee_id).first()
-            emp_name = emp.full_name if emp else "An employee"
+            emp_name = emp_names.get(res.employee_id, "An employee")
             lwd = f" — LWD: {res.last_working_date}" if res.last_working_date else ""
             notifications.append({
-                "id": f"resignation-{res.id}",
-                "type": "resignation",
-                "icon": "📝",
+                "id": f"resignation-{res.id}", "type": "resignation", "icon": "📝",
                 "title": "Resignation Submitted",
                 "message": f"{emp_name} has submitted a resignation{lwd}",
                 "action": "resignations",
@@ -157,18 +163,11 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "priority": "high",
             })
 
-        profile_updates = db.query(ProfileUpdateLog).filter(
-            ProfileUpdateLog.seen_by_hr == False  # noqa: E712
-        ).order_by(ProfileUpdateLog.changed_at.desc()).limit(10).all()
-
         for pu in profile_updates:
-            emp = db.query(Employee).filter(Employee.id == pu.employee_id).first()
-            emp_name = emp.full_name if emp else "An employee"
+            emp_name = emp_names.get(pu.employee_id, "An employee")
             fields = ", ".join(v["label"] for v in pu.changes.values()) if pu.changes else "profile"
             notifications.append({
-                "id": f"profile-update-{pu.id}",
-                "type": "profile_update",
-                "icon": "👤",
+                "id": f"profile-update-{pu.id}", "type": "profile_update", "icon": "👤",
                 "title": "Profile Updated",
                 "message": f"{emp_name} updated their {fields}",
                 "action": "employees",
@@ -328,8 +327,8 @@ async def stream_notifications(request: Request, token: str = ""):
                     yield f"data: {json.dumps(notifs)}\n\n"
                 else:
                     heartbeat_ticks += 1
-                    # Send a keep-alive comment every ~30s (6 ticks × 5s)
-                    if heartbeat_ticks >= 6:
+                    # Send a keep-alive comment every ~60s (3 ticks × 20s)
+                    if heartbeat_ticks >= 3:
                         heartbeat_ticks = 0
                         yield ": ping\n\n"
             except Exception:
@@ -337,7 +336,7 @@ async def stream_notifications(request: Request, token: str = ""):
             finally:
                 db.close()
 
-            await asyncio.sleep(5)
+            await asyncio.sleep(20)
 
     return StreamingResponse(
         generator(),

@@ -30,6 +30,8 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
   }, []);
 
   useEffect(() => {
+    // Skip polling on desktop — Topbar SSE already handles notifications there
+    if (window.innerWidth >= 1024) return;
     fetchNotifs();
     const id = setInterval(fetchNotifs, 60000);
     return () => clearInterval(id);
