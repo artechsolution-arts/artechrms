@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   LayoutDashboard, User, CalendarDays, Clock,
   DollarSign, Star, X, LogOut, Megaphone, Gift, Monitor, FileDown,
@@ -71,7 +71,7 @@ export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClo
         <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 dark:border-gray-800">
           <img src="/logo.svg" alt="Artech" className="w-8 h-8 flex-shrink-0" />
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">Artech HRMS</div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">AR Peopliz</div>
             <div className="text-[11px] text-gray-400">Employee Portal</div>
           </div>
           <button onClick={onClose} className="ml-auto p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden text-gray-400">
@@ -149,7 +149,7 @@ export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClo
       <ConfirmModal
         open={confirmLogout}
         title="Sign out?"
-        message="Are you sure you want to sign out of Artech HRMS?"
+        message="Are you sure you want to sign out of AR Peopliz?"
         confirmLabel="Sign Out"
         danger
         onConfirm={() => { setConfirmLogout(false); onLogout(); }}

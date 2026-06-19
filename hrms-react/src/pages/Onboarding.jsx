@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import { fmtDate } from '../utils/date';
 import EmpAvatar from '../components/EmpAvatar';
@@ -496,7 +496,7 @@ function OnITAccess({ data, set }) {
     { key: 'jira', label: 'Project Tools', desc: 'Jira / Trello / Asana access' },
     { key: 'github', label: 'Code Repository', desc: 'GitHub / GitLab / Bitbucket' },
     { key: 'cloud', label: 'Cloud Access', desc: 'AWS / GCP / Azure console access' },
-    { key: 'erp', label: 'ERP / HRMS Access', desc: 'Artech HRMS portal login' },
+    { key: 'erp', label: 'ERP / HRMS Access', desc: 'AR Peopliz portal login' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -732,7 +732,7 @@ function OffAccess({ data, set }) {
         { key: 'slack', label: 'Communication Tools Removed', desc: 'Slack / Teams / Google Chat access removed' },
         { key: 'code', label: 'Code Repository Access Removed', desc: 'GitHub / GitLab access revoked' },
         { key: 'cloud', label: 'Cloud Access Removed', desc: 'AWS / GCP / Azure access revoked' },
-        { key: 'erp', label: 'HRMS / ERP Access Removed', desc: 'Artech HRMS portal access disabled' },
+        { key: 'erp', label: 'HRMS / ERP Access Removed', desc: 'AR Peopliz portal access disabled' },
       ].map(({ key, label, desc }) => (
         <Toggle key={key} label={label} value={data[key]} onChange={v => set(key, v)} description={desc} />
       ))}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { Loader2, Eye, EyeOff, ArrowRight, Users, CalendarDays, Clock, TrendingUp, DollarSign, BarChart3, X, Mail, Phone, CheckCircle2 } from 'lucide-react';
 
 /* ── Artech brand palette ── */
@@ -600,7 +600,7 @@ export default function Login({ onLogin }) {
                 <img src="/logo.svg" alt="Artech" style={{ width: 28, height: 28 }} />
               </div>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 16, color: '#fff', letterSpacing: '0.01em' }}>Artech HRMS</div>
+                <div style={{ fontWeight: 800, fontSize: 16, color: '#fff', letterSpacing: '0.01em' }}>AR Peopliz</div>
                 <div style={{ fontSize: 11, color: C.teal, marginTop: 1, letterSpacing: '0.04em', fontWeight: 500 }}>Human Resource Management</div>
               </div>
             </div>
@@ -670,7 +670,7 @@ export default function Login({ onLogin }) {
                 <img src="/logo.svg" alt="Artech" style={{ width: 26, height: 26 }} />
               </div>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: '0.01em' }}>Artech HRMS</div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: '0.01em' }}>AR Peopliz</div>
                 <div style={{ fontSize: 11, color: C.teal, opacity: 0.8, marginTop: 1, letterSpacing: '0.04em', fontWeight: 500 }}>Human Resource Management</div>
               </div>
             </div>
@@ -756,7 +756,7 @@ export default function Login({ onLogin }) {
           {/* Mobile logo */}
           <div className="lp-mob">
             <img src="/logo.svg" alt="Artech" style={{ width: 30, height: 30 }} />
-            <span style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>Artech HRMS</span>
+            <span style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>AR Peopliz</span>
           </div>
 
           <div ref={cardRef} className="lp-card">
@@ -794,7 +794,7 @@ export default function Login({ onLogin }) {
               <p style={{ fontSize: 13, color: '#5E6B85', fontWeight: 400 }}>
                 {mode === 'setup'
                   ? 'Set up your administrator account to get started'
-                  : 'Sign in to your Artech HRMS workspace'}
+                  : 'Sign in to your AR Peopliz workspace'}
               </p>
             </div>
 

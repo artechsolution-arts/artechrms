@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import { ShieldCheck, Users, Key, LayoutDashboard, LogOut, X, Menu, ChevronRight } from 'lucide-react';
 import { useToast } from './hooks/useToast';
 import { useTheme } from './hooks/useTheme';
@@ -56,7 +56,7 @@ export default function SuperAdminApp({ user, logout }) {
         <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
           <img src="/logo.svg" alt="Artech" className="w-9 h-9 flex-shrink-0" />
           <div className="min-w-0">
-            <div className="text-sm font-bold text-white truncate">Artech HRMS</div>
+            <div className="text-sm font-bold text-white truncate">AR Peopliz</div>
             <div className="text-[11px] text-violet-300 font-medium">Super Admin Panel</div>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="ml-auto p-1 rounded hover:bg-white/10 text-white/50 lg:hidden">

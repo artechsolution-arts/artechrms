@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Users, Building2, CalendarDays, Clock,
   DollarSign, FileText, Briefcase, UserCheck,
@@ -144,7 +144,7 @@ function SidebarContent({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: rail ? 'center' : 'flex-start' }}>
           <img src="/logo.svg" alt="Artech" style={{ width: 28, height: 28, flexShrink: 0 }} />
           <div style={{ overflow: 'hidden', opacity: rail ? 0 : 1, maxWidth: rail ? 0 : 200, transition: 'opacity 0.12s ease, max-width 0.18s cubic-bezier(0.23,1,0.32,1)' }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--sidebar-fg-strong, #fff)', lineHeight: '1.2', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>Artech HRMS</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--sidebar-fg-strong, #fff)', lineHeight: '1.2', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>AR Peopliz</div>
             <div style={{ fontSize: 11, color: 'var(--sidebar-fg-label, rgba(255,255,255,0.38))', marginTop: 1, whiteSpace: 'nowrap' }}>Human Resources</div>
           </div>
           {!rail && onToggleRail && (
@@ -424,7 +424,7 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
       <ConfirmModal
         open={confirmLogout}
         title="Sign out?"
-        message="Are you sure you want to sign out of Artech HRMS?"
+        message="Are you sure you want to sign out of AR Peopliz?"
         confirmLabel="Sign Out"
         danger
         onConfirm={() => { setConfirmLogout(false); onLogout(); }}

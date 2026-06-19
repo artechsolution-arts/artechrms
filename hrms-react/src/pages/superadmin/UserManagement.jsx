@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import Select from '../../components/Select';
 import {
@@ -126,7 +126,7 @@ function CreateUserModal({ onClose, onSave, toast }) {
           </div>
           <div>
             <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">New Login Account</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Grant a person access to Artech HRMS</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Grant a person access to AR Peopliz</div>
           </div>
         </div>
 

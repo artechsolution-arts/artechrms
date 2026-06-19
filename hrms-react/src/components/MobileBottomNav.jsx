@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { LayoutDashboard, Clock, Menu, X, Bell, Settings, ChevronRight, LogOut, Check, Image as ImageIcon } from 'lucide-react';
 import { api } from '../api';
 import { useBackground, BACKGROUNDS } from '../hooks/useBackground';
@@ -260,7 +260,7 @@ export default function MobileBottomNav({ primaryItems, allItems, current, onNav
                 </div>
                 <div className="text-left">
                   <div className="text-sm font-semibold text-red-600 dark:text-red-400">Sign Out</div>
-                  <div className="text-xs text-red-400/70 dark:text-red-500/60">Sign out of Artech HRMS</div>
+                  <div className="text-xs text-red-400/70 dark:text-red-500/60">Sign out of AR Peopliz</div>
                 </div>
               </button>
             </>

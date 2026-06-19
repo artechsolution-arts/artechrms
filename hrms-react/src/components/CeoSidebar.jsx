@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Users, CalendarDays, Clock,
   ClipboardList, CalendarCheck2, X, LogOut, ChevronDown, ChevronRight,
@@ -106,7 +106,7 @@ export default function CeoSidebar({ current, onNavigate, mobileOpen, onClose, u
         <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 dark:border-gray-800">
           <img src="/logo.svg" alt="Artech" className="w-8 h-8 flex-shrink-0" />
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">Artech HRMS</div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">AR Peopliz</div>
             <div className="text-[11px] text-rose-500 font-medium">CEO Portal</div>
           </div>
           <button onClick={onClose} className="ml-auto p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden text-gray-400">
@@ -188,7 +188,7 @@ export default function CeoSidebar({ current, onNavigate, mobileOpen, onClose, u
       <ConfirmModal
         open={confirmLogout}
         title="Sign out?"
-        message="Are you sure you want to sign out of Artech HRMS?"
+        message="Are you sure you want to sign out of AR Peopliz?"
         confirmLabel="Sign Out"
         danger
         onConfirm={() => { setConfirmLogout(false); onLogout(); }}
