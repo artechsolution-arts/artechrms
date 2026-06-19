@@ -1,14 +1,121 @@
-from fastapi import APIRouter, Depends, HTTPException
+import os
+from collections import defaultdict
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
 
-from backend.database import get_db
+from backend.database import get_db, SessionLocal
 from backend.models.biometric import BiometricDevice
+from backend.models.employee import Employee
+from backend.models.leave import Attendance
 from backend import biometric_zk
 
 router = APIRouter(prefix="/api/biometric", tags=["Biometric"])
+
+# ── ZKTeco ADMS push receiver (device → cloud) ──────────────────────────────
+# Configure on the device: Menu → Comm → Cloud Server
+#   Server IP  : www.arpeopliz.com
+#   Server Port: 443
+#   HTTPS      : Yes
+#   API Path   : /iclock   (some firmware uses /api/biometric/iclock)
+# The device will push attendance records here every few minutes.
+
+_ADMS_PREFIX = "/iclock"
+
+HALF_DAY_HOURS   = 4.0
+MIN_CHECKOUT_HRS = 1.0
+
+
+def _upsert_punch(db: Session, bio_id: str, ts: datetime):
+    """Insert or merge a single punch into the attendance table."""
+    emp_by_bio = {}
+    for e in db.query(Employee).filter(Employee.biometric_id == bio_id).all():
+        emp_by_bio[str(e.biometric_id).strip()] = e
+
+    emp = emp_by_bio.get(str(bio_id).strip())
+    if not emp:
+        return False
+
+    d = ts.date()
+    in_time  = ts.strftime("%H:%M")
+    out_time = None
+    hours    = 0.0
+    status   = "Present"
+
+    # Check if there's already a record for that day
+    existing = db.query(Attendance).filter(
+        Attendance.employee_id == emp.id,
+        Attendance.date == d,
+    ).first()
+
+    if existing:
+        # Update out_time if this punch is later than existing in_time
+        existing_in = datetime.strptime(f"{d} {existing.in_time}", "%Y-%m-%d %H:%M") if existing.in_time else ts
+        if ts > existing_in:
+            gap = (ts - existing_in).total_seconds() / 3600.0
+            if gap >= MIN_CHECKOUT_HRS:
+                existing.out_time = in_time
+                existing.working_hours = round(gap, 2)
+                if existing.status not in ("On Leave", "WFH"):
+                    existing.status = "Half Day" if gap < HALF_DAY_HOURS else "Present"
+        db.commit()
+    else:
+        tbl = Attendance.__table__
+        stmt = pg_insert(tbl).values(
+            employee_id=emp.id, date=d,
+            in_time=in_time, out_time=None, working_hours=0.0, status="Present",
+        ).on_conflict_do_nothing(constraint="uq_attendance_emp_date")
+        db.execute(stmt)
+        db.commit()
+
+    return True
+
+
+@router.get(_ADMS_PREFIX + "/getrequest")
+@router.get(_ADMS_PREFIX + "/getrequest/{rest:path}")
+async def adms_getrequest(request: Request):
+    """Device polls here for commands. Respond with empty OK so it proceeds to push."""
+    sn = request.query_params.get("SN", "unknown")
+    return Response(content=f"OK\r\nGetStamp={int(datetime.utcnow().timestamp())}\r\n",
+                    media_type="text/plain")
+
+
+@router.post(_ADMS_PREFIX + "/cdata")
+async def adms_cdata(request: Request, db: Session = Depends(get_db)):
+    """
+    Receive attendance push from ZKTeco device.
+    Each line: UserID\\tTimestamp\\tStatus\\tVerify\\tWorkCode\\tReserved
+    Status 0=CheckIn 1=CheckOut 2=BreakOut 3=BreakIn 4=OTIn 5=OTOut
+    """
+    table = request.query_params.get("table", "")
+    sn    = request.query_params.get("SN", "")
+
+    body = (await request.body()).decode("utf-8", errors="ignore")
+
+    if table != "ATTLOG" or not body.strip():
+        return Response(content="OK: 0\r\n", media_type="text/plain")
+
+    accepted = 0
+    for line in body.strip().splitlines():
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        bio_id = parts[0].strip()
+        try:
+            ts = datetime.strptime(parts[1].strip(), "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+        try:
+            if _upsert_punch(db, bio_id, ts):
+                accepted += 1
+        except Exception:
+            pass
+
+    return Response(content=f"OK: {accepted}\r\n", media_type="text/plain")
 
 
 class DeviceIn(BaseModel):
