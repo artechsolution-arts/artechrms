@@ -12,7 +12,15 @@ DATABASE_URL = os.environ.get(
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,     # drop stale connections quickly
+    pool_size=5,            # persistent connections kept warm
+    max_overflow=10,        # extra connections allowed under burst
+    pool_timeout=20,        # fail fast if pool is exhausted
+    pool_recycle=270,       # recycle before Neon's 5-min idle suspend (300s)
+    connect_args={"connect_timeout": 10},
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

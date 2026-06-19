@@ -67,7 +67,7 @@ def login(
         )
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
-    token = create_access_token(user.username)
+    token = create_access_token(user.username, role=user.role)
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -97,7 +97,7 @@ def initial_setup(data: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    token = create_access_token(user.username)
+    token = create_access_token(user.username, role=user.role)
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -219,7 +219,7 @@ def ms_callback(code: str = None, error: str = None, db: Session = Depends(get_d
     if not user.is_active:
         return RedirectResponse("/?sso_error=account_deactivated")
 
-    jwt_token = create_access_token(user.username)
+    jwt_token = create_access_token(user.username, role=user.role)
     user_json  = json.dumps({
         "id": user.id, "username": user.username,
         "full_name": user.full_name, "role": user.role, "email": user.email,

@@ -41,7 +41,7 @@ from backend.routers import approvals as approvals_router
 from backend.models import onboarding as _onboarding_models  # ensure tables created
 from backend.models import biometric as _biometric_models    # ensure tables created
 from backend.routers.reports import Report as _ReportModel  # ensure table created
-from backend.auth_utils import decode_token
+from backend.auth_utils import decode_token_payload
 from backend.database import SessionLocal
 from backend.models.auth import User
 
@@ -359,19 +359,24 @@ async def auth_middleware(request: Request, call_next):
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
             return JSONResponse({"detail": "Not authenticated"}, status_code=401)
-        username = decode_token(auth_header[7:])
-        if not username:
+
+        payload = decode_token_payload(auth_header[7:])
+        if not payload or not payload.get("sub"):
             return JSONResponse({"detail": "Invalid or expired token"}, status_code=401)
+
+        username = payload["sub"]
+        # Role is embedded in JWT — no DB query needed on every request.
+        # Fall back to DB only for old tokens that predate the role claim.
+        role = payload.get("role") or ""
+        if not role:
+            db = SessionLocal()
+            try:
+                user = db.query(User).filter(User.username == username).first()
+                role = user.role if user else "Employee"
+            finally:
+                db.close()
+
         request.state.username = username
-
-        # Role-based access: Employee users may only access their own portal paths
-        db = SessionLocal()
-        try:
-            user = db.query(User).filter(User.username == username).first()
-            role = user.role if user else "Employee"
-        finally:
-            db.close()
-
         request.state.user_role = role
 
         # SuperAdmin can access everything
