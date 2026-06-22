@@ -202,6 +202,67 @@ def adms_status(db: Session = Depends(get_db)):
     }
 
 
+# ── Bulk historical import ────────────────────────────────────
+class BulkRecord(BaseModel):
+    date: str        # YYYY-MM-DD
+    bio_id: str      # biometric_id as string
+    in_time: str     # HH:MM
+    out_time: Optional[str] = None  # HH:MM or null
+
+class BulkImportIn(BaseModel):
+    secret: str
+    records: list[BulkRecord]
+
+_IMPORT_SECRET = os.getenv("IMPORT_SECRET", "arpeopliz-import-2026")
+
+@router.post("/bulk-import")
+def bulk_import(data: BulkImportIn, db: Session = Depends(get_db)):
+    if data.secret != _IMPORT_SECRET:
+        raise HTTPException(403, "Invalid secret")
+
+    emp_map: dict[str, int] = {}
+    for e in db.query(Employee).filter(Employee.biometric_id.isnot(None)).all():
+        emp_map[str(e.biometric_id).strip()] = e.id
+
+    inserted = updated = skipped = 0
+    tbl = Attendance.__table__
+
+    for rec in data.records:
+        emp_id = emp_map.get(rec.bio_id.strip())
+        if not emp_id:
+            skipped += 1
+            continue
+        try:
+            d = datetime.strptime(rec.date, "%Y-%m-%d").date()
+        except ValueError:
+            skipped += 1
+            continue
+
+        in_dt  = datetime.strptime(f"{rec.date} {rec.in_time}", "%Y-%m-%d %H:%M")
+        out_dt = datetime.strptime(f"{rec.date} {rec.out_time}", "%Y-%m-%d %H:%M") if rec.out_time else None
+        hours  = round((out_dt - in_dt).total_seconds() / 3600, 2) if out_dt else 0.0
+        status = "Half Day" if out_dt and hours < 4 else "Present"
+
+        stmt = pg_insert(tbl).values(
+            employee_id=emp_id, date=d,
+            in_time=rec.in_time, out_time=rec.out_time,
+            working_hours=hours, status=status,
+        ).on_conflict_do_update(
+            constraint="uq_attendance_emp_date",
+            set_={
+                "in_time": rec.in_time,
+                "out_time": rec.out_time,
+                "working_hours": hours,
+                "status": status,
+            }
+        )
+        db.execute(stmt)
+        inserted += 1
+
+    db.commit()
+    return {"inserted_or_updated": inserted, "skipped": skipped}
+
+
 # ── Device CRUD ──────────────────────────────────────────────
 @router.get("/devices")
 def list_devices(db: Session = Depends(get_db)):

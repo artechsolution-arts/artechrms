@@ -321,6 +321,7 @@ _PUBLIC_PREFIXES = (
     "/api/notifications/stream",  # SSE: auth handled inside via ?token= query param
     "/api/biometric/iclock",      # ZKTeco ADMS push — device has no Bearer token
     "/api/biometric/adms-status", # connectivity check — no sensitive data
+    "/api/biometric/bulk-import", # secret-gated historical import
     "/iclock",                    # ZKTeco firmware hardcodes /iclock/ (no custom prefix)
     "/health",                    # uptime monitoring / load balancer
 )
