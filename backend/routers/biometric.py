@@ -26,8 +26,7 @@ router = APIRouter(prefix="/api/biometric", tags=["Biometric"])
 
 _ADMS_PREFIX = "/iclock"
 
-HALF_DAY_HOURS   = 4.0
-MIN_CHECKOUT_HRS = 1.0
+HALF_DAY_HOURS = 4.0
 
 # Per-device stamp tracking (in-memory; resets on restart → triggers full resync, safe due to upsert)
 # Key: device serial number (SN), Value: unix timestamp of last punch we processed
@@ -35,43 +34,48 @@ _device_stamps: dict[str, int] = {}
 
 
 def _upsert_punch(db: Session, bio_id: str, ts: datetime):
-    """Insert or merge a single punch into the attendance table."""
-    emp_by_bio = {}
-    for e in db.query(Employee).filter(Employee.biometric_id == bio_id).all():
-        emp_by_bio[str(e.biometric_id).strip()] = e
+    """Insert or merge a single punch into the attendance table.
 
-    emp = emp_by_bio.get(str(bio_id).strip())
+    Rule: first punch of the day = in_time (login).
+          every later punch = out_time (logout), only advancing forward.
+          in-between punches are naturally overwritten by the last one.
+    """
+    emp = db.query(Employee).filter(Employee.biometric_id == bio_id.strip()).first()
     if not emp:
         return False
 
-    d = ts.date()
-    in_time  = ts.strftime("%H:%M")
-    out_time = None
-    hours    = 0.0
-    status   = "Present"
+    d          = ts.date()
+    punch_time = ts.strftime("%H:%M")
 
-    # Check if there's already a record for that day
     existing = db.query(Attendance).filter(
         Attendance.employee_id == emp.id,
-        Attendance.date == d,
+        Attendance.date        == d,
     ).first()
 
     if existing:
-        # Update out_time if this punch is later than existing in_time
-        existing_in = datetime.strptime(f"{d} {existing.in_time}", "%Y-%m-%d %H:%M") if existing.in_time else ts
-        if ts > existing_in:
-            gap = (ts - existing_in).total_seconds() / 3600.0
-            if gap >= MIN_CHECKOUT_HRS:
-                existing.out_time = in_time
-                existing.working_hours = round(gap, 2)
-                if existing.status not in ("On Leave", "WFH"):
-                    existing.status = "Half Day" if gap < HALF_DAY_HOURS else "Present"
+        if not existing.in_time:
+            return True
+        in_dt = datetime.strptime(f"{d} {existing.in_time}", "%Y-%m-%d %H:%M")
+        if ts <= in_dt:
+            return True  # earlier than or same as check-in — ignore
+
+        # Only advance out_time — never overwrite a later punch with an earlier one
+        if existing.out_time:
+            out_dt = datetime.strptime(f"{d} {existing.out_time}", "%Y-%m-%d %H:%M")
+            if ts <= out_dt:
+                return True  # not the latest punch yet — skip
+
+        gap = (ts - in_dt).total_seconds() / 3600.0
+        existing.out_time      = punch_time
+        existing.working_hours = round(gap, 2)
+        if existing.status not in ("On Leave", "WFH"):
+            existing.status = "Half Day" if gap < HALF_DAY_HOURS else "Present"
         db.commit()
     else:
-        tbl = Attendance.__table__
+        tbl  = Attendance.__table__
         stmt = pg_insert(tbl).values(
             employee_id=emp.id, date=d,
-            in_time=in_time, out_time=None, working_hours=0.0, status="Present",
+            in_time=punch_time, out_time=None, working_hours=0.0, status="Present",
         ).on_conflict_do_nothing(constraint="uq_attendance_emp_date")
         db.execute(stmt)
         db.commit()

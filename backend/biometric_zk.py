@@ -21,11 +21,6 @@ from backend.models.leave import Attendance
 # Hours threshold below which a day counts as Half Day (only used when both punches exist)
 HALF_DAY_HOURS = 4.0
 
-# Minimum hours gap between first and last punch to treat the last punch as a real
-# checkout. Anything shorter is assumed to be a break/coffee punch — out_time is left
-# blank so the employee isn't wrongly flagged as Half Day.
-MIN_CHECKOUT_HOURS = 1.0
-
 
 def _connect(ip: str, port: int = 4370, timeout: int = 10, password: int = 0):
     """Open a ZK connection. Raises a clear error if pyzk is missing or device unreachable."""
@@ -156,14 +151,13 @@ def sync_device(db: Session, ip: str, port: int, from_date: _date, to_date: _dat
         last  = times[-1]
         in_time = first.strftime("%H:%M")
 
-        # Only treat the last punch as checkout if the gap from first punch is
-        # large enough to be a real work session — short gaps are break punches.
+        # First punch = login, last punch = logout.
+        # In-between punches are ignored — only first and last matter.
+        # out_time is only set when there is more than one distinct punch.
         gap_hours = (last - first).total_seconds() / 3600.0
-        out_time = last.strftime("%H:%M") if gap_hours >= MIN_CHECKOUT_HOURS else None
+        out_time  = last.strftime("%H:%M") if last != first else None
+        hours     = round(gap_hours, 2) if out_time else 0.0
 
-        hours = round(gap_hours, 2) if out_time else 0.0
-
-        # status: any punch => Present; both punches but short day => Half Day
         status = "Present"
         if out_time and hours < HALF_DAY_HOURS:
             status = "Half Day"
