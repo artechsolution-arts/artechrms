@@ -1,3 +1,4 @@
+import logging
 import os
 from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -13,6 +14,8 @@ from backend.models.biometric import BiometricDevice
 from backend.models.employee import Employee
 from backend.models.leave import Attendance
 from backend import biometric_zk
+
+logger = logging.getLogger("biometric.adms")
 
 router = APIRouter(prefix="/api/biometric", tags=["Biometric"])
 
@@ -90,8 +93,9 @@ async def adms_getrequest(request: Request):
     Return GetStamp=0 on first contact so device sends full history.
     Return last-processed timestamp on subsequent calls so device only sends new punches.
     """
-    sn = request.query_params.get("SN", "unknown")
+    sn    = request.query_params.get("SN", "unknown")
     stamp = _device_stamps.get(sn, 0)   # 0 = "send everything you have"
+    logger.info("ADMS getrequest | SN=%s | returning GetStamp=%s", sn, stamp)
     return Response(
         content=f"OK\r\nGetStamp={stamp}\r\n",
         media_type="text/plain",
@@ -110,10 +114,14 @@ async def adms_cdata(request: Request, db: Session = Depends(get_db)):
 
     body = (await request.body()).decode("utf-8", errors="ignore")
 
+    logger.info("ADMS cdata | SN=%s | table=%s | body_len=%d", sn, table, len(body))
+
     if table != "ATTLOG" or not body.strip():
+        logger.info("ADMS cdata | SN=%s | skipped (table=%s)", sn, table)
         return Response(content="OK: 0\r\n", media_type="text/plain")
 
-    accepted   = 0
+    accepted    = 0
+    skipped     = 0
     latest_unix = _device_stamps.get(sn, 0)
 
     for line in body.strip().splitlines():
@@ -124,21 +132,25 @@ async def adms_cdata(request: Request, db: Session = Depends(get_db)):
         try:
             ts = datetime.strptime(parts[1].strip(), "%Y-%m-%d %H:%M:%S")
         except ValueError:
+            skipped += 1
             continue
         try:
             if _upsert_punch(db, bio_id, ts):
                 accepted += 1
-            # advance stamp even for unmatched punches so device doesn't re-send them
+            else:
+                skipped += 1   # bio_id not matched to any employee
             unix_ts = int(ts.timestamp())
             if unix_ts > latest_unix:
                 latest_unix = unix_ts
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("ADMS punch error bio_id=%s ts=%s: %s", bio_id, ts, e)
+            skipped += 1
 
-    # Persist the latest timestamp so next GetStamp call returns it
     if sn and latest_unix > _device_stamps.get(sn, 0):
         _device_stamps[sn] = latest_unix
 
+    logger.info("ADMS cdata | SN=%s | accepted=%d skipped=%d stamp→%d",
+                sn, accepted, skipped, latest_unix)
     return Response(content=f"OK: {accepted}\r\n", media_type="text/plain")
 
 
@@ -162,6 +174,21 @@ def _ser(d: BiometricDevice) -> dict:
         "location": d.location, "is_active": d.is_active,
         "last_sync_at": str(d.last_sync_at) if d.last_sync_at else None,
         "last_status": d.last_status,
+    }
+
+
+# ── ADMS connectivity status ─────────────────────────────────
+@router.get("/adms-status")
+def adms_status():
+    """Returns which devices have connected via ADMS and their last seen stamp."""
+    return {
+        "connected_devices": [
+            {"sn": sn, "last_punch_unix": stamp,
+             "last_punch_time": datetime.utcfromtimestamp(stamp).strftime("%Y-%m-%d %H:%M:%S") if stamp else None}
+            for sn, stamp in _device_stamps.items()
+        ],
+        "total": len(_device_stamps),
+        "note": "Resets on server restart. Empty means device has not pushed yet.",
     }
 
 
