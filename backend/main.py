@@ -137,6 +137,11 @@ with engine.connect() as _conn:
             run_at TIMESTAMP DEFAULT NOW(),
             employees_credited INTEGER DEFAULT 0
         )""",
+        """CREATE TABLE IF NOT EXISTS hr_reminder_log (
+            id SERIAL PRIMARY KEY,
+            reminder_key VARCHAR(200) NOT NULL UNIQUE,
+            sent_at TIMESTAMP DEFAULT NOW()
+        )""",
         """CREATE TABLE IF NOT EXISTS edit_requests (
             id SERIAL PRIMARY KEY,
             employee_id INTEGER NOT NULL REFERENCES employees(id),
@@ -274,6 +279,9 @@ start_accrual_scheduler()
 
 from backend.work_hours_scheduler import start_work_hours_scheduler
 start_work_hours_scheduler()
+
+from backend.hr_reminders import start_reminder_scheduler
+start_reminder_scheduler()
 
 # Seed default approval workflow configs
 from backend.database import SessionLocal as _SL
