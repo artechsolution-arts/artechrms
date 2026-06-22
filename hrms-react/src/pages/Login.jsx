@@ -624,7 +624,7 @@ export default function Login({ onLogin }) {
                 <img src="/logo.svg" alt="Artech" style={{ width: 28, height: 28 }} />
               </div>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 16, color: '#fff', letterSpacing: '0.01em' }}>AR Peopliz</div>
+                <div style={{ fontWeight: 800, fontSize: 22, color: '#fff', letterSpacing: '0.01em' }}>AR Peopliz</div>
                 <div style={{ fontSize: 11, color: C.teal, marginTop: 1, letterSpacing: '0.04em', fontWeight: 500 }}>Human Resource Management</div>
               </div>
             </div>
@@ -655,20 +655,6 @@ export default function Login({ onLogin }) {
               </p>
             </div>
 
-            {/* Stats */}
-            <div style={{ display: 'flex', gap: 14, marginBottom: 40, animation: 'heroUp 0.6s ease-out 0.28s both' }}>
-              {[
-                { value: '21+', label: 'Employees',  color: C.teal  },
-                { value: '6',   label: 'HR Modules', color: C.blue  },
-                { value: '99%', label: 'Uptime',     color: C.green },
-              ].map(({ value, label, color }, i) => (
-                <div key={i} className="lp-stat" style={{ animationDelay: `${0.32 + i * 0.06}s`, minWidth: 90 }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1, fontFamily: "'DM Serif Display', serif" }}>{value}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 5, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 500 }}>{label}</div>
-                </div>
-              ))}
-            </div>
-
             {/* CTA */}
             <button
               className="lp-cta"
@@ -694,7 +680,7 @@ export default function Login({ onLogin }) {
                 <img src="/logo.svg" alt="Artech" style={{ width: 26, height: 26 }} />
               </div>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: '0.01em' }}>AR Peopliz</div>
+                <div style={{ fontWeight: 800, fontSize: 20, color: '#fff', letterSpacing: '0.01em' }}>AR Peopliz</div>
                 <div style={{ fontSize: 11, color: C.teal, opacity: 0.8, marginTop: 1, letterSpacing: '0.04em', fontWeight: 500 }}>Human Resource Management</div>
               </div>
             </div>
@@ -732,20 +718,6 @@ export default function Login({ onLogin }) {
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,0.9)', lineHeight: 1.3 }}>{title}</div>
                     <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2, fontWeight: 400, lineHeight: 1.4 }}>{desc}</div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Stats row */}
-            <div style={{ display: 'flex', gap: 10, margin: '24px 0', animation: revealed ? 'fadeUp 0.5s ease-out 1.05s both' : 'none' }}>
-              {[
-                { value: '21+', label: 'Employees',  color: C.teal  },
-                { value: '6',   label: 'HR Modules', color: C.blue  },
-                { value: '99%', label: 'Uptime',     color: C.green },
-              ].map(({ value, label, color }, i) => (
-                <div key={i} className="lp-stat" style={{ animationDelay: `${1.08 + i * 0.06}s` }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1, fontFamily: "'DM Serif Display', serif" }}>{value}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 500 }}>{label}</div>
                 </div>
               ))}
             </div>
