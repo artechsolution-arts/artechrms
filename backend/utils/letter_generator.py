@@ -1039,6 +1039,61 @@ LETTER_FIELDS = {
 }
 
 
+def generate_custom_letter(content: str, fields: dict, template: dict | None = None) -> bytes:
+    """Generate a PDF from a freeform template string with {{key}} variable substitution."""
+    import re
+    token = _tpl_ctx.set(template or {})
+    try:
+        buf = BytesIO()
+        c = canvas.Canvas(buf, pagesize=A4)
+        _draw_header(c)
+        _draw_footer(c)
+        _draw_watermark(c)
+
+        def _replace(m):
+            key = m.group(1).strip()
+            val = fields.get(key)
+            if val is None:
+                return m.group(0)
+            if key.endswith('_date'):
+                return _fmt(str(val))
+            return str(val)
+
+        text = re.sub(r'\{\{(\w+)\}\}', _replace, content)
+
+        c.setFont(_font(), _fsize())
+        c.setFillColor(DARK)
+        y = _header_bottom_y() - 10 * mm
+
+        for para in text.split('\n\n'):
+            para = para.strip()
+            if not para:
+                continue
+            for line in para.split('\n'):
+                line = line.strip()
+                if not line:
+                    y -= PG
+                    continue
+                y = _wrap(c, line, ML, y)
+                y -= PG / 2
+                if y < 55 * mm:
+                    c.showPage()
+                    _draw_header(c)
+                    _draw_footer(c)
+                    _draw_watermark(c)
+                    c.setFont(_font(), _fsize())
+                    c.setFillColor(DARK)
+                    y = _header_bottom_y() - 10 * mm
+            y -= PG
+
+        _signoff(c, y - PG * 2, _t("hr_signatory", HR_SIGNATORY))
+        c.save()
+        buf.seek(0)
+        return buf.read()
+    finally:
+        _tpl_ctx.reset(token)
+
+
 def generate_letter(letter_type: str, fields: dict, template: dict | None = None) -> bytes:
     renderer = BODY_RENDERERS.get(letter_type)
     if renderer is None:

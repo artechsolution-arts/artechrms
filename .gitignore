@@ -1,4 +1,5 @@
 .env
+.env.dev
 
 # Frontend build output is committed so Railway skips the Node.js build stage.
 # Run `npm run build` in hrms-react/ then commit frontend/ before deploying.

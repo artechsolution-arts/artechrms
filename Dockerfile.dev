@@ -1,0 +1,20 @@
+# Local development backend — code is volume-mounted for hot reload.
+# System deps match production Dockerfile so behaviour is identical.
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev gcc libffi-dev libjpeg-dev zlib1g-dev \
+    libcairo2 libglib2.0-0 libpango-1.0-0 libpangocairo-1.0-0 \
+    fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python deps (cached layer — only re-runs when requirements.txt changes)
+COPY backend/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir pillow
+
+# Create upload dirs
+RUN mkdir -p static/uploads/jd static/uploads/ig_posts static
+
+# Code is volume-mounted at runtime — no COPY needed
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]

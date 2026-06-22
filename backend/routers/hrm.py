@@ -1192,6 +1192,244 @@ def download_generated_letter(filename: str):
     )
 
 
+# ── Custom Document Templates ────────────────────────────────────────────────
+from backend.models.doc_template import DocumentTemplate as _DocTpl
+
+
+class _DocTplCreate(_BM):
+    name: str
+    category: str = "HR Letter"
+    content: str
+    variables: list[dict] = []
+
+
+class _DocTplUpdate(_BM):
+    name: str | None = None
+    category: str | None = None
+    content: str | None = None
+    variables: list[dict] | None = None
+
+
+class _DocTplGenerateReq(_BM):
+    employee_id: int | None = None
+    fields: dict[str, _Any] = {}
+
+
+@router.get("/doc-templates")
+def list_doc_templates(db: Session = Depends(get_db)):
+    return db.query(_DocTpl).order_by(_DocTpl.created_at.desc()).all()
+
+
+@router.post("/doc-templates")
+def create_doc_template(body: _DocTplCreate, db: Session = Depends(get_db)):
+    tpl = _DocTpl(**body.dict())
+    db.add(tpl)
+    db.commit()
+    db.refresh(tpl)
+    return tpl
+
+
+@router.put("/doc-templates/{tpl_id}")
+def update_doc_template(tpl_id: int, body: _DocTplUpdate, db: Session = Depends(get_db)):
+    tpl = db.query(_DocTpl).filter(_DocTpl.id == tpl_id).first()
+    if not tpl:
+        raise HTTPException(404, "Template not found")
+    for k, v in body.dict(exclude_unset=True).items():
+        setattr(tpl, k, v)
+    tpl.updated_at = _dt.utcnow()
+    db.commit()
+    db.refresh(tpl)
+    return tpl
+
+
+@router.delete("/doc-templates/{tpl_id}")
+def delete_doc_template(tpl_id: int, db: Session = Depends(get_db)):
+    tpl = db.query(_DocTpl).filter(_DocTpl.id == tpl_id).first()
+    if not tpl:
+        raise HTTPException(404, "Template not found")
+    db.delete(tpl)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/doc-templates/{tpl_id}/generate")
+def generate_from_doc_template(
+    tpl_id: int,
+    body: _DocTplGenerateReq,
+    db: Session = Depends(get_db),
+):
+    tpl = db.query(_DocTpl).filter(_DocTpl.id == tpl_id).first()
+    if not tpl:
+        raise HTTPException(404, "Template not found")
+
+    fields = dict(body.fields)
+
+    emp = None
+    if body.employee_id:
+        emp = db.query(_Employee).filter(_Employee.id == body.employee_id).first()
+        if emp:
+            fields.setdefault("employee_name", emp.full_name)
+            fields.setdefault("candidate_name", emp.full_name)
+            fields.setdefault("employee_id_code", emp.employee_id or "")
+            fields.setdefault("designation", emp.designation_rel.name if emp.designation_rel else "")
+            fields.setdefault("department", emp.department_rel.name if emp.department_rel else "")
+            fields.setdefault("work_email", emp.email or "")
+
+    from backend.models.hrm import LetterheadTemplate as _LT
+    tpl_row = db.query(_LT).filter(_LT.id == 1).first()
+    tpl_cfg = {
+        col.key: getattr(tpl_row, col.key)
+        for col in _LT.__table__.columns
+        if col.key not in ("id", "updated_at")
+    } if tpl_row else {}
+
+    from backend.utils.letter_generator import generate_custom_letter
+    pdf_bytes = generate_custom_letter(tpl.content, fields, template=tpl_cfg)
+
+    _os.makedirs(GENERATED_DOCS_DIR, exist_ok=True)
+    safe_name = tpl.name.replace(" ", "_").replace("/", "_")
+    timestamp  = _dt.utcnow().strftime("%Y%m%d_%H%M%S")
+    emp_prefix = (emp.employee_id or str(body.employee_id)) if emp else "doc"
+    filename   = f"{emp_prefix}_{safe_name}_{timestamp}.pdf"
+
+    with open(_os.path.join(GENERATED_DOCS_DIR, filename), "wb") as fh:
+        fh.write(pdf_bytes)
+
+    if emp:
+        from backend.models.document_request import DocumentRequest as _DR
+        db.add(_DR(
+            employee_id=body.employee_id,
+            doc_type=tpl.name,
+            status="Fulfilled",
+            requested_at=_dt.utcnow(),
+            fulfilled_at=_dt.utcnow(),
+            file_url=f"/api/hrm/letters/download/{filename}",
+            file_name=filename,
+        ))
+        db.commit()
+
+    return _Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Filename": filename,
+        },
+    )
+
+
+class _ExtractFromDocReq(_BM):
+    doc_name: str  # filename from /api/hrm/company-docs list
+
+
+def _normalise_placeholders(text: str):
+    """Convert [Square Bracket Placeholder] and {{double_curly}} formats to {{snake_case}}.
+
+    Returns (converted_text, variables_list).
+    Brackets like [Employee Name] → {{employee_name}}.
+    Existing {{var}} are kept as-is.
+    """
+    import re as _re
+
+    label_map: dict[str, str] = {}  # key → original label
+
+    def bracket_replacer(m):
+        label = m.group(1).strip()
+        key   = _re.sub(r'\s+', '_', label.lower())
+        key   = _re.sub(r'[^a-z0-9_]', '', key)
+        if not key:
+            return m.group(0)
+        label_map[key] = label
+        return f"{{{{{key}}}}}"
+
+    # Convert [Placeholder Text] → {{placeholder_text}}
+    converted = _re.sub(r'\[([^\[\]]{1,60})\]', bracket_replacer, text)
+
+    # Now collect all {{keys}} in order (bracket-converted + any pre-existing)
+    all_keys = list(dict.fromkeys(_re.findall(r'\{\{(\w+)\}\}', converted)))
+    variables = []
+    for k in all_keys:
+        original_label = label_map.get(k, k.replace("_", " ").title())
+        variables.append({
+            "key":   k,
+            "label": original_label,
+            "type":  "date" if any(w in k for w in ("date", "dob", "doj")) else "text",
+        })
+
+    return converted, variables
+
+
+@router.post("/doc-templates/extract-from-doc")
+def extract_from_existing_doc(body: _ExtractFromDocReq):
+    """Extract text + detect variables from an already-uploaded company document."""
+    safe = _os.path.basename(body.doc_name)
+    path = _os.path.join(COMPANY_DOCS_DIR, safe)
+    if not _os.path.isfile(path):
+        raise HTTPException(404, "Document not found in company docs")
+
+    ext = safe.rsplit(".", 1)[-1].lower() if "." in safe else ""
+    text = ""
+
+    if ext == "docx":
+        try:
+            from docx import Document as _DocxDoc
+            import io as _io
+            doc = _DocxDoc(path)
+            text = "\n".join(p.text for p in doc.paragraphs).strip()
+        except Exception as e:
+            raise HTTPException(400, f"Could not read DOCX: {e}")
+    elif ext == "pdf":
+        try:
+            from pypdf import PdfReader as _PdfReader
+            import io as _io
+            reader = _PdfReader(path)
+            text = "\n\n".join(p.extract_text() or "" for p in reader.pages).strip()
+        except Exception as e:
+            raise HTTPException(400, f"Could not read PDF: {e}")
+    else:
+        raise HTTPException(400, "Only PDF and DOCX documents are supported")
+
+    if not text:
+        raise HTTPException(422, "No selectable text found — document may be a scanned image")
+
+    converted_text, variables = _normalise_placeholders(text)
+    return {"text": converted_text, "variables": variables}
+
+
+@router.post("/doc-templates/extract-text")
+async def extract_text_from_file(file: UploadFile = File(...)):
+    """Extract plain text from an uploaded PDF or DOCX so it can be used as template content."""
+    fname = (file.filename or "").lower()
+    data  = await file.read()
+
+    if fname.endswith(".docx"):
+        try:
+            from docx import Document as _DocxDoc
+            import io as _io
+            doc = _DocxDoc(_io.BytesIO(data))
+            text = "\n".join(p.text for p in doc.paragraphs).strip()
+        except Exception as e:
+            raise HTTPException(400, f"Could not read DOCX: {e}")
+
+    elif fname.endswith(".pdf"):
+        try:
+            from pypdf import PdfReader as _PdfReader
+            import io as _io
+            reader = _PdfReader(_io.BytesIO(data))
+            text   = "\n\n".join(p.extract_text() or "" for p in reader.pages).strip()
+        except Exception as e:
+            raise HTTPException(400, f"Could not read PDF: {e}")
+
+    else:
+        raise HTTPException(400, "Only PDF and DOCX files are supported")
+
+    if not text:
+        raise HTTPException(422, "No text could be extracted from this file. Make sure the document contains selectable text (not a scanned image).")
+
+    converted_text, variables = _normalise_placeholders(text)
+    return {"text": converted_text, "variables": variables}
+
+
 # ── Letterhead Template ──────────────────────────────────────────────────────
 from backend.models.hrm import LetterheadTemplate as _LetterheadTemplate
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../api';
-import { FileText, Download, Eye, FolderOpen, Upload, Trash2, Send, ChevronDown, Search, Check, X, Settings, Image, Phone, MapPin, User, Palette, Save, RefreshCw, ZoomIn, Move, PenLine, Type, Layers } from 'lucide-react';
+import { FileText, Download, Eye, FolderOpen, Upload, Trash2, Send, ChevronDown, Search, Check, X, Settings, Image, Phone, MapPin, User, Palette, Save, RefreshCw, ZoomIn, Move, PenLine, Type, Layers, Plus, Edit2, Wand2 } from 'lucide-react';
 
 const DOC_ICONS = {
   'Appointment Letter':            '📋',
@@ -264,6 +264,431 @@ function GenerateModal({ doc, employees, letterFields, onClose, toast }) {
     </div>
   );
 }
+
+// ── Custom Document Templates ────────────────────────────────────────────────
+
+const TEMPLATE_CATEGORIES = ['HR Letter', 'Offer', 'Policy', 'Notice', 'Certificate', 'Other'];
+
+// Reusable custom dropdown matching EmpDropdown style
+function SelectDropdown({ value, onChange, options, placeholder = 'Select…' }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm bg-white dark:bg-gray-900 transition-all ${
+          open ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/20' : 'border-gray-200 dark:border-gray-700'
+        }`}
+      >
+        <span className="flex-1 text-left text-gray-700 dark:text-gray-300 truncate">{value || placeholder}</span>
+        <ChevronDown size={14} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1.5 z-50 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
+          <div className="overflow-y-auto max-h-48 py-1">
+            {options.map(opt => (
+              <button
+                key={opt} type="button"
+                onClick={() => { onChange(opt); setOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                  value === opt
+                    ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+              >
+                <span className="flex-1 text-left">{opt}</span>
+                {value === opt && <Check size={12} className="text-[var(--accent)]" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TemplateFormModal({ template, onClose, onSave, toast, docs = [] }) {
+  const isEdit = !!template;
+  const [name, setName]           = useState(template?.name || '');
+  const [category, setCategory]   = useState(template?.category || 'HR Letter');
+  const [content, setContent]     = useState(template?.content || '');
+  const [variables, setVariables] = useState(template?.variables || []);
+  const [saving, setSaving]       = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState(null);
+  const [showUploadNew, setShowUploadNew] = useState(false);
+  const [dragOver, setDragOver]   = useState(false);
+  const fileRef = useRef(null);
+
+  const detectVars = (text = content) => {
+    const matches = [...text.matchAll(/\{\{(\w+)\}\}/g)];
+    const keys = [...new Set(matches.map(m => m[1]))];
+    const existing = new Map((variables || []).map(v => [v.key, v]));
+    return keys.map(key => existing.get(key) || {
+      key,
+      label: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      type: key.endsWith('_date') ? 'date' : 'text',
+    });
+  };
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'docx'].includes(ext)) return toast('Only PDF or DOCX files are supported', 'warning');
+    setSelectedDoc(file.name);
+    setExtracting(true);
+    try {
+      const token = localStorage.getItem('artech_hrms_token');
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/hrm/doc-templates/extract-text', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Extraction failed'); }
+      const { text, variables: detectedVars } = await res.json();
+      setContent(text);
+      setVariables(detectedVars);
+      if (!name) setName(file.name.replace(/\.(pdf|docx)$/i, '').replace(/[-_]/g, ' '));
+      toast(`Extracted ${detectedVars.length} variable(s) from document`, 'success');
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const submit = async () => {
+    if (!name.trim())    return toast('Template name is required', 'warning');
+    if (!content.trim()) return toast('Content is required', 'warning');
+    setSaving(true);
+    try {
+      const vars = variables.length ? variables : detectVars();
+      const endpoint = isEdit ? `/api/hrm/doc-templates/${template.id}` : '/api/hrm/doc-templates';
+      const saved = await api(isEdit ? 'PUT' : 'POST', endpoint, { name, category, content, variables: vars });
+      onSave(saved);
+      toast(isEdit ? 'Template updated' : 'Template created', 'success');
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden w-full"
+        style={{ maxWidth: 760, maxHeight: '92vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center">
+              <PenLine size={15} className="text-[var(--accent)]" />
+            </div>
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">{isEdit ? 'Edit Template' : 'New Letter Template'}</h3>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={16} /></button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+          {/* Source selector — only shown for new templates */}
+          {!isEdit && (
+            <div className="space-y-3">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Select Document Source</label>
+
+              {/* Existing docs dropdown */}
+              {docs.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5">Pick from uploaded company documents:</p>
+                  <SelectDropdown
+                    value={selectedDoc}
+                    onChange={async (docName) => {
+                      setSelectedDoc(docName);
+                      setExtracting(true);
+                      try {
+                        const token = localStorage.getItem('artech_hrms_token');
+                        const res = await fetch('/api/hrm/doc-templates/extract-from-doc', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ doc_name: docName }),
+                        });
+                        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Extraction failed'); }
+                        const { text, variables: vars } = await res.json();
+                        setContent(text);
+                        setVariables(vars);
+                        if (!name) setName(docName.replace(/\.(pdf|docx)$/i, '').replace(/[-_]/g, ' '));
+                        toast(`Extracted ${vars.length} variable(s)`, 'success');
+                      } catch (e) { toast(e.message, 'error'); }
+                      finally { setExtracting(false); }
+                    }}
+                    options={docs.map(d => d.name)}
+                    placeholder="Choose a document…"
+                  />
+                  {extracting && (
+                    <div className="flex items-center gap-2 mt-2 text-xs text-[var(--accent)]">
+                      <RefreshCw size={12} className="animate-spin" /> Extracting text…
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Divider */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+                <span className="text-xs text-gray-400">or</span>
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+              </div>
+
+              {/* Upload new file */}
+              <div
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]); }}
+                onClick={() => fileRef.current?.click()}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+                  dragOver ? 'border-[var(--accent)] bg-[var(--accent)]/5'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-[var(--accent)]/50'
+                }`}
+              >
+                <Upload size={16} className="text-gray-400 flex-shrink-0" />
+                <span className="text-sm text-gray-500">Upload a new PDF or DOCX file</span>
+                <input ref={fileRef} type="file" accept=".pdf,.docx" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
+              </div>
+            </div>
+          )}
+
+          {/* Name + Category */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Template Name *</label>
+              <input
+                value={name} onChange={e => setName(e.target.value)}
+                placeholder="e.g. Offer Letter, Salary Certificate"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Category</label>
+              <SelectDropdown value={category} onChange={setCategory} options={TEMPLATE_CATEGORIES} />
+            </div>
+          </div>
+
+          {/* Content textarea */}
+          {(content || isEdit) && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Letter Content</label>
+                <button
+                  type="button"
+                  onClick={() => setVariables(detectVars())}
+                  className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors"
+                >
+                  <Wand2 size={11} /> Re-detect variables
+                </button>
+              </div>
+              <textarea
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                rows={14}
+                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-200 font-mono p-3 resize-y focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
+                style={{ minHeight: 200 }}
+              />
+            </div>
+          )}
+
+          {/* Variables list */}
+          {variables.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                {variables.length} Variable{variables.length !== 1 ? 's' : ''} Detected
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {variables.map((v, i) => (
+                  <div key={v.key} className="flex items-center gap-2 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                    <code className="text-xs font-mono text-[var(--accent)] bg-[var(--accent)]/10 px-1.5 py-0.5 rounded-md flex-shrink-0 max-w-[120px] truncate">
+                      {`{{${v.key}}}`}
+                    </code>
+                    <input
+                      value={v.label}
+                      onChange={e => setVariables(vars => vars.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                      className="flex-1 text-xs bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 min-w-0"
+                      placeholder="Field label…"
+                    />
+                    <SelectDropdown
+                      value={v.type}
+                      onChange={val => setVariables(vars => vars.map((x, j) => j === i ? { ...x, type: val } : x))}
+                      options={['text', 'date', 'number']}
+                    />
+                    <button type="button" onClick={() => setVariables(vars => vars.filter((_, j) => j !== i))} className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-3">
+          <button onClick={onClose} className="btn btn-secondary btn-sm">Cancel</button>
+          <button onClick={submit} disabled={saving || extracting} className="btn btn-primary btn-sm gap-1.5">
+            <Save size={13} />
+            {saving ? 'Saving…' : isEdit ? 'Update Template' : 'Create Template'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function GenerateFromTemplateModal({ template, employees, onClose, toast }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const vars  = template.variables || [];
+
+  const [empId, setEmpId]       = useState(null);
+  const [form, setForm]         = useState(() => {
+    const d = {};
+    vars.forEach(v => { if (v.type === 'date') d[v.key] = today; });
+    return d;
+  });
+  const [generating, setGenerating] = useState(false);
+
+  const f = patch => setForm(p => ({ ...p, ...patch }));
+
+  // Auto-fill employee data from DB when employee is selected
+  const empMeta = empId ? employees.find(e => e.id === empId) : null;
+
+  const submit = async () => {
+    // validate non-auto-fill required vars
+    const autoKeys = new Set(['employee_name','candidate_name','designation','department','employee_id_code','work_email']);
+    for (const v of vars) {
+      if (!autoKeys.has(v.key) && !form[v.key]?.toString().trim()) {
+        return toast(`"${v.label}" is required`, 'warning');
+      }
+    }
+    setGenerating(true);
+    try {
+      const token = localStorage.getItem('artech_hrms_token');
+      const res = await fetch(`/api/hrm/doc-templates/${template.id}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ employee_id: empId || null, fields: form }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Generation failed');
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = `${template.name}.pdf`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast('Document generated & downloaded', 'success');
+      onClose();
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const autoKeys = new Set(['employee_name','candidate_name','designation','department','employee_id_code','work_email']);
+  const manualVars = vars.filter(v => !autoKeys.has(v.key));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden w-full"
+        style={{ maxWidth: 520, maxHeight: '88vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
+              <Send size={14} className="text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Generate Document</h3>
+              <p className="text-xs text-gray-400">{template.name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={16} /></button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Employee picker */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Employee <span className="text-gray-400 font-normal normal-case">(optional — auto-fills name, role, dept)</span>
+            </label>
+            <EmpDropdown value={empId} onChange={setEmpId} employees={employees} />
+            {empMeta && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {[['Name', empMeta.full_name], ['Role', empMeta.designation], ['Dept', empMeta.department]].filter(([,v]) => v).map(([l, v]) => (
+                  <span key={l} className="text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                    {l}: {v}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Manual variable fields */}
+          {manualVars.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fill in Details</p>
+              {manualVars.map(v => (
+                <div key={v.key}>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    {v.label}
+                  </label>
+                  <input
+                    type={v.type === 'date' ? 'date' : v.type === 'number' ? 'number' : 'text'}
+                    value={form[v.key] || ''}
+                    onChange={e => f({ [v.key]: e.target.value })}
+                    placeholder={`Enter ${v.label.toLowerCase()}…`}
+                    className="lp-input w-full"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {vars.length === 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+              This template has no variable fields — it will generate as-is.
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-3">
+          <button onClick={onClose} className="btn btn-secondary btn-sm">Cancel</button>
+          <button onClick={submit} disabled={generating} className="btn btn-primary btn-sm gap-1.5">
+            <Send size={13} />
+            {generating ? 'Generating…' : 'Generate & Download'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ── Letterhead Template Editor ──────────────────────────────────────────────
 const DEFAULTS = {
@@ -1603,6 +2028,21 @@ export default function CompanyDocs({ toast }) {
   const fileInputRef = useRef(null);
   const blobUrlRef = useRef(null);
 
+  // Custom templates state
+  const [customTemplates, setCustomTemplates] = useState([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);   // null=closed, false=new, obj=edit
+  const [generateFromTpl, setGenerateFromTpl] = useState(null);
+  const [deletingTpl, setDeletingTpl] = useState(null);
+
+  const loadCustomTemplates = () => {
+    setTemplatesLoading(true);
+    api('GET', '/api/hrm/doc-templates')
+      .then(setCustomTemplates)
+      .catch(e => toast(e.message, 'error'))
+      .finally(() => setTemplatesLoading(false));
+  };
+
   const load = () => {
     setLoading(true);
     Promise.all([
@@ -1615,7 +2055,7 @@ export default function CompanyDocs({ toast }) {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadCustomTemplates(); }, []);
 
   const closePreview = () => {
     if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
@@ -1691,12 +2131,18 @@ export default function CompanyDocs({ toast }) {
             </button>
           </div>
         )}
+        {activeTab === 'custom' && (
+          <button onClick={() => setEditingTemplate(false)} className="btn btn-primary btn-sm gap-1.5">
+            <Plus size={13} /> New Template
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 pb-0">
         {[
           { id: 'documents', label: 'Documents', icon: FileText },
+          { id: 'custom', label: 'Custom Templates', icon: PenLine },
           { id: 'template', label: 'Letterhead Template', icon: Settings },
         ].map(({ id, label, icon: Icon }) => (
           <button
@@ -1717,6 +2163,127 @@ export default function CompanyDocs({ toast }) {
 
       {/* Letterhead Template tab */}
       {activeTab === 'template' && <LetterheadEditor toast={toast} />}
+
+      {/* Custom Templates tab */}
+      {activeTab === 'custom' && (
+        <>
+          {templatesLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="card p-4 animate-pulse flex gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex-shrink-0" />
+                  <div className="flex-1 space-y-2 pt-1">
+                    <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-3/4" />
+                    <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : customTemplates.length === 0 ? (
+            <div className="card flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 flex items-center justify-center mb-4">
+                <PenLine size={24} className="text-[var(--accent)]" />
+              </div>
+              <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">No custom templates yet</h3>
+              <p className="text-sm text-gray-400 mb-4 max-w-sm">
+                Create a template with your full letter content and <code className="text-[var(--accent)] bg-[var(--accent)]/10 px-1 rounded">{'{{variables}}'}</code> for fields that change per employee.
+              </p>
+              <button onClick={() => setEditingTemplate(false)} className="btn btn-primary btn-sm gap-1.5">
+                <Plus size={13} /> Create First Template
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {customTemplates.map(tpl => (
+                <div key={tpl.id} className="card p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0 text-lg">
+                      📄
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-gray-800 dark:text-gray-200 truncate">{tpl.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{tpl.category}</p>
+                    </div>
+                  </div>
+
+                  {/* Variable badges */}
+                  {tpl.variables?.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {tpl.variables.slice(0, 4).map(v => (
+                        <span key={v.key} className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full font-mono">
+                          {`{{${v.key}}}`}
+                        </span>
+                      ))}
+                      {tpl.variables.length > 4 && (
+                        <span className="text-xs text-gray-400 px-1">+{tpl.variables.length - 4} more</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-1 border-t border-gray-100 dark:border-gray-800">
+                    <button
+                      onClick={() => setGenerateFromTpl(tpl)}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-lg bg-[var(--accent)] text-white hover:opacity-90 transition-opacity"
+                    >
+                      <Send size={11} /> Generate
+                    </button>
+                    <button
+                      onClick={() => setEditingTemplate(tpl)}
+                      className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <Edit2 size={11} /> Edit
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Delete template "${tpl.name}"?`)) return;
+                        setDeletingTpl(tpl.id);
+                        try {
+                          await api('DELETE', `/api/hrm/doc-templates/${tpl.id}`);
+                          setCustomTemplates(ts => ts.filter(t => t.id !== tpl.id));
+                          toast('Template deleted', 'success');
+                        } catch (e) { toast(e.message, 'error'); }
+                        finally { setDeletingTpl(null); }
+                      }}
+                      disabled={deletingTpl === tpl.id}
+                      className="flex items-center px-2 py-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Template form modal */}
+          {editingTemplate !== null && (
+            <TemplateFormModal
+              template={editingTemplate || null}
+              docs={docs}
+              onClose={() => setEditingTemplate(null)}
+              onSave={saved => {
+                setCustomTemplates(ts => {
+                  const idx = ts.findIndex(t => t.id === saved.id);
+                  return idx >= 0 ? ts.map(t => t.id === saved.id ? saved : t) : [saved, ...ts];
+                });
+                setEditingTemplate(null);
+              }}
+              toast={toast}
+            />
+          )}
+
+          {/* Generate from template modal */}
+          {generateFromTpl && (
+            <GenerateFromTemplateModal
+              template={generateFromTpl}
+              employees={employees}
+              onClose={() => setGenerateFromTpl(null)}
+              toast={toast}
+            />
+          )}
+        </>
+      )}
 
       {activeTab === 'documents' && (<>
 

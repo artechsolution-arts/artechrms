@@ -443,15 +443,12 @@ if os.path.isdir(ASSETS):
 
 @app.get("/files/{path:path}")
 def serve_file(path: str):
-    """Proxy MinIO files through the app server so they work from any machine."""
-    from backend.storage import _get_client, MINIO_BUCKET, _CONTENT_TYPES
+    """Proxy R2 (or local fallback) files through the app server."""
+    from backend.storage import download_file, _CONTENT_TYPES
     ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
     content_type = _CONTENT_TYPES.get(ext, "application/octet-stream")
     try:
-        obj = _get_client().get_object(MINIO_BUCKET, path)
-        data = obj.read()
-        obj.close()
-        obj.release_conn()
+        data = download_file(path)
         return Response(content=data, media_type=content_type,
                         headers={"Cache-Control": "max-age=3600"})
     except Exception:

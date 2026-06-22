@@ -35,6 +35,7 @@ def get_db():
 
 def init_db():
     from backend import models  # noqa: F401 — registers all models
+    from backend.models import doc_template  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
     sql = __import__("sqlalchemy").text

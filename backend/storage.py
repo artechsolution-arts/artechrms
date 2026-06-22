@@ -1,97 +1,104 @@
-"""MinIO-backed object storage utility.
+"""Cloudflare R2 object storage (S3-compatible via boto3).
 
-All file uploads go through upload_file(); all deletions go through delete_file().
-The bucket is created on first use with a public-read policy so browsers can
-load images and PDFs directly from the MinIO URL without extra auth headers.
+Falls back to local filesystem when R2 credentials are not configured
+so local development works without any cloud setup.
+
+Interface is unchanged from the previous MinIO module:
+  upload_file(data, folder, filename) -> "/files/<folder>/<filename>"
+  download_file(object_key)           -> bytes
+  delete_file(url)                    -> None
 """
 import io
-import json
 import os
 
-from minio import Minio
-from minio.error import S3Error
+R2_ACCOUNT_ID        = os.getenv("R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY_ID     = os.getenv("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET            = os.getenv("R2_BUCKET", "hrms")
 
-MINIO_ENDPOINT   = os.getenv("MINIO_ENDPOINT",   "minio:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY",  "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY",  "minioadmin123")
-MINIO_BUCKET     = os.getenv("MINIO_BUCKET",      "hrms")
-MINIO_PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL",  "http://localhost:9000")
+_LOCAL_ROOT = os.getenv("LOCAL_FILES_DIR", "/app/local_files")
 
 _CONTENT_TYPES = {
     "jpg": "image/jpeg", "jpeg": "image/jpeg",
-    "png": "image/png", "webp": "image/webp", "gif": "image/gif",
+    "png": "image/png",  "webp": "image/webp", "gif": "image/gif",
     "pdf": "application/pdf",
     "doc": "application/msword",
     "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "txt": "text/plain",
 }
 
-_client: Minio | None = None
+_client = None
 
 
-def _get_client() -> Minio:
+def _r2_ready() -> bool:
+    return bool(R2_ACCOUNT_ID and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY)
+
+
+def _get_client():
     global _client
     if _client is None:
-        _client = Minio(
-            MINIO_ENDPOINT,
-            access_key=MINIO_ACCESS_KEY,
-            secret_key=MINIO_SECRET_KEY,
-            secure=False,
+        import boto3
+        from botocore.client import Config
+        _client = boto3.client(
+            "s3",
+            endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            aws_access_key_id=R2_ACCESS_KEY_ID,
+            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+            region_name="auto",
+            config=Config(signature_version="s3v4"),
         )
-        _ensure_bucket(_client)
     return _client
 
 
-def _ensure_bucket(client: Minio) -> None:
-    try:
-        if not client.bucket_exists(MINIO_BUCKET):
-            client.make_bucket(MINIO_BUCKET)
-        policy = json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [{
-                "Effect":    "Allow",
-                "Principal": {"AWS": ["*"]},
-                "Action":    ["s3:GetObject"],
-                "Resource":  [f"arn:aws:s3:::{MINIO_BUCKET}/*"],
-            }],
-        })
-        client.set_bucket_policy(MINIO_BUCKET, policy)
-    except S3Error:
-        pass
-
+# ── Public API ─────────────────────────────────────────────────────────────────
 
 def upload_file(data: bytes, folder: str, filename: str) -> str:
-    """Upload bytes to MinIO under <bucket>/<folder>/<filename>.
+    """Store bytes under <folder>/<filename>. Returns app-relative URL /files/<key>."""
+    object_key = f"{folder}/{filename}"
 
-    Returns the public URL that browsers can open directly.
-    """
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    content_type = _CONTENT_TYPES.get(ext, "application/octet-stream")
-    object_name = f"{folder}/{filename}"
-    _get_client().put_object(
-        MINIO_BUCKET,
-        object_name,
-        io.BytesIO(data),
-        length=len(data),
-        content_type=content_type,
-    )
-    return f"/files/{object_name}"
+    if _r2_ready():
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        _get_client().put_object(
+            Bucket=R2_BUCKET,
+            Key=object_key,
+            Body=data,
+            ContentType=_CONTENT_TYPES.get(ext, "application/octet-stream"),
+        )
+    else:
+        # Local filesystem fallback for dev
+        dest_dir = os.path.join(_LOCAL_ROOT, folder)
+        os.makedirs(dest_dir, exist_ok=True)
+        with open(os.path.join(dest_dir, filename), "wb") as fh:
+            fh.write(data)
+
+    return f"/files/{object_key}"
+
+
+def download_file(object_key: str) -> bytes:
+    """Download a file by its object key (the part after /files/)."""
+    if _r2_ready():
+        resp = _get_client().get_object(Bucket=R2_BUCKET, Key=object_key)
+        return resp["Body"].read()
+    else:
+        path = os.path.join(_LOCAL_ROOT, object_key)
+        with open(path, "rb") as fh:
+            return fh.read()
 
 
 def delete_file(url: str | None) -> None:
-    """Delete a MinIO object given its public or relative URL. Silent on failure."""
+    """Delete a file given its /files/<key> relative URL. Silent on failure."""
     if not url:
         return
-    # New relative format: /files/<folder>/<filename>
     if url.startswith("/files/"):
-        object_name = url[len("/files/"):]
+        object_key = url[len("/files/"):]
     else:
-        # Legacy absolute URL format stored before the proxy migration
-        prefix = f"{MINIO_PUBLIC_URL}/{MINIO_BUCKET}/"
-        if not url.startswith(prefix):
-            return
-        object_name = url[len(prefix):]
+        return
     try:
-        _get_client().remove_object(MINIO_BUCKET, object_name)
+        if _r2_ready():
+            _get_client().delete_object(Bucket=R2_BUCKET, Key=object_key)
+        else:
+            path = os.path.join(_LOCAL_ROOT, object_key)
+            if os.path.isfile(path):
+                os.remove(path)
     except Exception:
         pass
