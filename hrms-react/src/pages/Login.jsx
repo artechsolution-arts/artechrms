@@ -391,10 +391,8 @@ export default function Login({ onLogin }) {
           max-width: 440px;
           background: #fff;
           border-radius: 20px;
-          overflow-y: auto;
-          overflow-x: hidden;
-          max-height: calc(100vh - 64px);
-          padding: 28px 32px 24px;
+          overflow: visible;
+          padding: 18px 28px 14px;
           box-shadow:
             0 4px 6px rgba(13,31,78,0.04),
             0 20px 60px rgba(13,31,78,0.12),
@@ -749,12 +747,6 @@ export default function Login({ onLogin }) {
         {/* ══════════════════ RIGHT PANEL ══════════════════ */}
         <div ref={rightPanelRef} className={`lp-right${revealed ? ' revealed' : ''}`}>
 
-          {/* Mobile logo */}
-          <div className="lp-mob">
-            <img src="/logo.svg" alt="Artech" style={{ width: 30, height: 30 }} />
-            <span style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>AR Peopliz</span>
-          </div>
-
           <div ref={cardRef} className="lp-card">
 
             {/* Top accent bar */}
@@ -764,30 +756,46 @@ export default function Login({ onLogin }) {
               position: 'absolute', top: 0, left: 0, right: 0,
             }} />
 
+            {/* Logo inside card — always visible, no scroll needed */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, animation: 'fadeUp 0.5s ease-out 0.05s both' }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                background: `linear-gradient(135deg, rgba(61,199,179,0.15), rgba(26,106,180,0.2))`,
+                border: `1px solid rgba(61,199,179,0.3)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <img src="/logo.svg" alt="AR Peopliz" style={{ width: 22, height: 22 }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: C.navy, letterSpacing: '-0.01em', lineHeight: 1.1 }}>AR Peopliz</div>
+                <div style={{ fontSize: 10.5, color: C.teal, fontWeight: 600, letterSpacing: '0.04em', marginTop: 1 }}>Human Resource Management</div>
+              </div>
+            </div>
+
             {/* Header */}
-            <div style={{ marginBottom: 20, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
+            <div style={{ marginBottom: 12, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '4px 10px', borderRadius: 20, marginBottom: 10,
+                padding: '3px 9px', borderRadius: 20, marginBottom: 8,
                 background: `linear-gradient(90deg, rgba(26,106,180,0.08), rgba(61,199,179,0.08))`,
                 border: `1px solid rgba(26,106,180,0.15)`,
               }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.teal }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: C.blue, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: C.blue, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                   {mode === 'setup' ? 'First Time Setup' : 'Secure Sign In'}
                 </span>
               </div>
               <h2 style={{
                 fontFamily: "'DM Serif Display', serif",
-                fontSize: '1.75rem',
+                fontSize: '1.5rem',
                 color: C.navy,
-                marginBottom: 6,
+                marginBottom: 4,
                 fontWeight: 400,
                 letterSpacing: '-0.01em',
               }}>
                 {mode === 'setup' ? 'Create Admin Account' : 'Welcome back!'}
               </h2>
-              <p style={{ fontSize: 13, color: '#5E6B85', fontWeight: 400 }}>
+              <p style={{ fontSize: 12.5, color: '#5E6B85', fontWeight: 400 }}>
                 {mode === 'setup'
                   ? 'Set up your administrator account to get started'
                   : 'Sign in to your AR Peopliz workspace'}
@@ -803,7 +811,7 @@ export default function Login({ onLogin }) {
 
             <form
               onSubmit={mode === 'setup' ? handleSetup : handleLogin}
-              style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
             >
               {mode === 'setup' && (
                 <div style={{ animation: 'fadeUp 0.4s ease-out both' }}>
@@ -876,7 +884,7 @@ export default function Login({ onLogin }) {
                 type="submit"
                 disabled={loading}
                 className="lp-btn"
-                style={{ marginTop: 6, animation: 'fadeUp 0.4s ease-out 0.18s both' }}
+                style={{ marginTop: 2, animation: 'fadeUp 0.4s ease-out 0.18s both' }}
               >
                 {loading
                   ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> {mode === 'setup' ? 'Creating account…' : 'Signing in…'}</>
@@ -918,7 +926,7 @@ export default function Login({ onLogin }) {
 
             {/* Footer */}
             <div style={{
-              marginTop: 22, paddingTop: 18,
+              marginTop: 10, paddingTop: 10,
               borderTop: `1px solid ${C.mist}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               animation: 'fadeIn 0.5s ease-out 0.35s both',
