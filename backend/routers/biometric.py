@@ -29,6 +29,10 @@ _ADMS_PREFIX = "/iclock"
 HALF_DAY_HOURS   = 4.0
 MIN_CHECKOUT_HRS = 1.0
 
+# Per-device stamp tracking (in-memory; resets on restart → triggers full resync, safe due to upsert)
+# Key: device serial number (SN), Value: unix timestamp of last punch we processed
+_device_stamps: dict[str, int] = {}
+
 
 def _upsert_punch(db: Session, bio_id: str, ts: datetime):
     """Insert or merge a single punch into the attendance table."""
@@ -78,10 +82,16 @@ def _upsert_punch(db: Session, bio_id: str, ts: datetime):
 @router.get(_ADMS_PREFIX + "/getrequest")
 @router.get(_ADMS_PREFIX + "/getrequest/{rest:path}")
 async def adms_getrequest(request: Request):
-    """Device polls here for commands. Respond with empty OK so it proceeds to push."""
+    """Device polls here for commands.
+    Return GetStamp=0 on first contact so device sends full history.
+    Return last-processed timestamp on subsequent calls so device only sends new punches.
+    """
     sn = request.query_params.get("SN", "unknown")
-    return Response(content=f"OK\r\nGetStamp={int(datetime.utcnow().timestamp())}\r\n",
-                    media_type="text/plain")
+    stamp = _device_stamps.get(sn, 0)   # 0 = "send everything you have"
+    return Response(
+        content=f"OK\r\nGetStamp={stamp}\r\n",
+        media_type="text/plain",
+    )
 
 
 @router.post(_ADMS_PREFIX + "/cdata")
@@ -99,7 +109,9 @@ async def adms_cdata(request: Request, db: Session = Depends(get_db)):
     if table != "ATTLOG" or not body.strip():
         return Response(content="OK: 0\r\n", media_type="text/plain")
 
-    accepted = 0
+    accepted   = 0
+    latest_unix = _device_stamps.get(sn, 0)
+
     for line in body.strip().splitlines():
         parts = line.split("\t")
         if len(parts) < 2:
@@ -112,8 +124,16 @@ async def adms_cdata(request: Request, db: Session = Depends(get_db)):
         try:
             if _upsert_punch(db, bio_id, ts):
                 accepted += 1
+            # advance stamp even for unmatched punches so device doesn't re-send them
+            unix_ts = int(ts.timestamp())
+            if unix_ts > latest_unix:
+                latest_unix = unix_ts
         except Exception:
             pass
+
+    # Persist the latest timestamp so next GetStamp call returns it
+    if sn and latest_unix > _device_stamps.get(sn, 0):
+        _device_stamps[sn] = latest_unix
 
     return Response(content=f"OK: {accepted}\r\n", media_type="text/plain")
 
