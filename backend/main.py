@@ -419,12 +419,19 @@ app.include_router(reports_router.router)
 # These thin wrappers forward to the real handlers in biometric_router.
 @app.get("/iclock/getrequest")
 @app.get("/iclock/getrequest/{rest:path}")
+@app.get("/iclock/getrequest.aspx")
+@app.get("/iclock/getrequest.aspx/{rest:path}")
 async def iclock_getrequest_root(request: Request):
     return await biometric_router.adms_getrequest(request)
 
 @app.post("/iclock/cdata")
+@app.post("/iclock/cdata.aspx")
 async def iclock_cdata_root(request: Request, db=Depends(get_db)):
     return await biometric_router.adms_cdata(request, db)
+
+@app.get("/iclock/cdata.aspx")
+async def iclock_cdata_aspx_get(request: Request):
+    return Response(content="OK\r\n", media_type="text/plain")
 app.include_router(health_router.router)
 app.include_router(approvals_router.router)
 
