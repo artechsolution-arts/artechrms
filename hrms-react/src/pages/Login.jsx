@@ -362,7 +362,7 @@ export default function Login({ onLogin }) {
         }
         .lp-right.revealed {
           width: 42%;
-          padding: 24px 28px;
+          padding: 16px 24px;
           overflow-y: auto;
           height: 100vh;
           justify-content: flex-start;
@@ -414,10 +414,10 @@ export default function Login({ onLogin }) {
           background: ${C.cloud};
           border: 1.5px solid ${C.mist};
           border-radius: 10px;
-          padding: 12px 14px;
+          padding: 9px 12px;
           color: ${C.navy};
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 400;
           outline: none;
           transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
@@ -440,26 +440,26 @@ export default function Login({ onLogin }) {
         /* label */
         .lp-label {
           display: block;
-          font-size: 11.5px;
+          font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.06em;
           text-transform: uppercase;
           color: ${C.navy};
           opacity: 0.6;
-          margin-bottom: 7px;
+          margin-bottom: 5px;
         }
 
         /* submit button */
         .lp-btn {
           width: 100%;
           display: flex; align-items: center; justify-content: center; gap: 8px;
-          padding: 14px 20px;
+          padding: 11px 20px;
           border: none;
           border-radius: 10px;
           background: linear-gradient(135deg, ${C.blue} 0%, ${C.navy} 100%);
           color: #fff;
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 700;
           letter-spacing: 0.03em;
           cursor: pointer;
@@ -486,7 +486,7 @@ export default function Login({ onLogin }) {
         .lp-sso {
           width: 100%;
           display: flex; align-items: center; justify-content: center; gap: 10px;
-          padding: 12px 16px;
+          padding: 9px 16px;
           background: #fff;
           border: 1.5px solid ${C.mist};
           border-radius: 10px;
@@ -757,7 +757,7 @@ export default function Login({ onLogin }) {
             }} />
 
             {/* Logo inside card — always visible, no scroll needed */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, animation: 'fadeUp 0.5s ease-out 0.05s both' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, animation: 'fadeUp 0.5s ease-out 0.05s both' }}>
               <div style={{
                 width: 36, height: 36, borderRadius: 10, flexShrink: 0,
                 background: `linear-gradient(135deg, rgba(61,199,179,0.15), rgba(26,106,180,0.2))`,
@@ -773,12 +773,12 @@ export default function Login({ onLogin }) {
             </div>
 
             {/* Header */}
-            <div style={{ marginBottom: 12, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
+            <div style={{ marginBottom: 8, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
               <h2 style={{
                 fontFamily: "'DM Serif Display', serif",
-                fontSize: '1.5rem',
+                fontSize: '1.35rem',
                 color: C.navy,
-                marginBottom: 4,
+                marginBottom: 3,
                 fontWeight: 400,
                 letterSpacing: '-0.01em',
               }}>
@@ -800,7 +800,7 @@ export default function Login({ onLogin }) {
 
             <form
               onSubmit={mode === 'setup' ? handleSetup : handleLogin}
-              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
             >
               {mode === 'setup' && (
                 <div style={{ animation: 'fadeUp 0.4s ease-out both' }}>
