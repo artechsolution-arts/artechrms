@@ -72,6 +72,8 @@ export default function LeaveTypes({ toast }) {
         leaves_before_cutoff:  policy.leaves_before_cutoff  ?? 2,
         leaves_after_cutoff:   policy.leaves_after_cutoff   ?? 1,
         carry_forward_max:     policy.carry_forward_max     ?? 0,
+        cf_joined_h1:          policy.cf_joined_h1          ?? 0,
+        cf_joined_h2:          policy.cf_joined_h2          ?? 0,
         encashment_allowed:    policy.encashment_allowed    ?? false,
         min_service_days:      policy.min_service_days      ?? 0,
       });
@@ -88,6 +90,8 @@ export default function LeaveTypes({ toast }) {
         leaves_before_cutoff: parseFloat(configForm.leaves_before_cutoff) || 2,
         leaves_after_cutoff:  parseFloat(configForm.leaves_after_cutoff) || 1,
         carry_forward_max:    parseFloat(configForm.carry_forward_max) || 0,
+        cf_joined_h1:         parseFloat(configForm.cf_joined_h1) || 0,
+        cf_joined_h2:         parseFloat(configForm.cf_joined_h2) || 0,
         encashment_allowed:   configForm.encashment_allowed ?? false,
         min_service_days:     parseInt(configForm.min_service_days) || 0,
       });
@@ -344,18 +348,57 @@ export default function LeaveTypes({ toast }) {
 
             {lt?.is_carry_forward && (
               <FormSection title="Carry Forward Rules">
-                <div className="px-1">
-                  <label className="block text-xs text-gray-500 mb-1">Max days carried forward to next year</label>
-                  <div className="flex items-center gap-2">
-                    <input type="number" min={0} step={0.5} className="form-input w-24"
-                      value={configForm.carry_forward_max ?? 0}
-                      onChange={e => cf({ carry_forward_max: e.target.value })} />
-                    <span className="text-xs text-gray-500">days</span>
-                    {(parseFloat(configForm.carry_forward_max) || 0) === 0 && (
-                      <span className="text-xs text-blue-600 font-medium">(no limit)</span>
-                    )}
+                <div className="px-1 space-y-4">
+                  {/* Joining-half-year based carry forward */}
+                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-4 space-y-3">
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">Based on Joining Half-Year</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1.5 font-medium">Joined Jan – Jun</label>
+                        <div className="flex items-center gap-2">
+                          <input type="number" min={0} step={0.5} className="form-input w-20 text-center"
+                            value={configForm.cf_joined_h1 ?? 0}
+                            onChange={e => cf({ cf_joined_h1: e.target.value })} />
+                          <span className="text-xs text-gray-500">days</span>
+                        </div>
+                        {(parseFloat(configForm.cf_joined_h1) || 0) === 0 && (
+                          <p className="text-[11px] text-blue-500 mt-0.5">no limit</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1.5 font-medium">Joined Jul – Dec</label>
+                        <div className="flex items-center gap-2">
+                          <input type="number" min={0} step={0.5} className="form-input w-20 text-center"
+                            value={configForm.cf_joined_h2 ?? 0}
+                            onChange={e => cf({ cf_joined_h2: e.target.value })} />
+                          <span className="text-xs text-gray-500">days</span>
+                        </div>
+                        {(parseFloat(configForm.cf_joined_h2) || 0) === 0 && (
+                          <p className="text-[11px] text-blue-500 mt-0.5">no limit</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 rounded-lg bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-800 px-3 py-2">
+                      <Info size={12} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        Set 0 for no limit. At year-end, unused leave is capped at this value before carrying forward based on the employee's joining month.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Set to 0 to allow unlimited carry forward</p>
+
+                  {/* Legacy overall cap */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Overall cap (overrides above if set)</label>
+                    <div className="flex items-center gap-2">
+                      <input type="number" min={0} step={0.5} className="form-input w-24"
+                        value={configForm.carry_forward_max ?? 0}
+                        onChange={e => cf({ carry_forward_max: e.target.value })} />
+                      <span className="text-xs text-gray-500">days</span>
+                      {(parseFloat(configForm.carry_forward_max) || 0) === 0 && (
+                        <span className="text-xs text-gray-400">(not used)</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </FormSection>
             )}

@@ -127,6 +127,8 @@ with engine.connect() as _conn:
         "ALTER TABLE letterhead_template ADD COLUMN IF NOT EXISTS watermark_w_mm FLOAT DEFAULT 120.0",
         "ALTER TABLE letterhead_template ADD COLUMN IF NOT EXISTS watermark_h_mm FLOAT DEFAULT 120.0",
         "ALTER TABLE leave_applications ALTER COLUMN status TYPE VARCHAR(30)",
+        "ALTER TABLE leave_policies ADD COLUMN IF NOT EXISTS cf_joined_h1 FLOAT DEFAULT 0",
+        "ALTER TABLE leave_policies ADD COLUMN IF NOT EXISTS cf_joined_h2 FLOAT DEFAULT 0",
         # Consolidate roles: Admin → HR, HR User → HR, Manager → HR
         "UPDATE users SET role = 'HR' WHERE role IN ('Admin', 'HR User', 'Manager')",
         """CREATE TABLE IF NOT EXISTS leave_accrual_log (

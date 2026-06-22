@@ -26,6 +26,8 @@ class LeavePolicyIn(BaseModel):
     leaves_before_cutoff: float = 2.0
     leaves_after_cutoff: float = 1.0
     carry_forward_max: float = 0
+    cf_joined_h1: float = 0
+    cf_joined_h2: float = 0
     encashment_allowed: bool = False
     min_service_days: int = 0
 
@@ -89,6 +91,8 @@ def get_leave_policy(type_id: int, db: Session = Depends(get_db)):
     if not policy:
         return {
             "leave_type_id": type_id,
+            "cf_joined_h1": 0,
+            "cf_joined_h2": 0,
             "prorate_on_joining": False,
             "prorate_cutoff_day": 15,
             "leaves_before_cutoff": 2.0,
@@ -104,6 +108,8 @@ def get_leave_policy(type_id: int, db: Session = Depends(get_db)):
         "leaves_before_cutoff": policy.leaves_before_cutoff,
         "leaves_after_cutoff": policy.leaves_after_cutoff,
         "carry_forward_max": policy.carry_forward_max,
+        "cf_joined_h1": policy.cf_joined_h1 or 0,
+        "cf_joined_h2": policy.cf_joined_h2 or 0,
         "encashment_allowed": policy.encashment_allowed,
         "min_service_days": policy.min_service_days,
     }

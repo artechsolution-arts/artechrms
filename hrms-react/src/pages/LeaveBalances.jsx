@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
-import { RotateCcw, BookOpen, Search, ChevronDown, Check, X } from 'lucide-react';
+import { RotateCcw, BookOpen, Search, ChevronDown, Check, X, Pencil, Save } from 'lucide-react';
 import EmpAvatar from '../components/EmpAvatar';
 
 // ── Year pill-tab selector ──────────────────────────────────────
@@ -148,49 +148,112 @@ function LeaveBar({ available, allocated }) {
 }
 
 // ── Employee card ───────────────────────────────────────────────
-function EmployeeCard({ name, photo, balances, leaveTypes, colorIdx }) {
+function EmployeeCard({ empId, name, photo, balances, leaveTypes, colorIdx, year, onEditSaved, toast }) {
   const totalAllocated = balances.reduce((s, b) => s + (b.allocated || 0), 0);
   const totalAvailable = balances.reduce((s, b) => s + (b.available || 0), 0);
   const totalUsed      = totalAllocated - totalAvailable;
 
+  const [editing, setEditing] = useState(false);
+  const [editVals, setEditVals] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const openEdit = () => {
+    const init = {};
+    leaveTypes.forEach(lt => {
+      const b = balances.find(x => x.leave_type_id === lt.id);
+      init[lt.id] = b ? String(b.allocated) : '0';
+    });
+    setEditVals(init);
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    try {
+      for (const lt of leaveTypes) {
+        const allocated = parseFloat(editVals[lt.id]) || 0;
+        await api('POST', '/api/hrm/leave-balances/allocate', {
+          employee_id: parseInt(empId),
+          leave_type_id: lt.id,
+          year,
+          allocated,
+        });
+      }
+      toast('Leave balances updated', 'success');
+      setEditing(false);
+      onEditSaved();
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setSaving(false); }
+  };
+
   return (
     <div className="card p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
-      {/* Header — round avatar */}
+      {/* Header */}
       <div className="flex items-center gap-3">
         <EmpAvatar name={name} photo={photo} size="md" colorIndex={colorIdx} rounded="rounded-full" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{name}</p>
           <p className="text-xs text-gray-400 mt-0.5">{totalUsed} used · {totalAvailable} remaining</p>
         </div>
+        {editing ? (
+          <button
+            onClick={saveEdit}
+            disabled={saving}
+            className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+          >
+            <Save size={11} /> {saving ? 'Saving…' : 'Save'}
+          </button>
+        ) : (
+          <button
+            onClick={openEdit}
+            className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-[var(--accent)] px-2 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <Pencil size={11} /> Edit
+          </button>
+        )}
       </div>
 
       {/* Leave type rows */}
       <div className="space-y-2.5">
         {leaveTypes.map(lt => {
           const b = balances.find(x => x.leave_type_id === lt.id);
-          if (!b) return null;
+          if (!b && !editing) return null;
           return (
             <div key={lt.id}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-gray-600 dark:text-gray-400 truncate pr-2">{lt.name}</span>
-                <span className="text-xs flex-shrink-0">
-                  <span className={`font-semibold ${b.available === 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'}`}>
-                    {b.available}
+                {editing ? (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <input
+                      type="number" min={0} step={0.5}
+                      className="w-16 text-xs text-center border border-gray-200 dark:border-gray-600 rounded-md px-1.5 py-0.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                      value={editVals[lt.id] ?? (b ? b.allocated : 0)}
+                      onChange={e => setEditVals(prev => ({ ...prev, [lt.id]: e.target.value }))}
+                    />
+                    <span className="text-[10px] text-gray-400">days</span>
+                  </div>
+                ) : (
+                  <span className="text-xs flex-shrink-0">
+                    <span className={`font-semibold ${(b?.available ?? 0) === 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                      {b?.available ?? 0}
+                    </span>
+                    <span className="text-gray-400"> / {b?.allocated ?? 0}</span>
                   </span>
-                  <span className="text-gray-400"> / {b.allocated}</span>
-                </span>
+                )}
               </div>
-              <LeaveBar available={b.available} allocated={b.allocated} />
+              {!editing && <LeaveBar available={b?.available ?? 0} allocated={b?.allocated ?? 0} />}
             </div>
           );
         })}
       </div>
 
       {/* Footer */}
-      <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-        <span className="text-[11px] text-gray-400">Total allocated</span>
-        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{totalAllocated} days</span>
-      </div>
+      {!editing && (
+        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <span className="text-[11px] text-gray-400">Total allocated</span>
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{totalAllocated} days</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -204,7 +267,7 @@ export default function LeaveBalances({ toast }) {
   const [year,       setYear]       = useState(new Date().getFullYear());
   const [filterEmp,  setFilterEmp]  = useState('');
   const [search,     setSearch]     = useState('');
-  const [allocating, setAllocating] = useState(false);
+  const [initializing, setInitializing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -221,15 +284,15 @@ export default function LeaveBalances({ toast }) {
 
   useEffect(() => { load(); }, [year, filterEmp]);
 
-  const allocateAll = async () => {
-    if (!confirm(`Allocate leave balances for all active employees for ${year}?`)) return;
-    setAllocating(true);
+  const initializeAll = async () => {
+    if (!confirm(`Initialize leave balance records for all active employees for ${year}?\n\nThis only creates missing records (allocated = 0). Existing HR-set balances will NOT be changed.`)) return;
+    setInitializing(true);
     try {
       const res = await api('POST', '/api/hrm/leave-balances/allocate-all', { year });
-      toast(`Done — ${res.created} created, ${res.updated} updated`, 'success');
+      toast(`Done — ${res.created} records created, ${res.skipped} already exist`, 'success');
       load();
     } catch (e) { toast(e.message, 'error'); }
-    finally { setAllocating(false); }
+    finally { setInitializing(false); }
   };
 
   const grouped = rows.reduce((acc, b) => {
@@ -250,9 +313,9 @@ export default function LeaveBalances({ toast }) {
         <div className="flex flex-wrap gap-2 items-center">
           <YearPicker value={year} onChange={setYear} />
           <EmpDropdown value={filterEmp} onChange={setFilterEmp} employees={employees} />
-          <button onClick={allocateAll} disabled={allocating} className="btn btn-secondary btn-sm gap-1.5">
-            <RotateCcw size={13} className={allocating ? 'animate-spin' : ''} />
-            {allocating ? 'Allocating…' : 'Auto-Allocate'}
+          <button onClick={initializeAll} disabled={initializing} className="btn btn-secondary btn-sm gap-1.5">
+            <RotateCcw size={13} className={initializing ? 'animate-spin' : ''} />
+            {initializing ? 'Initializing…' : 'Initialize Balances'}
           </button>
         </div>
       </div>
@@ -301,8 +364,8 @@ export default function LeaveBalances({ toast }) {
                 {search ? `No employees matching "${search}"` : `No leave balances for ${year}`}
               </p>
               {!search && (
-                <button onClick={allocateAll} disabled={allocating} className="btn btn-primary btn-sm mt-3 gap-1.5">
-                  <RotateCcw size={13} /> Auto-Allocate for {year}
+                <button onClick={initializeAll} disabled={initializing} className="btn btn-primary btn-sm mt-3 gap-1.5">
+                  <RotateCcw size={13} /> Initialize Balances for {year}
                 </button>
               )}
             </div>
@@ -312,11 +375,15 @@ export default function LeaveBalances({ toast }) {
             {entries.map(([empId, { name, photo, balances }], idx) => (
               <EmployeeCard
                 key={empId}
+                empId={empId}
                 name={name}
                 photo={photo}
                 balances={balances}
                 leaveTypes={leaveTypes}
                 colorIdx={idx}
+                year={year}
+                onEditSaved={load}
+                toast={toast}
               />
             ))}
           </div>

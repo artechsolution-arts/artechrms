@@ -299,10 +299,14 @@ def allocate_leave_balance(data: LeaveBalanceAllocateIn, db: Session = Depends(g
 
 @router.post("/leave-balances/allocate-all", status_code=201)
 def allocate_all_leave_balances(data: AllocateAllIn, db: Session = Depends(get_db)):
+    """Initialize leave balance records for active employees.
+    Only creates missing records (allocated=0); never overwrites HR-set balances.
+    HR should manually set each employee's allocated balance via the edit modal.
+    """
     employees = db.query(Employee).filter(Employee.status == "Active").all()
     leave_types = db.query(LeaveType).all()
     created = 0
-    updated = 0
+    skipped = 0
     for emp in employees:
         for lt in leave_types:
             balance = (
@@ -315,21 +319,20 @@ def allocate_all_leave_balances(data: AllocateAllIn, db: Session = Depends(get_d
                 .first()
             )
             if balance:
-                balance.allocated = lt.max_leaves
-                updated += 1
+                skipped += 1  # already set by HR — do not overwrite
             else:
                 balance = LeaveBalance(
                     employee_id=emp.id,
                     leave_type_id=lt.id,
                     year=data.year,
-                    allocated=lt.max_leaves,
+                    allocated=0,
                     used=0,
                     carried_forward=0,
                 )
                 db.add(balance)
                 created += 1
     db.commit()
-    return {"ok": True, "created": created, "updated": updated, "year": data.year}
+    return {"ok": True, "created": created, "skipped": skipped, "year": data.year}
 
 
 @router.get("/leave-balances/employee/{emp_id}")

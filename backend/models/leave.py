@@ -55,8 +55,12 @@ class LeavePolicy(Base):
     leaves_before_cutoff = Column(Float, default=2.0)      # leaves for that month if joined on/before cutoff
     leaves_after_cutoff = Column(Float, default=1.0)       # leaves if joined after cutoff
 
-    # Carry forward cap (0 = unlimited, only relevant when leave type has carry_forward=True)
+    # Carry forward: single cap (legacy, kept for compatibility)
     carry_forward_max = Column(Float, default=0)
+
+    # Carry forward split by employee joining half-year (0 = unlimited)
+    cf_joined_h1 = Column(Float, default=0)   # joined Jan–Jun
+    cf_joined_h2 = Column(Float, default=0)   # joined Jul–Dec
 
     # Other rules
     encashment_allowed = Column(Boolean, default=False)
