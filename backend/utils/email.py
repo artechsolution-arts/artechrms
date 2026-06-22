@@ -77,34 +77,69 @@ def _base(content: str) -> str:
 def leave_status_email(employee_name: str, leave_type: str,
                         from_date, to_date, days: float,
                         status: str, remarks: str = "") -> tuple[str, str]:
-    """Return (subject, html) for a leave approval/rejection notification."""
-    color   = "#16a34a" if status == "Approved" else "#dc2626"
-    emoji   = "✅" if status == "Approved" else "❌"
-    subject = f"{emoji} Leave {status} — {leave_type} ({days} day{'s' if days != 1 else ''})"
+    """Letter-style approval / rejection notification to the employee."""
+    from_pretty = _pretty_date(from_date)
+    to_pretty   = _pretty_date(to_date)
+    days_int    = int(days) if days == int(days) else days
+    days_label  = f"{days_int} day{'s' if days_int != 1 else ''}"
 
-    remarks_block = (
-        f'<p style="color:#374151;margin:16px 0 0"><b>Remarks:</b> {remarks}</p>'
-        if remarks else ""
+    approved = status == "Approved"
+    subject  = (
+        f"Leave Approved: {from_pretty} – {to_pretty}"
+        if approved else
+        f"Leave Rejected: {from_pretty} – {to_pretty}"
     )
 
+    if approved:
+        opening = (
+            f"I am pleased to inform you that your leave request from "
+            f"<strong>{from_pretty}</strong> to <strong>{to_pretty}</strong> "
+            f"({days_label}) has been <strong style='color:#16a34a'>approved</strong>."
+        )
+        closing_para = (
+            "Please ensure all pending work is handed over before your leave begins. "
+            "We wish you a pleasant time off."
+        )
+    else:
+        opening = (
+            f"We regret to inform you that your leave request from "
+            f"<strong>{from_pretty}</strong> to <strong>{to_pretty}</strong> "
+            f"({days_label}) has been <strong style='color:#dc2626'>rejected</strong>."
+        )
+        closing_para = (
+            "If you have any concerns or would like to discuss this further, "
+            "please reach out to HR at the earliest."
+        )
+
+    remarks_para = (
+        f'<p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 18px">'
+        f'<strong>Remarks:</strong> {remarks.strip()}</p>'
+        if (remarks or "").strip() else ""
+    )
+
+    p = lambda txt: f'<p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 18px">{txt}</p>'
+
     html = _base(f"""
-        <h3 style="margin:0 0 16px;color:#111827">Hi {employee_name},</h3>
-        <p style="color:#374151;margin:0 0 20px">
-          Your leave request has been <strong style="color:{color}">{status}</strong>.
-        </p>
-        <table style="width:100%;border-collapse:collapse;font-size:14px">
-          <tr><td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;color:#6b7280;width:140px">Leave Type</td>
-              <td style="padding:10px;border:1px solid #e5e7eb;font-weight:600">{leave_type}</td></tr>
-          <tr><td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;color:#6b7280">From</td>
-              <td style="padding:10px;border:1px solid #e5e7eb">{from_date}</td></tr>
-          <tr><td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;color:#6b7280">To</td>
-              <td style="padding:10px;border:1px solid #e5e7eb">{to_date}</td></tr>
-          <tr><td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;color:#6b7280">Days</td>
-              <td style="padding:10px;border:1px solid #e5e7eb">{days}</td></tr>
-          <tr><td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;color:#6b7280">Status</td>
-              <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;color:{color}">{status}</td></tr>
-        </table>
-        {remarks_block}
+        <div style="padding:8px 0 24px;font-family:Arial,sans-serif">
+
+          {p(f"Hello {employee_name},")}
+
+          {p(opening)}
+
+          {remarks_para}
+
+          {p(closing_para)}
+
+          {p("Thank you for your understanding and support.")}
+
+          <p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 4px">
+            Yours sincerely,
+          </p>
+          <p style="color:#111827;font-size:15px;font-weight:700;margin:0 0 4px">HR Team</p>
+          <p style="color:#6b7280;font-size:13px;margin:0">
+            {leave_type}&nbsp;&nbsp;·&nbsp;&nbsp;{days_label}
+          </p>
+        </div>
     """)
     return subject, html
 
