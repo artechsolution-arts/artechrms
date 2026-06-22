@@ -370,7 +370,17 @@ export default function Login({ onLogin }) {
         }
 
         @media (max-width: 767px) {
-          .lp-right.revealed { width: 100%; }
+          .lp-right.revealed { width: 100%; padding: 24px 16px; }
+          .lp-card { padding: 28px 24px 24px; }
+          .lp-input { padding: 12px 14px; font-size: 14px; }
+          .lp-label { font-size: 11.5px; margin-bottom: 7px; }
+          .lp-btn { padding: 14px 20px; font-size: 14px; }
+          .lp-sso { padding: 12px 16px; }
+          .lp-mobile-form { gap: 14px !important; }
+          .lp-mobile-header { margin-bottom: 20px !important; }
+          .lp-mobile-logo { margin-bottom: 20px !important; }
+          .lp-mobile-h2 { font-size: 1.75rem !important; }
+          .lp-mobile-footer { margin-top: 22px !important; padding-top: 18px !important; }
         }
 
         /* subtle dot texture */
@@ -757,7 +767,7 @@ export default function Login({ onLogin }) {
             }} />
 
             {/* Logo inside card — always visible, no scroll needed */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, animation: 'fadeUp 0.5s ease-out 0.05s both' }}>
+            <div className="lp-mobile-logo" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, animation: 'fadeUp 0.5s ease-out 0.05s both' }}>
               <div style={{
                 width: 36, height: 36, borderRadius: 10, flexShrink: 0,
                 background: `linear-gradient(135deg, rgba(61,199,179,0.15), rgba(26,106,180,0.2))`,
@@ -773,8 +783,8 @@ export default function Login({ onLogin }) {
             </div>
 
             {/* Header */}
-            <div style={{ marginBottom: 8, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
-              <h2 style={{
+            <div className="lp-mobile-header" style={{ marginBottom: 8, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
+              <h2 className="lp-mobile-h2" style={{
                 fontFamily: "'DM Serif Display', serif",
                 fontSize: '1.35rem',
                 color: C.navy,
@@ -800,7 +810,7 @@ export default function Login({ onLogin }) {
 
             <form
               onSubmit={mode === 'setup' ? handleSetup : handleLogin}
-              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+              className="lp-mobile-form" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
             >
               {mode === 'setup' && (
                 <div style={{ animation: 'fadeUp 0.4s ease-out both' }}>
@@ -914,7 +924,7 @@ export default function Login({ onLogin }) {
             </form>
 
             {/* Footer */}
-            <div style={{
+            <div className="lp-mobile-footer" style={{
               marginTop: 10, paddingTop: 10,
               borderTop: `1px solid ${C.mist}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
