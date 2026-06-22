@@ -109,6 +109,41 @@ def leave_status_email(employee_name: str, leave_type: str,
     return subject, html
 
 
+def _ordinal(n: int) -> str:
+    sfx = "th" if 11 <= n % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{sfx}"
+
+
+def _pretty_date(d) -> str:
+    """Format a date as '25th June'."""
+    from datetime import date as _date
+    if isinstance(d, str):
+        d = _date.fromisoformat(str(d))
+    months = ["January", "February", "March", "April", "May", "June",
+              "July", "August", "September", "October", "November", "December"]
+    return f"{_ordinal(d.day)} {months[d.month - 1]}"
+
+
+def _reason_clause(reason: str) -> str:
+    """Turn the employee's reason field into a natural 'as I will be ...' clause."""
+    r = reason.strip()
+    if not r:
+        return ""
+    lower_r = r[0].lower() + r[1:]
+    # Already first-person — just append
+    if lower_r.startswith("i "):
+        return f", {lower_r}"
+    # Present-participle verbs — prefix with "as I will be"
+    _gerund_starts = (
+        "attend", "going", "travel", "visit", "participat",
+        "celebrat", "tak", "journ", "undergo", "accompany",
+    )
+    if any(lower_r.startswith(g) for g in _gerund_starts):
+        return f", as I will be {lower_r}"
+    # Default — just "as"
+    return f", as {lower_r}"
+
+
 def new_leave_request_email(
     recipient_name: str,
     employee_name: str,
@@ -119,77 +154,57 @@ def new_leave_request_email(
     reason: str = "",
     is_cc: bool = False,
 ) -> tuple[str, str]:
-    """Notification to HR/CEO when a new leave request comes in.
-    Subject and body include the leave reason as provided by the employee.
-    """
-    reason_clean = (reason or "").strip()
-    reason_short = (reason_clean[:70] + "…") if len(reason_clean) > 70 else reason_clean
-    days_label   = f"{days} day{'s' if days != 1 else ''}"
+    """Letter-style leave notification to HR (TO) or CEO (CC)."""
+    from_pretty = _pretty_date(from_date)
+    to_pretty   = _pretty_date(to_date)
+    days_int    = int(days) if days == int(days) else days
+    days_label  = f"{days_int} day{'s' if days_int != 1 else ''}"
 
-    # Subject derived from reason
-    if reason_short:
-        subject = f"🗓️ Leave Request: {reason_short} — {employee_name} ({leave_type}, {days_label})"
+    # Subject: date-based, just like a real leave email
+    subject = f"Leave Request: {from_pretty} – {to_pretty}"
+    if is_cc:
+        subject = f"[CC] {subject} — {employee_name}"
+
+    reason_clause = _reason_clause(reason)
+
+    # Build the body paragraph(s)
+    leave_sentence = (
+        f"I would like to formally inform you that I will be on leave from "
+        f"<strong>{from_pretty}</strong> to <strong>{to_pretty}</strong> "
+        f"({days_label}){reason_clause}."
+    )
+
+    if is_cc:
+        action_para = (
+            "This is for your kind information and records."
+        )
     else:
-        subject = f"🗓️ New Leave Request — {employee_name} ({leave_type}, {days_label})"
+        action_para = (
+            "I kindly request your approval for leave on the above-mentioned dates. "
+            "Please let me know if any additional information or formalities are "
+            "required from my end."
+        )
 
-    cc_badge = (
-        '<span style="display:inline-block;background:#f3f4f6;color:#6b7280;font-size:11px;'
-        'padding:2px 8px;border-radius:99px;margin-left:8px;vertical-align:middle">CC</span>'
-        if is_cc else ""
-    )
-    action_line = (
-        '<p style="color:#6b7280;font-size:13px;margin:0">You are copied on this request for visibility.</p>'
-        if is_cc else
-        '<p style="color:#374151;font-size:14px;margin:0">This leave request requires your <strong>review and approval</strong>.'
-        ' Please log in to Artech HRMS to take action.</p>'
-    )
-    reason_block = (
-        f'''<tr>
-              <td style="padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;
-                         color:#6b7280;font-size:13px;vertical-align:top;width:130px">Reason</td>
-              <td style="padding:12px 14px;border:1px solid #e5e7eb;font-size:14px;
-                         color:#111827;line-height:1.6">{reason_clean}</td>
-            </tr>'''
-        if reason_clean else ""
-    )
+    p = lambda txt: f'<p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 18px">{txt}</p>'
 
     html = _base(f"""
-        <div style="padding:4px 0 20px">
-          <h3 style="margin:0 0 4px;color:#111827;font-size:17px">
-            Hi {recipient_name},{cc_badge}
-          </h3>
-          <p style="color:#6b7280;font-size:13px;margin:0 0 20px">
-            {employee_name} has submitted a leave request.
+        <div style="padding:8px 0 24px;font-family:Arial,sans-serif">
+
+          {p(f"Hello {recipient_name},")}
+
+          {p(leave_sentence)}
+
+          {p(action_para)}
+
+          {p("Thank you for your understanding and support.")}
+
+          <p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 4px">
+            Yours sincerely,
           </p>
-        </div>
-
-        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px">
-          <tr>
-            <td style="padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;
-                       color:#6b7280;font-size:13px;width:130px">Employee</td>
-            <td style="padding:12px 14px;border:1px solid #e5e7eb;font-weight:700;
-                       color:#111827">{employee_name}</td>
-          </tr>
-          <tr>
-            <td style="padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;color:#6b7280;font-size:13px">Leave Type</td>
-            <td style="padding:12px 14px;border:1px solid #e5e7eb;color:#111827">{leave_type}</td>
-          </tr>
-          <tr>
-            <td style="padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;color:#6b7280;font-size:13px">Period</td>
-            <td style="padding:12px 14px;border:1px solid #e5e7eb;color:#111827">
-              {from_date} &mdash; {to_date}
-              <span style="display:inline-block;margin-left:8px;background:#dbeafe;color:#1d4ed8;
-                           font-size:12px;padding:1px 8px;border-radius:99px;font-weight:600">
-                {days_label}
-              </span>
-            </td>
-          </tr>
-          {reason_block}
-        </table>
-
-        <div style="border-left:3px solid #1e40af;padding:12px 16px;background:#eff6ff;
-                    border-radius:0 6px 6px 0;margin-bottom:8px">
-          {action_line}
+          <p style="color:#111827;font-size:15px;font-weight:700;margin:0 0 4px">{employee_name}</p>
+          <p style="color:#6b7280;font-size:13px;margin:0">
+            {leave_type}&nbsp;&nbsp;·&nbsp;&nbsp;{days_label}
+          </p>
         </div>
     """)
     return subject, html
