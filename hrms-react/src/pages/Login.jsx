@@ -362,10 +362,10 @@ export default function Login({ onLogin }) {
         }
         .lp-right.revealed {
           width: 42%;
-          padding: 32px 28px;
-          overflow: hidden;
+          padding: 24px 28px;
+          overflow-y: auto;
           height: 100vh;
-          justify-content: center;
+          justify-content: flex-start;
           align-items: center;
         }
 
@@ -774,17 +774,6 @@ export default function Login({ onLogin }) {
 
             {/* Header */}
             <div style={{ marginBottom: 12, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '3px 9px', borderRadius: 20, marginBottom: 8,
-                background: `linear-gradient(90deg, rgba(26,106,180,0.08), rgba(61,199,179,0.08))`,
-                border: `1px solid rgba(26,106,180,0.15)`,
-              }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.teal }} />
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: C.blue, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  {mode === 'setup' ? 'First Time Setup' : 'Secure Sign In'}
-                </span>
-              </div>
               <h2 style={{
                 fontFamily: "'DM Serif Display', serif",
                 fontSize: '1.5rem',
@@ -944,14 +933,6 @@ export default function Login({ onLogin }) {
             </div>
 
           </div>
-
-          {/* Bottom tagline */}
-          <p style={{
-            marginTop: 20, fontSize: 12, color: '#5E6B85', fontFamily: 'Plus Jakarta Sans, sans-serif',
-            animation: 'fadeIn 0.5s ease-out 0.5s both',
-          }}>
-            © {new Date().getFullYear()} Artech Solutions · All rights reserved
-          </p>
 
         </div>
 
