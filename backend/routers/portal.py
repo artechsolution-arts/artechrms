@@ -270,6 +270,10 @@ def _remove_work_mode_for_leave(leave_id: int, db: Session):
 
 @router.post("/leaves")
 def portal_apply_leave(data: PortalLeaveIn, request: Request, db: Session = Depends(get_db)):
+    from backend.services import notification_service as _notif
+    from backend.approval_utils import get_requester_role
+    from backend.models.leave import LeaveType
+
     emp = _get_employee(request, db)
     delta = (data.to_date - data.from_date).days + 1
     total = 0.5 if data.half_day else float(delta)
@@ -287,6 +291,51 @@ def portal_apply_leave(data: PortalLeaveIn, request: Request, db: Session = Depe
     db.commit()
     db.refresh(leave)
     _sync_work_mode_for_leave(leave, db)
+
+    # ── In-app notifications + email ──────────────────────────────
+    try:
+        requester_role = get_requester_role(db, emp.id)
+        lt = db.query(LeaveType).filter(LeaveType.id == data.leave_type_id).first()
+        leave_type_name = lt.name if lt else "Leave"
+        emp_name   = emp.full_name or "An employee"
+        days_label = f"{total:.1f} day{'s' if total != 1 else ''}"
+        notif_msg  = f"{emp_name} applied for {days_label} {leave_type_name} ({leave.from_date} – {leave.to_date})."
+
+        if requester_role == "HR":
+            # HR leave → notify CEO only (no CC)
+            _notif.push_to_role(
+                db, "CEO", "leave", f"Leave Request — {emp_name}",
+                notif_msg,
+                entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
+            )
+        else:
+            # Employee leave → HR (TO) + CEO (CC)
+            _notif.push_to_role(
+                db, "HR", "leave", f"Leave Request — {emp_name}",
+                notif_msg,
+                entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
+            )
+            _notif.push_to_role(
+                db, "CEO", "leave", f"[CC] Leave Request — {emp_name}",
+                notif_msg,
+                entity_id=leave.id, notif_type="info", action="leaves", priority="low", is_cc=True,
+            )
+        db.commit()
+
+        # Email
+        _notif.fire_leave_request_emails(
+            db,
+            employee_name=emp_name,
+            leave_type=leave_type_name,
+            from_date=leave.from_date,
+            to_date=leave.to_date,
+            days=total,
+            reason=data.reason or "",
+            requester_role=requester_role,
+        )
+    except Exception:
+        pass
+
     return {"id": leave.id, "total_days": leave.total_days}
 
 

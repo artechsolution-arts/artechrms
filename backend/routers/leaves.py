@@ -183,20 +183,44 @@ def create_leave(data: LeaveAppIn, db: Session = Depends(get_db)):
     # Notify HR (TO) and CEO (CC) of the new leave request
     try:
         from backend.models.employee import Employee
+        from backend.approval_utils import get_requester_role
         emp = db.query(Employee).filter(Employee.id == leave.employee_id).first()
-        emp_name = emp.full_name if emp else "An employee"
-        days_label = f"{total:.1f} day{'s' if total != 1 else ''}"
-        _notif.push_to_role(
-            db, "HR", "leave", f"Leave Request — {emp_name}",
-            f"{emp_name} applied for {days_label} leave ({leave.from_date} – {leave.to_date}).",
-            entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
-        )
-        _notif.push_to_role(
-            db, "CEO", "leave", f"[CC] Leave Request — {emp_name}",
-            f"{emp_name} applied for {days_label} leave ({leave.from_date} – {leave.to_date}).",
-            entity_id=leave.id, notif_type="info", action="leaves", priority="low", is_cc=True,
-        )
+        emp_name       = emp.full_name if emp else "An employee"
+        days_label     = f"{total:.1f} day{'s' if total != 1 else ''}"
+        requester_role = get_requester_role(db, leave.employee_id)
+        lt             = db.query(LeaveType).filter(LeaveType.id == leave.leave_type_id).first()
+        leave_type_name = lt.name if lt else "Leave"
+        notif_msg = f"{emp_name} applied for {days_label} {leave_type_name} ({leave.from_date} – {leave.to_date})."
+
+        if requester_role == "HR":
+            _notif.push_to_role(
+                db, "CEO", "leave", f"Leave Request — {emp_name}",
+                notif_msg,
+                entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
+            )
+        else:
+            _notif.push_to_role(
+                db, "HR", "leave", f"Leave Request — {emp_name}",
+                notif_msg,
+                entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
+            )
+            _notif.push_to_role(
+                db, "CEO", "leave", f"[CC] Leave Request — {emp_name}",
+                notif_msg,
+                entity_id=leave.id, notif_type="info", action="leaves", priority="low", is_cc=True,
+            )
         db.commit()
+
+        _notif.fire_leave_request_emails(
+            db,
+            employee_name=emp_name,
+            leave_type=leave_type_name,
+            from_date=leave.from_date,
+            to_date=leave.to_date,
+            days=total,
+            reason=getattr(data, "reason", "") or "",
+            requester_role=requester_role,
+        )
     except Exception:
         pass
     return {"id": leave.id, "total_days": leave.total_days}

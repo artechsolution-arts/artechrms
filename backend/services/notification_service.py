@@ -140,3 +140,68 @@ def _fire_email(user_id: int, subject: str, html: str, db: Session):
             send_email(user.email, subject, html)
     except Exception:
         pass
+
+
+def fire_leave_request_emails(
+    db: Session,
+    employee_name: str,
+    leave_type: str,
+    from_date,
+    to_date,
+    days: float,
+    reason: str,
+    requester_role: str = "Employee",
+):
+    """Send leave-request emails based on who applied.
+
+    Employee → TO: all HR users, CC: all CEO users.
+    HR       → TO: all CEO users, CC: none.
+    """
+    from backend.utils.email import send_email, new_leave_request_email
+
+    hr_users  = db.query(User).filter(User.role == "HR",  User.is_active == True).all()  # noqa: E712
+    ceo_users = db.query(User).filter(User.role == "CEO", User.is_active == True).all()  # noqa: E712
+
+    hr_emails  = [u.email for u in hr_users  if u.email]
+    ceo_emails = [u.email for u in ceo_users if u.email]
+
+    kwargs = dict(
+        employee_name=employee_name,
+        leave_type=leave_type,
+        from_date=from_date,
+        to_date=to_date,
+        days=days,
+        reason=reason,
+    )
+
+    if requester_role == "HR":
+        # HR leave → only CEO receives, no CC
+        for u in ceo_users:
+            if u.email:
+                subj, html = new_leave_request_email(
+                    recipient_name=u.full_name or u.email,
+                    is_cc=False,
+                    **kwargs,
+                )
+                send_email(u.email, subj, html)
+    else:
+        # Employee leave → HR (TO) + CEO (CC)
+        cc_str = ",".join(ceo_emails)
+        for u in hr_users:
+            if u.email:
+                subj, html = new_leave_request_email(
+                    recipient_name=u.full_name or u.email,
+                    is_cc=False,
+                    **kwargs,
+                )
+                send_email(u.email, subj, html, cc=cc_str)
+        # Also send a CC copy directly to CEO users (so it shows in their inbox)
+        to_str = ",".join(hr_emails)
+        for u in ceo_users:
+            if u.email:
+                subj, html = new_leave_request_email(
+                    recipient_name=u.full_name or u.email,
+                    is_cc=True,
+                    **kwargs,
+                )
+                send_email(u.email, subj, html)
