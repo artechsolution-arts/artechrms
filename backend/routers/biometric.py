@@ -187,7 +187,7 @@ def adms_status(db: Session = Depends(get_db)):
         "SELECT date, COUNT(*) FROM attendance GROUP BY date ORDER BY date DESC LIMIT 5"
     )).fetchall()
     bio_emps = db.execute(text(
-        "SELECT biometric_id, name FROM employees WHERE biometric_id IS NOT NULL ORDER BY biometric_id"
+        "SELECT biometric_id, full_name FROM employees WHERE biometric_id IS NOT NULL ORDER BY biometric_id"
     )).fetchall()
     return {
         "connected_devices": [
