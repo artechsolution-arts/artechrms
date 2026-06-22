@@ -114,10 +114,11 @@ async def adms_cdata(request: Request, db: Session = Depends(get_db)):
 
     body = (await request.body()).decode("utf-8", errors="ignore")
 
-    logger.info("ADMS cdata | SN=%s | table=%s | body_len=%d", sn, table, len(body))
+    print(f"[ADMS] cdata SN={sn} table={table} body_len={len(body)}", flush=True)
+    if body.strip():
+        print(f"[ADMS] sample: {body.strip()[:300]}", flush=True)
 
     if table != "ATTLOG" or not body.strip():
-        logger.info("ADMS cdata | SN=%s | skipped (table=%s)", sn, table)
         return Response(content="OK: 0\r\n", media_type="text/plain")
 
     accepted    = 0
@@ -149,8 +150,7 @@ async def adms_cdata(request: Request, db: Session = Depends(get_db)):
     if sn and latest_unix > _device_stamps.get(sn, 0):
         _device_stamps[sn] = latest_unix
 
-    logger.info("ADMS cdata | SN=%s | accepted=%d skipped=%d stamp→%d",
-                sn, accepted, skipped, latest_unix)
+    print(f"[ADMS] result SN={sn} accepted={accepted} skipped={skipped} stamp={latest_unix}", flush=True)
     return Response(content=f"OK: {accepted}\r\n", media_type="text/plain")
 
 
