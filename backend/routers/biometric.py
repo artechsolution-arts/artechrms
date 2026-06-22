@@ -179,16 +179,26 @@ def _ser(d: BiometricDevice) -> dict:
 
 # ── ADMS connectivity status ─────────────────────────────────
 @router.get("/adms-status")
-def adms_status():
+def adms_status(db: Session = Depends(get_db)):
     """Returns which devices have connected via ADMS and their last seen stamp."""
+    from sqlalchemy import text
+    total_att = db.execute(text("SELECT COUNT(*) FROM attendance")).scalar()
+    recent = db.execute(text(
+        "SELECT date, COUNT(*) FROM attendance GROUP BY date ORDER BY date DESC LIMIT 5"
+    )).fetchall()
+    bio_emps = db.execute(text(
+        "SELECT biometric_id, name FROM employees WHERE biometric_id IS NOT NULL ORDER BY biometric_id"
+    )).fetchall()
     return {
         "connected_devices": [
             {"sn": sn, "last_punch_unix": stamp,
              "last_punch_time": datetime.utcfromtimestamp(stamp).strftime("%Y-%m-%d %H:%M:%S") if stamp else None}
             for sn, stamp in _device_stamps.items()
         ],
-        "total": len(_device_stamps),
-        "note": "Resets on server restart. Empty means device has not pushed yet.",
+        "total_device_connections": len(_device_stamps),
+        "total_attendance_records": total_att,
+        "recent_dates": [{"date": str(r[0]), "count": r[1]} for r in recent],
+        "employees_with_biometric_id": [{"id": r[0], "name": r[1]} for r in bio_emps],
     }
 
 
