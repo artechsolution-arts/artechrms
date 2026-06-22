@@ -260,7 +260,7 @@ Error generating stack: `+e.message+`
           max-width: 440px;
           background: #fff;
           border-radius: 20px;
-          overflow: visible;
+          overflow: hidden;
           padding: 18px 28px 14px;
           box-shadow:
             0 4px 6px rgba(13,31,78,0.04),
