@@ -12,7 +12,7 @@ if _SENTRY_DSN:
         send_default_pii=False,   # don't send passwords/tokens to Sentry
     )
 
-from fastapi import FastAPI, Request, HTTPException, Response
+from fastapi import FastAPI, Request, HTTPException, Response, Depends
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from backend.database import engine, Base
+from backend.database import engine, Base, get_db
 import backend.models  # noqa: F401 — registers all models
 
 from backend.routers import employees, leaves, payroll, recruitment, appraisals, dashboard, ai
@@ -320,6 +320,7 @@ _PUBLIC_PREFIXES = (
     "/api/social/callback/",
     "/api/notifications/stream",  # SSE: auth handled inside via ?token= query param
     "/api/biometric/iclock",      # ZKTeco ADMS push — device has no Bearer token
+    "/iclock",                    # ZKTeco firmware hardcodes /iclock/ (no custom prefix)
     "/health",                    # uptime monitoring / load balancer
 )
 
@@ -411,6 +412,18 @@ app.include_router(onboarding_router.router)
 app.include_router(notice_period_config_router.router)
 app.include_router(biometric_router.router)
 app.include_router(reports_router.router)
+
+# ── ZKTeco ADMS root-level paths ─────────────────────────────────────────────
+# ZKTeco firmware hardcodes /iclock/ and ignores any path prefix you configure.
+# These thin wrappers forward to the real handlers in biometric_router.
+@app.get("/iclock/getrequest")
+@app.get("/iclock/getrequest/{rest:path}")
+async def iclock_getrequest_root(request: Request):
+    return await biometric_router.adms_getrequest(request)
+
+@app.post("/iclock/cdata")
+async def iclock_cdata_root(request: Request, db=Depends(get_db)):
+    return await biometric_router.adms_cdata(request, db)
 app.include_router(health_router.router)
 app.include_router(approvals_router.router)
 
