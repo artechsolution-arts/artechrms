@@ -1224,7 +1224,9 @@ def _get_journey(emp_id: int, db: Session):
 
 
 def _save_journey(emp_id: int, journey: dict, db: Session):
-    checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == emp_id).first()
+    checklist = db.query(OnboardingChecklist).filter(
+        OnboardingChecklist.employee_id == emp_id
+    ).with_for_update().first()
     if not checklist:
         checklist = OnboardingChecklist(employee_id=emp_id, items=_json.dumps({"__journey__": journey}))
         db.add(checklist)

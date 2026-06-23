@@ -22,10 +22,32 @@ from backend.database import get_db
 from backend.models.social import SocialAccount, SocialPost
 from backend.models.recruitment import JobOpening
 
+from sqlalchemy import text as _text
+
 router = APIRouter(prefix="/api/social", tags=["Social Media"])
 
-# ── Simple in-memory OAuth state store (per-request CSRF protection) ──────────
-_oauth_states: dict[str, dict] = {}
+
+# ── DB-backed OAuth state store (survives container restarts) ─────────────────
+def _store_oauth_state(db: Session, state: str, platform: str) -> None:
+    """Persist a CSRF state token. Cleans up tokens older than 10 minutes."""
+    db.execute(_text(
+        "DELETE FROM oauth_states WHERE created_at < NOW() - INTERVAL '10 minutes'"
+    ))
+    db.execute(_text(
+        "INSERT INTO oauth_states (state, platform) VALUES (:state, :platform) "
+        "ON CONFLICT (state) DO NOTHING"
+    ), {"state": state, "platform": platform})
+    db.commit()
+
+
+def _consume_oauth_state(db: Session, state: str) -> str | None:
+    """Validate and delete a state token. Returns platform name or None if invalid/expired."""
+    row = db.execute(_text(
+        "DELETE FROM oauth_states WHERE state = :state "
+        "AND created_at > NOW() - INTERVAL '10 minutes' RETURNING platform"
+    ), {"state": state}).fetchone()
+    db.commit()
+    return row[0] if row else None
 
 
 def _base_url() -> str:
@@ -214,13 +236,13 @@ def disconnect_account(account_id: int, db: Session = Depends(get_db)):
 # ── LinkedIn OAuth ─────────────────────────────────────────────────────────────
 
 @router.get("/auth/linkedin")
-def linkedin_auth():
+def linkedin_auth(db: Session = Depends(get_db)):
     client_id, client_secret = _linkedin_creds()
     if not client_id:
         raise HTTPException(400, "LinkedIn credentials not configured. Set LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET env variables.")
 
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {"platform": "LinkedIn", "ts": time.time()}
+    _store_oauth_state(db, state, "LinkedIn")
 
     redirect_uri = f"{_base_url()}/api/social/callback/linkedin"
     scope = "openid profile email w_member_social"
@@ -240,10 +262,8 @@ async def linkedin_callback(code: str = Query(None), state: str = Query(None), e
     if error:
         return HTMLResponse(_oauth_done_html("LinkedIn", False, f"Access denied: {error}"))
 
-    if not state or state not in _oauth_states:
-        return HTMLResponse(_oauth_done_html("LinkedIn", False, "Invalid state parameter"))
-
-    _oauth_states.pop(state, None)
+    if not state or not _consume_oauth_state(db, state):
+        return HTMLResponse(_oauth_done_html("LinkedIn", False, "Invalid or expired state parameter"))
 
     client_id, client_secret = _linkedin_creds()
     redirect_uri = f"{_base_url()}/api/social/callback/linkedin"
@@ -303,13 +323,13 @@ async def linkedin_callback(code: str = Query(None), state: str = Query(None), e
 # ── Facebook + Instagram OAuth ─────────────────────────────────────────────────
 
 @router.get("/auth/facebook")
-def facebook_auth():
+def facebook_auth(db: Session = Depends(get_db)):
     app_id, app_secret = _facebook_creds()
     if not app_id:
         raise HTTPException(400, "Facebook credentials not configured. Set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET env variables.")
 
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {"platform": "Facebook", "ts": time.time()}
+    _store_oauth_state(db, state, "Facebook")
 
     redirect_uri = f"{_base_url()}/api/social/callback/facebook"
     scope = "pages_manage_posts,pages_read_engagement,pages_show_list,instagram_basic,instagram_content_publish"
@@ -329,10 +349,8 @@ async def facebook_callback(code: str = Query(None), state: str = Query(None), e
     if error:
         return HTMLResponse(_oauth_done_html("Facebook", False, "Access denied"))
 
-    if not state or state not in _oauth_states:
-        return HTMLResponse(_oauth_done_html("Facebook", False, "Invalid state"))
-
-    _oauth_states.pop(state, None)
+    if not state or not _consume_oauth_state(db, state):
+        return HTMLResponse(_oauth_done_html("Facebook", False, "Invalid or expired state"))
 
     app_id, app_secret = _facebook_creds()
     redirect_uri = f"{_base_url()}/api/social/callback/facebook"

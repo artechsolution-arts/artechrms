@@ -115,7 +115,9 @@ def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Sessi
     from datetime import date as _date_type
     from backend.models.hrm import EmergencyContact
 
-    checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == employee_id).first()
+    checklist = db.query(OnboardingChecklist).filter(
+        OnboardingChecklist.employee_id == employee_id
+    ).with_for_update().first()
     if not checklist:
         items = _build_default_items(ONBOARDING_ITEMS)
         checklist = OnboardingChecklist(employee_id=employee_id, items=json.dumps({"__sections__": {}, "__history__": [], **items}))
@@ -274,7 +276,9 @@ def get_offboarding(employee_id: int, db: Session = Depends(get_db)):
 
 @router.put("/offboarding/{employee_id}/section")
 def save_offboarding_section(employee_id: int, data: SectionDataUpdate, db: Session = Depends(get_db)):
-    checklist = db.query(OffboardingChecklist).filter(OffboardingChecklist.employee_id == employee_id).first()
+    checklist = db.query(OffboardingChecklist).filter(
+        OffboardingChecklist.employee_id == employee_id
+    ).with_for_update().first()
     if not checklist:
         items = _build_default_items(OFFBOARDING_ITEMS)
         checklist = OffboardingChecklist(employee_id=employee_id, items=json.dumps({"__sections__": {}, "__history__": [], **items}))

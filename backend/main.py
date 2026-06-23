@@ -267,6 +267,13 @@ with engine.connect() as _conn:
         )""",
         "CREATE INDEX IF NOT EXISTS idx_step_req      ON approval_steps(approval_request_id)",
         "CREATE INDEX IF NOT EXISTS idx_step_role     ON approval_steps(approver_role, status)",
+        # OAuth CSRF state tokens — survive container restarts, auto-expire after 10 min
+        """CREATE TABLE IF NOT EXISTS oauth_states (
+            state      VARCHAR(100) PRIMARY KEY,
+            platform   VARCHAR(50)  NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_oauth_created ON oauth_states(created_at)",
     ]:
         try:
             _conn.execute(text(_stmt))
