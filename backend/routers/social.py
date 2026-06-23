@@ -552,7 +552,7 @@ def list_posts(job_opening_id: int, db: Session = Depends(get_db)):
 
 async def _post_linkedin(account: SocialAccount, text: str):
     async with httpx.AsyncClient() as client:
-        # Get LinkedIn user URN
+        # Get LinkedIn user URN (sub = stable numeric ID)
         me_resp = await client.get(
             "https://api.linkedin.com/v2/userinfo",
             headers={"Authorization": f"Bearer {account.access_token}"},
@@ -561,33 +561,44 @@ async def _post_linkedin(account: SocialAccount, text: str):
         user_id = me.get("sub") or account.account_id
         author = f"urn:li:person:{user_id}"
 
+        # New LinkedIn Posts API (ugcPosts deprecated March 2024)
         payload = {
             "author": author,
+            "commentary": text,
+            "visibility": "PUBLIC",
+            "distribution": {
+                "feedDistribution": "MAIN_FEED",
+                "targetEntities": [],
+                "thirdPartyDistributionChannels": [],
+            },
             "lifecycleState": "PUBLISHED",
-            "specificContent": {
-                "com.linkedin.ugc.ShareContent": {
-                    "shareCommentary": {"text": text},
-                    "shareMediaCategory": "NONE",
-                }
-            },
-            "visibility": {
-                "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-            },
+            "isReshareDisabledByAuthor": False,
         }
         resp = await client.post(
-            "https://api.linkedin.com/v2/ugcPosts",
+            "https://api.linkedin.com/rest/posts",
             json=payload,
             headers={
                 "Authorization": f"Bearer {account.access_token}",
                 "Content-Type": "application/json",
+                "LinkedIn-Version": "202410",
                 "X-Restli-Protocol-Version": "2.0.0",
             },
         )
-        data = resp.json()
         if resp.status_code not in (200, 201):
-            raise Exception(data.get("message") or str(data))
+            err = resp.text
+            try:
+                err = resp.json().get("message") or err
+            except Exception:
+                pass
+            raise Exception(err)
 
-        post_id = data.get("id", "")
+        # New API returns post URN in the response header x-restli-id
+        post_id = resp.headers.get("x-restli-id", "")
+        if not post_id and resp.content:
+            try:
+                post_id = resp.json().get("id", "")
+            except Exception:
+                pass
         post_url = f"https://www.linkedin.com/feed/update/{post_id}" if post_id else None
         return post_id, post_url
 
