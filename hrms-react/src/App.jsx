@@ -138,7 +138,7 @@ export default function App() {
   const { token, user, login, logout, isAuthenticated } = useAuth();
   useTheme();
   useBackground();  // re-apply saved background image on load
-  const { can, allowed }                      = usePermissions(user?.role);
+  const { can, allowed, loading: permLoading } = usePermissions(user?.role);
 
   const home = ROLE_HOME[user?.role] || 'dashboard';
   const [page, setPage] = useState(() => {
@@ -195,6 +195,8 @@ export default function App() {
     if (isSuperAdmin) {
       return SUPERADMIN_FEATURES.includes(page) ? page : home;
     }
+    // While permissions are loading, don't allow non-portal pages (prevents 403 flash for employees)
+    if (permLoading && !PORTAL_PAGES.has(page)) return home;
     return (allowed && allowed !== '*' && page !== home && !PORTAL_PAGES.has(page) && !can(page)) ? home : page;
   })();
 
