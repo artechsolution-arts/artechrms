@@ -3,7 +3,9 @@ import { api, apiForm } from '../../api';
 import {
   User, Mail, Phone, Calendar, Briefcase, Building2, CreditCard,
   Camera, Loader2, MapPin, Shield, AlertCircle, Monitor,
-  GraduationCap, Clock, FileText, Pencil, Check, X,
+  GraduationCap, Clock, FileText, Pencil, Check, X, History,
+  ArrowRight, TrendingUp, TrendingDown, RefreshCw, UserCheck,
+  LogIn, LogOut as LogOutIcon, Star,
 } from 'lucide-react';
 import ImageCropModal from '../../components/ImageCropModal';
 
@@ -82,7 +84,123 @@ const TABS = [
   { key: 'details',  label: 'Details',      icon: User },
   { key: 'edu-exp',  label: 'Education & Experience', icon: GraduationCap },
   { key: 'assets',   label: 'Assets',       icon: Monitor },
+  { key: 'history',  label: 'History',      icon: History },
 ];
+
+const CHANGE_TYPE_META = {
+  'Joining':           { icon: LogIn,       color: 'text-green-600 dark:text-green-400',   bg: 'bg-green-50 dark:bg-green-900/30',   label: 'Joining' },
+  'Promotion':         { icon: TrendingUp,  color: 'text-blue-600 dark:text-blue-400',     bg: 'bg-blue-50 dark:bg-blue-900/30',     label: 'Promotion' },
+  'Demotion':          { icon: TrendingDown,color: 'text-red-500 dark:text-red-400',       bg: 'bg-red-50 dark:bg-red-900/30',       label: 'Demotion' },
+  'Transfer':          { icon: RefreshCw,   color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/30', label: 'Transfer' },
+  'Department Change': { icon: Building2,   color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-900/30',   label: 'Dept. Change' },
+  'Role Change':       { icon: Briefcase,   color: 'text-cyan-600 dark:text-cyan-400',     bg: 'bg-cyan-50 dark:bg-cyan-900/30',     label: 'Role Change' },
+  'Status Change':     { icon: UserCheck,   color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/30', label: 'Status Change' },
+  'Appraisal':         { icon: Star,        color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-900/30', label: 'Appraisal' },
+};
+
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function HistoryCard({ event }) {
+  const meta = CHANGE_TYPE_META[event.change_type] || {
+    icon: FileText, color: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-800', label: event.change_type,
+  };
+  const Icon = meta.icon;
+
+  const deptChange = (event.from_department || event.to_department) &&
+    event.from_department !== event.to_department;
+  const roleChange = (event.from_designation || event.to_designation) &&
+    event.from_designation !== event.to_designation;
+  const salaryChange = event.salary_before != null && event.salary_after != null &&
+    event.salary_before !== event.salary_after;
+
+  return (
+    <div className="relative flex gap-4">
+      {/* Timeline line */}
+      <div className="flex flex-col items-center">
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${meta.bg}`}>
+          <Icon size={15} className={meta.color} />
+        </div>
+        <div className="w-px flex-1 bg-gray-100 dark:bg-gray-800 mt-2 [div[style*='--hide-line']_&]:hidden" />
+      </div>
+
+      {/* Card */}
+      <div className="flex-1 pb-6">
+        <div className="card p-4">
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${meta.bg} ${meta.color}`}>
+                {meta.label}
+              </span>
+              <p className="text-xs text-gray-400 mt-1">
+                Effective: {fmtDate(event.effective_date)}
+                {event.created_by && <span className="ml-2 text-gray-400">· Updated by HR</span>}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            {deptChange && (
+              <div className="flex items-center gap-2 text-sm flex-wrap">
+                <Building2 size={12} className="text-gray-400 flex-shrink-0" />
+                {event.from_department && (
+                  <span className="text-gray-500 text-xs">{event.from_department}</span>
+                )}
+                {event.from_department && event.to_department && (
+                  <ArrowRight size={12} className="text-gray-400" />
+                )}
+                {event.to_department && (
+                  <span className="font-medium text-gray-800 dark:text-gray-200 text-xs">{event.to_department}</span>
+                )}
+              </div>
+            )}
+
+            {roleChange && (
+              <div className="flex items-center gap-2 text-sm flex-wrap">
+                <Briefcase size={12} className="text-gray-400 flex-shrink-0" />
+                {event.from_designation && (
+                  <span className="text-gray-500 text-xs">{event.from_designation}</span>
+                )}
+                {event.from_designation && event.to_designation && (
+                  <ArrowRight size={12} className="text-gray-400" />
+                )}
+                {event.to_designation && (
+                  <span className="font-medium text-gray-800 dark:text-gray-200 text-xs">{event.to_designation}</span>
+                )}
+              </div>
+            )}
+
+            {salaryChange && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <CreditCard size={12} className="text-gray-400 flex-shrink-0" />
+                <span className="text-gray-500 text-xs">₹{Number(event.salary_before).toLocaleString('en-IN')}</span>
+                <ArrowRight size={12} className="text-gray-400" />
+                <span className={`text-xs font-semibold ${event.salary_after > event.salary_before ? 'text-green-600' : 'text-red-500'}`}>
+                  ₹{Number(event.salary_after).toLocaleString('en-IN')}
+                </span>
+              </div>
+            )}
+
+            {event.last_working_date && (
+              <div className="flex items-center gap-2">
+                <LogOutIcon size={12} className="text-gray-400" />
+                <span className="text-xs text-gray-500">Last working day: {fmtDate(event.last_working_date)}</span>
+              </div>
+            )}
+
+            {event.remarks && (
+              <p className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2 mt-1 italic">
+                "{event.remarks}"
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function EmpProfile({ toast, onPhotoUpdate }) {
   const [emp,       setEmp]       = useState(null);
@@ -96,6 +214,10 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
   const [editForm,  setEditForm]  = useState({});
   const [saving,    setSaving]    = useState(false);
 
+  // history tab state
+  const [history,      setHistory]      = useState(null);
+  const [historyLoad,  setHistoryLoad]  = useState(false);
+
   const fileRef = useRef(null);
 
   const load = () =>
@@ -105,6 +227,16 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
       .finally(() => setLoading(false));
 
   useEffect(() => { load(); }, []);
+
+  // Load history when tab is first opened
+  useEffect(() => {
+    if (tab !== 'history' || history !== null) return;
+    setHistoryLoad(true);
+    api('GET', '/api/portal/my-history')
+      .then(d => setHistory(d))
+      .catch(e => { toast(e.message, 'error'); setHistory([]); })
+      .finally(() => setHistoryLoad(false));
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePhotoChange = e => {
     const file = e.target.files?.[0];
@@ -408,6 +540,32 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
               <div className="px-5 py-10 text-center text-gray-400">
                 <Monitor size={28} className="mx-auto mb-2 opacity-30" />
                 <p className="text-sm">No assets allocated</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── HISTORY TAB ── */}
+        {tab === 'history' && (
+          <div>
+            {historyLoad ? (
+              <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
+                <Loader2 size={18} className="animate-spin" />
+                <span className="text-sm">Loading history…</span>
+              </div>
+            ) : !history || history.length === 0 ? (
+              <div className="card px-5 py-12 text-center">
+                <History size={32} className="mx-auto mb-3 text-gray-300" />
+                <p className="text-sm font-medium text-gray-500">No history events yet</p>
+                <p className="text-xs text-gray-400 mt-1">Events like promotions, transfers, and role changes will appear here.</p>
+              </div>
+            ) : (
+              <div className="px-1 pt-1">
+                {history.map((event, i) => (
+                  <div key={event.id} style={i === history.length - 1 ? { '--hide-line': '1' } : {}}>
+                    <HistoryCard event={event} />
+                  </div>
+                ))}
               </div>
             )}
           </div>
