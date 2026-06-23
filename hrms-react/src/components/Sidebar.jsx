@@ -339,9 +339,14 @@ export default function Sidebar({ current, onNavigate, mobileOpen, onClose, user
 
   // Always show my-dashboard when the user has any Self Service portal access,
   // even if the backend permissions list doesn't explicitly include this new key.
+  // BUT: if emp-dashboard is the top dashboardItem (pure Employee, no HR dashboard),
+  // skip my-dashboard — it's a duplicate pointing to the same page.
   const hasPortalAccess = !allowedFeatures || allowedFeatures.some(f => f.startsWith('my-') || f === 'emp-dashboard');
+  const empDashIsTopItem = allowedFeatures &&
+    allowedFeatures.includes('emp-dashboard') &&
+    !allowedFeatures.includes('dashboard');
   const visibleNAV = allowedFeatures
-    ? NAV.filter(item => !item.key || allowedFeatures.includes(item.key) || (item.key === 'my-dashboard' && hasPortalAccess))
+    ? NAV.filter(item => !item.key || allowedFeatures.includes(item.key) || (item.key === 'my-dashboard' && hasPortalAccess && !empDashIsTopItem))
     : NAV;
 
   // Auto-expand the section containing the active page
