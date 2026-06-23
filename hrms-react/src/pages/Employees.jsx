@@ -14,6 +14,7 @@ import {
   LogOut, CheckCircle2, ArrowRightLeft, History,
   GraduationCap, Briefcase as BriefcaseIcon, Plus as PlusIcon,
   Upload, Download, FileText, CalendarDays, IndianRupee,
+  FileCheck2, ShieldCheck, BookOpen, Scale, Lock,
 } from 'lucide-react';
 
 function Avatar({ name, photo, size = 'sm' }) {
@@ -2973,20 +2974,22 @@ export default function Employees({ toast }) {
             {modal?.mode === 'add' && <span className="text-amber-600 ml-1">Save the employee first, then come back to upload documents.</span>}
           </p>
           {[
-            { key: 'offer_letter',        label: 'Offer Letter',             icon: '📄' },
-            { key: 'employment_agreement', label: 'Employment Agreement',     icon: '📝' },
-            { key: 'nda',                  label: 'NDA / Confidentiality',    icon: '🔒' },
-            { key: 'hr_policy',            label: 'HR Policy Handbook',       icon: '📚' },
-            { key: 'code_of_conduct',      label: 'Code of Conduct',          icon: '🛡️' },
-            { key: 'it_policy',            label: 'IT Security Policy',       icon: '💻' },
-          ].map(({ key, label, icon }) => {
+            { key: 'offer_letter',        label: 'Offer Letter',             Icon: FileText    },
+            { key: 'employment_agreement', label: 'Employment Agreement',     Icon: FileCheck2  },
+            { key: 'nda',                  label: 'NDA / Confidentiality',    Icon: ShieldCheck },
+            { key: 'hr_policy',            label: 'HR Policy Handbook',       Icon: BookOpen    },
+            { key: 'code_of_conduct',      label: 'Code of Conduct',          Icon: Scale       },
+            { key: 'it_policy',            label: 'IT Security Policy',       Icon: Lock        },
+          ].map(({ key, label, Icon }) => {
             const doc = joinDocs[key];
             const empId = modal?.id;
             const isUploading = docUploading === key;
             const fileRef = { current: null };
             return (
               <div key={key} className="flex items-center gap-3 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
-                <span className="text-base flex-shrink-0">{icon}</span>
+                <div className="w-8 h-8 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0">
+                  <Icon size={15} style={{ color: 'var(--accent)' }} />
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</div>
                   {doc ? (
