@@ -1123,6 +1123,52 @@ def portal_submit_resignation(data: ResignationIn, request: Request, db: Session
     db.add(r)
     db.commit()
     db.refresh(r)
+
+    # Notifications + email
+    from backend.services import notification_service as _notif
+    from backend.approval_utils import get_requester_role
+    from backend.utils.email import send_email, new_resignation_email
+    from backend.models.auth import User as _User
+
+    emp_name      = emp.full_name or f"{emp.first_name} {emp.last_name or ''}".strip()
+    requester_role = get_requester_role(db, emp.id)
+    notif_msg = (f"{emp_name} has submitted a resignation. "
+                 f"Last working day: {data.last_working_date}.")
+
+    if requester_role == "HR":
+        _notif.push_to_role(db, "CEO", "resignation", f"Resignation — {emp_name}", notif_msg,
+                            entity_id=r.id, notif_type="approval_request", priority="high")
+    else:
+        _notif.push_to_role(db, "HR", "resignation", f"Resignation — {emp_name}", notif_msg,
+                            entity_id=r.id, notif_type="approval_request", priority="high")
+        _notif.push_to_role(db, "CEO", "resignation", f"[CC] Resignation — {emp_name}", notif_msg,
+                            entity_id=r.id, notif_type="info", priority="low", is_cc=True)
+    db.commit()
+
+    # Email
+    hr_users  = db.query(_User).filter(_User.role == "HR",  _User.is_active == True).all()  # noqa: E712
+    ceo_users = db.query(_User).filter(_User.role == "CEO", _User.is_active == True).all()  # noqa: E712
+    ceo_emails = [u.email for u in ceo_users if u.email]
+
+    if requester_role == "HR":
+        for u in ceo_users:
+            if u.email:
+                subj, html = new_resignation_email(u.full_name or u.email, emp_name,
+                                                   data.last_working_date, data.reason or "", is_cc=False)
+                send_email(u.email, subj, html)
+    else:
+        cc_str = ",".join(ceo_emails)
+        for u in hr_users:
+            if u.email:
+                subj, html = new_resignation_email(u.full_name or u.email, emp_name,
+                                                   data.last_working_date, data.reason or "", is_cc=False)
+                send_email(u.email, subj, html, cc=cc_str)
+        for u in ceo_users:
+            if u.email:
+                subj, html = new_resignation_email(u.full_name or u.email, emp_name,
+                                                   data.last_working_date, data.reason or "", is_cc=True)
+                send_email(u.email, subj, html)
+
     return {"id": r.id, "ok": True}
 
 

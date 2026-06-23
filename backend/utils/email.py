@@ -144,6 +144,98 @@ def leave_status_email(employee_name: str, leave_type: str,
     return subject, html
 
 
+# ── Resignation emails ────────────────────────────────────────────────────────
+
+def new_resignation_email(recipient_name: str, employee_name: str,
+                           last_working_date, reason: str = "",
+                           is_cc: bool = False) -> tuple:
+    """Letter-style resignation notice sent from employee to HR (and CC CEO)."""
+    lwd_pretty = _pretty_date(last_working_date)
+    subject = f"Resignation Notice — {employee_name} (Last Working Day: {lwd_pretty})"
+    if is_cc:
+        subject = f"[CC] {subject}"
+
+    reason_sentence = ""
+    if (reason or "").strip():
+        r = reason.strip()
+        if r.lower().startswith("i "):
+            reason_sentence = f" {r[0].upper()}{r[1:]}{'.' if not r.endswith('.') else ''}"
+        else:
+            reason_sentence = f" The reason for my decision is {r[0].lower()}{r[1:]}{'.' if not r.endswith('.') else ''}"
+
+    approval_line = (
+        "Please treat this as my formal notice. I kindly request you to acknowledge this resignation and initiate the necessary exit formalities."
+        if not is_cc else
+        "This is for your kind information and records."
+    )
+
+    p = lambda txt: f'<p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 18px">{txt}</p>'
+    html = _base(f"""
+        <div style="padding:8px 0 24px;font-family:Arial,sans-serif">
+          {p(f"Hello {recipient_name},")}
+          {p(f"I would like to formally inform you that I am submitting my resignation from Artech Solutions, "
+             f"with my last working day being <strong>{lwd_pretty}</strong>.{reason_sentence}")}
+          {p("I remain fully committed to completing all pending responsibilities and ensuring a smooth and complete handover before my departure.")}
+          {p(approval_line)}
+          {p("Thank you for the opportunity and support during my time at Artech.")}
+          <p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 4px">Yours sincerely,</p>
+          <p style="color:#111827;font-size:15px;font-weight:700;margin:0 0 4px">{employee_name}</p>
+          <p style="color:#6b7280;font-size:13px;margin:0">Resignation Notice&nbsp;&nbsp;·&nbsp;&nbsp;Last Working Day: {lwd_pretty}</p>
+        </div>
+    """)
+    return subject, html
+
+
+def resignation_status_email(employee_name: str, status: str,
+                              last_working_date=None,
+                              approved_last_working_date=None,
+                              hr_remarks: str = "") -> tuple:
+    """Letter-style approval / rejection of resignation sent to employee."""
+    approved = status == "Approved"
+
+    if approved:
+        lwd = approved_last_working_date or last_working_date
+        lwd_pretty = _pretty_date(lwd) if lwd else "as agreed"
+        subject = f"Resignation Accepted — Last Working Day: {lwd_pretty}"
+        opening = (
+            f"We acknowledge receipt of your resignation and wish to formally confirm that it has been "
+            f"<strong style='color:#16a34a'>accepted</strong>. "
+            f"Your last working day has been confirmed as <strong>{lwd_pretty}</strong>."
+        )
+        closing = (
+            "We request you to complete all handover formalities and clear pending tasks before your last day. "
+            "HR will reach out to you shortly regarding the exit process."
+        )
+    else:
+        subject = "Resignation Not Accepted — Please Connect with HR"
+        opening = (
+            "We have reviewed your resignation request and regret to inform you that it has been "
+            f"<strong style='color:#dc2626'>not accepted</strong> at this time."
+        )
+        closing = "We encourage you to speak with HR at the earliest to discuss the matter further."
+
+    remarks_para = (
+        f'<p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 18px">'
+        f'<strong>Remarks from HR:</strong> {hr_remarks.strip()}</p>'
+        if (hr_remarks or "").strip() else ""
+    )
+
+    p = lambda txt: f'<p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 18px">{txt}</p>'
+    html = _base(f"""
+        <div style="padding:8px 0 24px;font-family:Arial,sans-serif">
+          {p(f"Hello {employee_name},")}
+          {p(opening)}
+          {remarks_para}
+          {p(closing)}
+          {p("We wish you all the best in your future endeavours." if approved else "Thank you for your understanding.")}
+          <p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 4px">Yours sincerely,</p>
+          <p style="color:#111827;font-size:15px;font-weight:700;margin:0 0 4px">HR Team</p>
+          <p style="color:#6b7280;font-size:13px;margin:0">Artech HRMS</p>
+        </div>
+    """)
+    return subject, html
+
+
 def _ordinal(n: int) -> str:
     sfx = "th" if 11 <= n % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return f"{n}{sfx}"

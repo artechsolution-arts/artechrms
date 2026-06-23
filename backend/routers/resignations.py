@@ -13,6 +13,41 @@ from backend.approval_utils import require_approval_rights
 router = APIRouter(prefix="/api/resignations", tags=["Resignations"])
 
 
+def _send_resignation_status_notif(db, r: "Resignation"):
+    """Push in-app notification + email to the employee after approve/reject."""
+    from backend.services import notification_service as _notif
+    from backend.utils.email import send_email, resignation_status_email
+
+    emp  = r.employee_rel
+    if not emp:
+        return
+    emp_name = emp.full_name or f"{emp.first_name} {emp.last_name or ''}".strip()
+    approved = r.status == "Approved"
+
+    title = (f"Resignation Accepted — Last Working Day: {r.approved_last_working_date or r.last_working_date}"
+             if approved else "Resignation Not Accepted")
+    msg   = (f"Your resignation has been accepted. Last working day: {r.approved_last_working_date or r.last_working_date}."
+             if approved else "Your resignation has not been accepted. Please connect with HR.")
+
+    if emp.user_id:
+        _notif.push(db, emp.user_id, "resignation", title, msg,
+                    entity_id=r.id,
+                    notif_type="info" if approved else "warning",
+                    priority="high")
+        db.commit()
+
+    # Email to employee
+    if emp.email:
+        subj, html = resignation_status_email(
+            employee_name=emp_name,
+            status=r.status,
+            last_working_date=r.last_working_date,
+            approved_last_working_date=r.approved_last_working_date,
+            hr_remarks=r.hr_remarks or "",
+        )
+        send_email(emp.email, subj, html)
+
+
 def _get_user(request: Request, db: Session) -> User:
     auth = request.headers.get("Authorization", "")
     username = decode_token(auth[7:]) if auth.startswith("Bearer ") else None
@@ -75,6 +110,8 @@ def approve_resignation(resignation_id: int, data: ActionIn, request: Request, d
     r.actioned_by = user.id
     r.actioned_at = datetime.utcnow()
     db.commit()
+
+    _send_resignation_status_notif(db, r)
     return {"ok": True}
 
 
@@ -92,4 +129,6 @@ def reject_resignation(resignation_id: int, data: ActionIn, request: Request, db
     r.actioned_by = user.id
     r.actioned_at = datetime.utcnow()
     db.commit()
+
+    _send_resignation_status_notif(db, r)
     return {"ok": True}
