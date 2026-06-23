@@ -146,12 +146,15 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
     const seen  = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
     const fresh = visible.filter(n => !seen.has(String(n.id)));
 
-    if (fresh.length && !isInitial) {
-      setSlideNotifs(prev => [
-        ...prev,
-        ...fresh.slice(0, 3).map(n => ({ ...n, uid: `${n.id}-${Date.now()}` })),
-      ]);
+    if (fresh.length) {
+      // Always update badge; only show slide-toasts for notifications arriving after initial load
       setUnreadIds(prev => new Set([...prev, ...fresh.map(n => String(n.id))]));
+      if (!isInitial) {
+        setSlideNotifs(prev => [
+          ...prev,
+          ...fresh.slice(0, 3).map(n => ({ ...n, uid: `${n.id}-${Date.now()}` })),
+        ]);
+      }
     }
 
     // Always update seen to include all received IDs (prevents duplicate slide-ins on reconnect)

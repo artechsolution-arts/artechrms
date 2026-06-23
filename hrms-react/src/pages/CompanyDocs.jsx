@@ -1,19 +1,32 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../api';
-import { FileText, Download, Eye, FolderOpen, Upload, Trash2, Send, ChevronDown, Search, Check, X, Settings, Image, Phone, MapPin, User, Palette, Save, RefreshCw, ZoomIn, Move, PenLine, Type, Layers, Plus, Edit2, Wand2 } from 'lucide-react';
+import { FileText, Download, Eye, FolderOpen, Upload, Trash2, Send, ChevronDown, Search, Check, X, Settings, Image, Phone, MapPin, User, Palette, Save, RefreshCw, ZoomIn, Move, PenLine, Type, Layers, Plus, Edit2, Wand2, FileCheck, FileCheck2, FileX, Award, Clock, TrendingUp, Star, LogOut, ShieldCheck, BookOpen, Scale, Lock, ClipboardCheck } from 'lucide-react';
 
-const DOC_ICONS = {
-  'Appointment Letter':            '📋',
-  'Confirmation Letter':           '✅',
-  'Experience Letter':             '🏆',
-  'Extended of Probation Letter':  '⏳',
-  'New Increment Letter':          '💰',
-  'New Letter Of Intent':          '📝',
-  'New Promotion Letter':          '🎖️',
-  'New Termination Letter':        '🚫',
-  'Relieving Letter':              '🤝',
-  'Resignation Acceptance Letter': '📤',
-};
+const DOC_ICONS = [
+  { key: 'Appointment Letter',     icon: ClipboardCheck },
+  { key: 'Confirmation Letter',    icon: FileCheck      },
+  { key: 'Experience Letter',      icon: Award          },
+  { key: 'Extended of Probation',  icon: Clock          },
+  { key: 'Increment Letter',       icon: TrendingUp     },
+  { key: 'Letter Of Intent',       icon: PenLine        },
+  { key: 'Promotion Letter',       icon: Star           },
+  { key: 'Termination Letter',     icon: FileX          },
+  { key: 'Relieving Letter',       icon: LogOut         },
+  { key: 'Resignation Acceptance', icon: FileCheck2     },
+  { key: 'Offer Letter',           icon: FileText       },
+  { key: 'Employment Agreement',   icon: FileCheck2     },
+  { key: 'NDA',                    icon: ShieldCheck    },
+  { key: 'Confidentiality',        icon: ShieldCheck    },
+  { key: 'HR Policy',              icon: BookOpen       },
+  { key: 'Code of Conduct',        icon: Scale          },
+  { key: 'IT Security',            icon: Lock           },
+];
+
+function DocIcon({ label, size = 18, className = '', style }) {
+  const match = DOC_ICONS.find(({ key }) => label.toLowerCase().includes(key.toLowerCase()));
+  const Icon = match ? match.icon : FileText;
+  return <Icon size={size} className={className} style={style} />;
+}
 
 function docLabel(filename) {
   return filename.replace(/\.pdf$/i, '').replace(/\s*\(\d+\)\s*$/, '').trim();
@@ -32,12 +45,6 @@ function findLetterFields(label, letterFields) {
   return null;
 }
 
-function docEmoji(label) {
-  for (const [key, icon] of Object.entries(DOC_ICONS)) {
-    if (label.toLowerCase().includes(key.toLowerCase())) return icon;
-  }
-  return '📄';
-}
 
 async function fetchPdfBlob(url) {
   const token = localStorage.getItem('artech_hrms_token');
@@ -179,8 +186,8 @@ function GenerateModal({ doc, employees, letterFields, onClose, toast }) {
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-          <div className="w-9 h-9 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center text-lg flex-shrink-0">
-            {docEmoji(letterType)}
+          <div className="w-9 h-9 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0">
+            <DocIcon label={letterType} size={18} style={{ color: 'var(--accent)' }} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-gray-900 dark:text-white truncate">Generate {letterType}</p>
@@ -2314,12 +2321,11 @@ export default function CompanyDocs({ toast }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {docs.map(doc => {
             const label = docLabel(doc.name);
-            const emoji = docEmoji(label);
             const hasGenerator = !!findLetterFields(label, letterFields);
             return (
               <div key={doc.name} className="card p-4 flex items-start gap-3 hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0 text-xl">
-                  {emoji}
+                <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0">
+                  <DocIcon label={label} size={20} style={{ color: 'var(--accent)' }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-snug">{label}</p>
