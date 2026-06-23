@@ -141,7 +141,10 @@ export default function App() {
   const { can, allowed }                      = usePermissions(user?.role);
 
   const home = ROLE_HOME[user?.role] || 'dashboard';
-  const [page, setPage]               = useState(home);
+  const [page, setPage] = useState(() => {
+    const saved = localStorage.getItem('artech_current_page');
+    return saved || home;
+  });
   // Desktop: sidebar open by default. Mobile (<1024px): closed — uses bottom nav instead.
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   // Desktop rail-collapse (icon-only mode), persisted
@@ -149,10 +152,11 @@ export default function App() {
   const toggleRail = useCallback(() => setRailCollapsed(v => { const n = !v; localStorage.setItem('sidebar_rail', String(n)); return n; }), []);
   const [userState, setUserState]     = useState(user);
 
-  // Re-sync home page when user role changes (after login)
+  // Re-sync home page when user role changes (after login) — only if no saved page
   useEffect(() => {
     if (user) {
-      setPage(ROLE_HOME[user.role] || 'dashboard');
+      const saved = localStorage.getItem('artech_current_page');
+      if (!saved) setPage(ROLE_HOME[user.role] || 'dashboard');
       setUserState(user);
     }
   }, [user?.role]);
@@ -168,6 +172,7 @@ export default function App() {
 
   const navigate = useCallback(p => {
     setPage(p);
+    localStorage.setItem('artech_current_page', p);
     if (window.innerWidth < 1024) setSidebarOpen(false);
   }, []);
 

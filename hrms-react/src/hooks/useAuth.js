@@ -19,6 +19,7 @@ export function useAuth() {
   const logout = () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem('artech_current_page');
     setToken(null);
     setUser(null);
   };
