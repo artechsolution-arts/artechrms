@@ -1286,6 +1286,27 @@ def save_journey_step(body: JourneyStepData, request: Request, db: Session = Dep
     step["submitted_at"] = _datetime.utcnow().isoformat()
     journey[body.key] = step
     _save_journey(emp.id, journey, db)
+
+    # Sync emergency contact data to the EmergencyContact table immediately
+    if body.key == "emergency_contact" and body.data:
+        d = body.data
+        name = (d.get("name") or "").strip()
+        if name:
+            existing = db.query(EmergencyContact).filter(EmergencyContact.employee_id == emp.id).first()
+            if existing:
+                existing.name = name
+                existing.relationship_type = d.get("relationship") or "Other"
+                existing.phone = d.get("phone") or ""
+            else:
+                db.add(EmergencyContact(
+                    employee_id=emp.id,
+                    name=name,
+                    relationship_type=d.get("relationship") or "Other",
+                    phone=d.get("phone") or "",
+                    is_primary=True,
+                ))
+            db.commit()
+
     return {"ok": True, "status": "submitted"}
 
 
@@ -1356,38 +1377,6 @@ Please sign and return this letter as your acceptance.</p>
 <p style="margin-top:40px">Signature: _____________________________ Date: _______________</p>
 </body></html>"""
         return HTMLResponse(content=html, headers={"Content-Disposition": "attachment; filename=PF_Nomination_Form.html"})
-
-
-# ── Employment History ──────────────────────────────────────────────────────
-@router.get("/my-history")
-def get_my_history(request: Request, db: Session = Depends(get_db)):
-    """Return the employee's employment history events logged by HR."""
-    from backend.models.hrm import EmployeeHistory
-    emp = _get_employee(request, db)
-    rows = (
-        db.query(EmployeeHistory)
-        .filter(EmployeeHistory.employee_id == emp.id)
-        .order_by(EmployeeHistory.effective_date.desc(), EmployeeHistory.created_at.desc())
-        .all()
-    )
-    return [
-        {
-            "id":               r.id,
-            "change_type":      r.change_type,
-            "from_department":  r.from_department,
-            "to_department":    r.to_department,
-            "from_designation": r.from_designation,
-            "to_designation":   r.to_designation,
-            "effective_date":   str(r.effective_date) if r.effective_date else None,
-            "salary_before":    r.salary_before,
-            "salary_after":     r.salary_after,
-            "last_working_date": str(r.last_working_date) if r.last_working_date else None,
-            "remarks":          r.remarks,
-            "created_by":       r.created_by,
-            "created_at":       r.created_at.isoformat() if r.created_at else None,
-        }
-        for r in rows
-    ]
 
     elif step_key == "employment_agreement":
         html = f"""<!DOCTYPE html><html><head><title>Employment Agreement</title>
@@ -1485,3 +1474,33 @@ def get_my_history(request: Request, db: Session = Depends(get_db)):
         return HTMLResponse(content=html, headers={"Content-Disposition": "attachment; filename=IT_Security_Policy.html"})
 
     raise HTTPException(404, "No template for this step")
+
+
+@router.get("/my-history")
+def get_my_history(request: Request, db: Session = Depends(get_db)):
+    from backend.models.hrm import EmployeeHistory
+    emp = _get_employee(request, db)
+    rows = (
+        db.query(EmployeeHistory)
+        .filter(EmployeeHistory.employee_id == emp.id)
+        .order_by(EmployeeHistory.effective_date.desc(), EmployeeHistory.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id":                r.id,
+            "change_type":       r.change_type,
+            "from_department":   r.from_department,
+            "to_department":     r.to_department,
+            "from_designation":  r.from_designation,
+            "to_designation":    r.to_designation,
+            "effective_date":    str(r.effective_date) if r.effective_date else None,
+            "salary_before":     r.salary_before,
+            "salary_after":      r.salary_after,
+            "last_working_date": str(r.last_working_date) if r.last_working_date else None,
+            "remarks":           r.remarks,
+            "created_by":        r.created_by,
+            "created_at":        r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]

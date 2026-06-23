@@ -1193,7 +1193,7 @@ export default function Employees({ toast }) {
           await api('POST', `/api/hrm/employees/${result.id}/emergency-contacts`, {
             name: form.ec_name.trim(), relationship_type: form.ec_relationship || 'Other',
             phone: form.ec_phone || '', is_primary: true,
-          }).catch(() => {});
+          });
         }
         toast('Employee added successfully', 'success');
       } else {
@@ -1218,12 +1218,12 @@ export default function Employees({ toast }) {
             await api('PUT', `/api/hrm/emergency-contacts/${form.ec_id}`, {
               name: form.ec_name.trim(), relationship_type: form.ec_relationship || 'Other',
               phone: form.ec_phone || '', is_primary: true,
-            }).catch(() => {});
+            });
           } else {
             await api('POST', `/api/hrm/employees/${modal.id}/emergency-contacts`, {
               name: form.ec_name.trim(), relationship_type: form.ec_relationship || 'Other',
               phone: form.ec_phone || '', is_primary: true,
-            }).catch(() => {});
+            });
           }
         }
         toast('Employee saved', 'success');
