@@ -171,7 +171,8 @@ def ms_login():
         f"&redirect_uri={MS_REDIRECT_URI}"
         f"&scope=openid+profile+email+User.Read"
         f"&response_mode=query"
-        f"&prompt=login"
+        f"&prompt=select_account"
+        f"&max_age=0"
     )
     url = f"https://login.microsoftonline.com/{MS_TENANT_ID}/oauth2/v2.0/authorize?{params}"
     return RedirectResponse(url)
