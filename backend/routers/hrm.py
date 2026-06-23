@@ -1054,21 +1054,20 @@ COMPANY_DOCS_DIR = "/app/company_docs"
 
 @router.get("/company-docs")
 def list_company_docs():
-    if not _os.path.isdir(COMPANY_DOCS_DIR):
-        return []
-    files = sorted([
-        f for f in _os.listdir(COMPANY_DOCS_DIR)
-        if f.lower().endswith(".pdf") and not f.startswith(".")
-    ])
+    files = sorted([f for f in storage.list_files("company-docs") if f.lower().endswith(".pdf")])
     return [{"name": f, "url": f"/api/hrm/company-docs/{f}"} for f in files]
 
 
 @router.get("/company-docs/{filename}")
 def get_company_doc(filename: str):
-    path = _os.path.join(COMPANY_DOCS_DIR, filename)
-    if not _os.path.isfile(path):
+    from fastapi.responses import Response as _Resp
+    safe_name = _os.path.basename(filename)
+    try:
+        data = storage.download_file(f"company-docs/{safe_name}")
+        return _Resp(content=data, media_type="application/pdf",
+                     headers={"Content-Disposition": f'attachment; filename="{safe_name}"'})
+    except Exception:
         raise HTTPException(404, "File not found")
-    return _FileResponse(path, media_type="application/pdf", filename=filename)
 
 
 @router.post("/company-docs/upload", status_code=201)
@@ -1078,21 +1077,14 @@ async def upload_company_doc(file: UploadFile = File(...)):
     safe_name = _os.path.basename(file.filename)
     if not safe_name:
         raise HTTPException(400, "Invalid filename")
-    _os.makedirs(COMPANY_DOCS_DIR, exist_ok=True)
-    dest = _os.path.join(COMPANY_DOCS_DIR, safe_name)
-    contents = await file.read()
-    with open(dest, "wb") as f:
-        f.write(contents)
+    storage.upload_file(await file.read(), "company-docs", safe_name)
     return {"name": safe_name, "url": f"/api/hrm/company-docs/{safe_name}"}
 
 
 @router.delete("/company-docs/{filename}", status_code=204)
 def delete_company_doc(filename: str):
     safe_name = _os.path.basename(filename)
-    path = _os.path.join(COMPANY_DOCS_DIR, safe_name)
-    if not _os.path.isfile(path):
-        raise HTTPException(404, "File not found")
-    _os.remove(path)
+    storage.delete_file(f"/files/company-docs/{safe_name}")
 
 
 # ── Letter generation ───────────────────────────────────────────────────────
@@ -1151,13 +1143,10 @@ def generate_employee_letter(
         raise HTTPException(400, str(e))
 
     # Save generated PDF so it's available for download + employee record
-    _os.makedirs(GENERATED_DOCS_DIR, exist_ok=True)
     safe_type = body.letter_type.replace(" ", "_").replace("/", "_")
     timestamp = _dt.utcnow().strftime("%Y%m%d_%H%M%S")
     filename = f"{emp.employee_id}_{safe_type}_{timestamp}.pdf"
-    dest = _os.path.join(GENERATED_DOCS_DIR, filename)
-    with open(dest, "wb") as f:
-        f.write(pdf_bytes)
+    storage.upload_file(pdf_bytes, "generated-letters", filename)
 
     # Create a fulfilled DocumentRequest so employee sees it in My Documents
     from backend.models.document_request import DocumentRequest as _DR
@@ -1182,17 +1171,17 @@ def generate_employee_letter(
 
 @router.get("/letters/download/{filename}")
 def download_generated_letter(filename: str):
+    from fastapi.responses import Response as _Resp
     safe_name = _os.path.basename(filename)
-    path = _os.path.join(GENERATED_DOCS_DIR, safe_name)
-    if not _os.path.isfile(path):
+    try:
+        data = storage.download_file(f"generated-letters/{safe_name}")
+        return _Resp(
+            content=data,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+        )
+    except Exception:
         raise HTTPException(404, "File not found")
-    with open(path, "rb") as f:
-        data = f.read()
-    return _Response(
-        content=data,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
-    )
 
 
 # ── Custom Document Templates ────────────────────────────────────────────────
@@ -1289,14 +1278,11 @@ def generate_from_doc_template(
     from backend.utils.letter_generator import generate_custom_letter
     pdf_bytes = generate_custom_letter(tpl.content, fields, template=tpl_cfg)
 
-    _os.makedirs(GENERATED_DOCS_DIR, exist_ok=True)
     safe_name = tpl.name.replace(" ", "_").replace("/", "_")
     timestamp  = _dt.utcnow().strftime("%Y%m%d_%H%M%S")
     emp_prefix = (emp.employee_id or str(body.employee_id)) if emp else "doc"
     filename   = f"{emp_prefix}_{safe_name}_{timestamp}.pdf"
-
-    with open(_os.path.join(GENERATED_DOCS_DIR, filename), "wb") as fh:
-        fh.write(pdf_bytes)
+    storage.upload_file(pdf_bytes, "generated-letters", filename)
 
     if emp:
         from backend.models.document_request import DocumentRequest as _DR
@@ -1366,8 +1352,10 @@ def _normalise_placeholders(text: str):
 def extract_from_existing_doc(body: _ExtractFromDocReq):
     """Extract text + detect variables from an already-uploaded company document."""
     safe = _os.path.basename(body.doc_name)
-    path = _os.path.join(COMPANY_DOCS_DIR, safe)
-    if not _os.path.isfile(path):
+
+    try:
+        file_data = storage.download_file(f"company-docs/{safe}")
+    except Exception:
         raise HTTPException(404, "Document not found in company docs")
 
     ext = safe.rsplit(".", 1)[-1].lower() if "." in safe else ""
@@ -1377,7 +1365,7 @@ def extract_from_existing_doc(body: _ExtractFromDocReq):
         try:
             from docx import Document as _DocxDoc
             import io as _io
-            doc = _DocxDoc(path)
+            doc = _DocxDoc(_io.BytesIO(file_data))
             text = "\n".join(p.text for p in doc.paragraphs).strip()
         except Exception as e:
             raise HTTPException(400, f"Could not read DOCX: {e}")
@@ -1385,7 +1373,7 @@ def extract_from_existing_doc(body: _ExtractFromDocReq):
         try:
             from pypdf import PdfReader as _PdfReader
             import io as _io
-            reader = _PdfReader(path)
+            reader = _PdfReader(_io.BytesIO(file_data))
             text = "\n\n".join(p.extract_text() or "" for p in reader.pages).strip()
         except Exception as e:
             raise HTTPException(400, f"Could not read PDF: {e}")
@@ -1525,12 +1513,9 @@ async def upload_letterhead_logo(file: UploadFile = File(...), db: Session = Dep
     ext = _os.path.splitext(file.filename or '')[1].lower()
     if ext not in allowed:
         raise HTTPException(400, "Only PNG/JPG/WEBP images are allowed")
-    _os.makedirs(_LOGO_UPLOADS_DIR, exist_ok=True)
     filename = f"logo{ext}"
-    dest = _os.path.join(_LOGO_UPLOADS_DIR, filename)
     contents = await file.read()
-    with open(dest, "wb") as f:
-        f.write(contents)
+    storage.upload_file(contents, "letterhead", filename)
     row = _get_or_create_template(db)
     row.logo_filename = filename
     db.commit()
@@ -1539,22 +1524,22 @@ async def upload_letterhead_logo(file: UploadFile = File(...), db: Session = Dep
 
 @router.get("/letterhead-template/logo/{filename}")
 def get_letterhead_logo(filename: str):
+    from fastapi.responses import Response as _Resp
     safe = _os.path.basename(filename)
-    path = _os.path.join(_LOGO_UPLOADS_DIR, safe)
-    if not _os.path.isfile(path):
+    try:
+        data = storage.download_file(f"letterhead/{safe}")
+    except Exception:
         raise HTTPException(404, "Logo not found")
     ext = _os.path.splitext(safe)[1].lower()
     mt = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext.lstrip('.'), "application/octet-stream")
-    return _FileResponse(path, media_type=mt)
+    return _Resp(content=data, media_type=mt)
 
 
 @router.delete("/letterhead-template/logo", status_code=200)
 def delete_letterhead_logo(db: Session = Depends(get_db)):
     row = _get_or_create_template(db)
     if row.logo_filename:
-        path = _os.path.join(_LOGO_UPLOADS_DIR, row.logo_filename)
-        if _os.path.isfile(path):
-            _os.remove(path)
+        storage.delete_file(f"/files/letterhead/{row.logo_filename}")
         row.logo_filename = None
         db.commit()
     return {"ok": True}
@@ -1566,12 +1551,9 @@ async def upload_footer_image(file: UploadFile = File(...), db: Session = Depend
     ext = _os.path.splitext(file.filename or '')[1].lower()
     if ext not in allowed:
         raise HTTPException(400, "Only PNG/JPG/WEBP images are allowed")
-    _os.makedirs(_FOOTER_UPLOADS_DIR, exist_ok=True)
     filename = f"footer{ext}"
-    dest = _os.path.join(_FOOTER_UPLOADS_DIR, filename)
     contents = await file.read()
-    with open(dest, "wb") as f:
-        f.write(contents)
+    storage.upload_file(contents, "letterhead", filename)
     row = _get_or_create_template(db)
     row.footer_image_filename = filename
     db.commit()
@@ -1580,22 +1562,22 @@ async def upload_footer_image(file: UploadFile = File(...), db: Session = Depend
 
 @router.get("/letterhead-template/footer-image/{filename}")
 def get_footer_image(filename: str):
+    from fastapi.responses import Response as _Resp
     safe = _os.path.basename(filename)
-    path = _os.path.join(_FOOTER_UPLOADS_DIR, safe)
-    if not _os.path.isfile(path):
+    try:
+        data = storage.download_file(f"letterhead/{safe}")
+    except Exception:
         raise HTTPException(404, "Footer image not found")
     ext = _os.path.splitext(safe)[1].lower()
     mt = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext.lstrip('.'), "application/octet-stream")
-    return _FileResponse(path, media_type=mt)
+    return _Resp(content=data, media_type=mt)
 
 
 @router.delete("/letterhead-template/footer-image", status_code=200)
 def delete_footer_image(db: Session = Depends(get_db)):
     row = _get_or_create_template(db)
     if row.footer_image_filename:
-        path = _os.path.join(_FOOTER_UPLOADS_DIR, row.footer_image_filename)
-        if _os.path.isfile(path):
-            _os.remove(path)
+        storage.delete_file(f"/files/letterhead/{row.footer_image_filename}")
         row.footer_image_filename = None
         db.commit()
     return {"ok": True}
@@ -1607,11 +1589,8 @@ async def upload_signature(file: UploadFile = File(...), db: Session = Depends(g
     ext = _os.path.splitext(file.filename or '')[1].lower()
     if ext not in allowed:
         raise HTTPException(400, "Only PNG/JPG/WEBP images are allowed")
-    _os.makedirs(_LOGO_UPLOADS_DIR, exist_ok=True)
     filename = f"signature{ext}"
-    dest = _os.path.join(_LOGO_UPLOADS_DIR, filename)
-    with open(dest, "wb") as f:
-        f.write(await file.read())
+    storage.upload_file(await file.read(), "letterhead", filename)
     row = _get_or_create_template(db)
     row.signature_filename = filename
     db.commit()
@@ -1620,22 +1599,22 @@ async def upload_signature(file: UploadFile = File(...), db: Session = Depends(g
 
 @router.get("/letterhead-template/signature/{filename}")
 def get_signature(filename: str):
+    from fastapi.responses import Response as _Resp
     safe = _os.path.basename(filename)
-    path = _os.path.join(_LOGO_UPLOADS_DIR, safe)
-    if not _os.path.isfile(path):
+    try:
+        data = storage.download_file(f"letterhead/{safe}")
+    except Exception:
         raise HTTPException(404, "Signature not found")
     ext = _os.path.splitext(safe)[1].lower()
     mt = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext.lstrip('.'), "application/octet-stream")
-    return _FileResponse(path, media_type=mt)
+    return _Resp(content=data, media_type=mt)
 
 
 @router.delete("/letterhead-template/signature", status_code=200)
 def delete_signature(db: Session = Depends(get_db)):
     row = _get_or_create_template(db)
     if row.signature_filename:
-        path = _os.path.join(_LOGO_UPLOADS_DIR, row.signature_filename)
-        if _os.path.isfile(path):
-            _os.remove(path)
+        storage.delete_file(f"/files/letterhead/{row.signature_filename}")
         row.signature_filename = None
         db.commit()
     return {"ok": True}
@@ -1647,11 +1626,8 @@ async def upload_watermark(file: UploadFile = File(...), db: Session = Depends(g
     ext = _os.path.splitext(file.filename or '')[1].lower()
     if ext not in allowed:
         raise HTTPException(400, "Only PNG/JPG/WEBP images are allowed")
-    _os.makedirs(_LOGO_UPLOADS_DIR, exist_ok=True)
     filename = f"watermark{ext}"
-    dest = _os.path.join(_LOGO_UPLOADS_DIR, filename)
-    with open(dest, "wb") as f:
-        f.write(await file.read())
+    storage.upload_file(await file.read(), "letterhead", filename)
     row = _get_or_create_template(db)
     row.watermark_filename = filename
     db.commit()
@@ -1660,22 +1636,22 @@ async def upload_watermark(file: UploadFile = File(...), db: Session = Depends(g
 
 @router.get("/letterhead-template/watermark/{filename}")
 def get_watermark(filename: str):
+    from fastapi.responses import Response as _Resp
     safe = _os.path.basename(filename)
-    path = _os.path.join(_LOGO_UPLOADS_DIR, safe)
-    if not _os.path.isfile(path):
+    try:
+        data = storage.download_file(f"letterhead/{safe}")
+    except Exception:
         raise HTTPException(404, "Watermark not found")
     ext = _os.path.splitext(safe)[1].lower()
     mt = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext.lstrip('.'), "application/octet-stream")
-    return _FileResponse(path, media_type=mt)
+    return _Resp(content=data, media_type=mt)
 
 
 @router.delete("/letterhead-template/watermark", status_code=200)
 def delete_watermark(db: Session = Depends(get_db)):
     row = _get_or_create_template(db)
     if row.watermark_filename:
-        path = _os.path.join(_LOGO_UPLOADS_DIR, row.watermark_filename)
-        if _os.path.isfile(path):
-            _os.remove(path)
+        storage.delete_file(f"/files/letterhead/{row.watermark_filename}")
         row.watermark_filename = None
         db.commit()
     return {"ok": True}

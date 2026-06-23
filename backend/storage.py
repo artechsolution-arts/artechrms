@@ -102,3 +102,15 @@ def delete_file(url: str | None) -> None:
                 os.remove(path)
     except Exception:
         pass
+
+
+def list_files(folder: str) -> list:
+    """List filenames (not full keys) under a folder prefix."""
+    if _r2_ready():
+        resp = _get_client().list_objects_v2(Bucket=R2_BUCKET, Prefix=f"{folder}/")
+        return [obj["Key"][len(folder) + 1:] for obj in resp.get("Contents", [])]
+    else:
+        dest_dir = os.path.join(_LOCAL_ROOT, folder)
+        if not os.path.isdir(dest_dir):
+            return []
+        return [f for f in os.listdir(dest_dir) if os.path.isfile(os.path.join(dest_dir, f))]

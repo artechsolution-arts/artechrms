@@ -78,11 +78,46 @@ _ICON_R = 6.8 * mm
 
 # ── Template config context (set per generate_letter call) ────────────────────
 _tpl_ctx: ContextVar[dict] = ContextVar('_tpl_ctx', default={})
+_temp_ctx: ContextVar = ContextVar('_temp_ctx', default=None)
 
 
 def _t(key: str, default):
     """Read a value from the active template config, falling back to default."""
     return _tpl_ctx.get().get(key) or default
+
+
+def _resolve_asset(filename):
+    """Return a local file path for a letterhead asset. Downloads from R2 to a temp file if needed."""
+    if not filename:
+        return None
+    try:
+        from backend import storage as _storage
+        if _storage._r2_ready():
+            import tempfile
+            data = _storage.download_file(f"letterhead/{filename}")
+            ext = filename.rsplit(".", 1)[-1] if "." in filename else "bin"
+            tf = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
+            tf.write(data)
+            tf.close()
+            temps = _temp_ctx.get(None)
+            if temps is not None:
+                temps.append(tf.name)
+            return tf.name
+        else:
+            candidate = os.path.join(_UPLOADS_DIR, filename)
+            return candidate if os.path.isfile(candidate) else None
+    except Exception:
+        return None
+
+
+def _cleanup_temps():
+    temps = _temp_ctx.get(None)
+    if temps:
+        for p in temps:
+            try:
+                os.unlink(p)
+            except Exception:
+                pass
 
 
 def _blue():
@@ -96,9 +131,9 @@ def _teal():
 def _logo_path():
     fn = _t('logo_filename', None)
     if fn:
-        candidate = os.path.join(_UPLOADS_DIR, fn)
-        if os.path.isfile(candidate):
-            return candidate
+        resolved = _resolve_asset(fn)
+        if resolved:
+            return resolved
     return _DEFAULT_LOGO_PATH
 
 
@@ -244,8 +279,8 @@ def _draw_footer(c):
     # Optional custom footer image replaces the programmatic contact block
     footer_fn = _t('footer_image_filename', None)
     if footer_fn:
-        fi_path = os.path.join(_UPLOADS_DIR, footer_fn)
-        if os.path.isfile(fi_path):
+        fi_path = _resolve_asset(footer_fn)
+        if fi_path:
             fi_x = _t('footer_x_mm', 0.0) * mm
             fi_y = HEADER_H + _t('footer_y_mm', 0.0) * mm
             fi_w = _t('footer_w_mm', PAGE_W / mm) * mm
@@ -287,8 +322,8 @@ def _draw_watermark(c):
     wm_fn = _t('watermark_filename', None)
     if not wm_fn:
         return
-    wm_path = os.path.join(_UPLOADS_DIR, wm_fn)
-    if not os.path.isfile(wm_path):
+    wm_path = _resolve_asset(wm_fn)
+    if not wm_path:
         return
     try:
         from PIL import Image as _PILImage
@@ -378,8 +413,8 @@ def _signoff(c, y, signer=None):
     c.setFont(_HF_SEMI, _fsize())
     c.drawString(ML, y, f"For {_t('company_name', COMPANY_NAME)}"); y -= LH
     if sig_fn:
-        sig_path = os.path.join(_UPLOADS_DIR, sig_fn)
-        if os.path.isfile(sig_path):
+        sig_path = _resolve_asset(sig_fn)
+        if sig_path:
             sig_x = _t('sig_x_mm', 18.0) * mm
             sig_w = _t('sig_w_mm', 40.0) * mm
             c.drawImage(sig_path, sig_x, y - sig_h, width=sig_w, height=sig_h, mask='auto')
@@ -1043,6 +1078,7 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
     """Generate a PDF from a freeform template string with {{key}} variable substitution."""
     import re
     token = _tpl_ctx.set(template or {})
+    temp_token = _temp_ctx.set([])
     try:
         buf = BytesIO()
         c = canvas.Canvas(buf, pagesize=A4)
@@ -1091,6 +1127,8 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
         buf.seek(0)
         return buf.read()
     finally:
+        _cleanup_temps()
+        _temp_ctx.reset(temp_token)
         _tpl_ctx.reset(token)
 
 
@@ -1099,6 +1137,7 @@ def generate_letter(letter_type: str, fields: dict, template: dict | None = None
     if renderer is None:
         raise ValueError(f"No renderer for letter type: {letter_type!r}")
     token = _tpl_ctx.set(template or {})
+    temp_token = _temp_ctx.set([])
     try:
         buf = BytesIO()
         c = canvas.Canvas(buf, pagesize=A4)
@@ -1110,4 +1149,6 @@ def generate_letter(letter_type: str, fields: dict, template: dict | None = None
         buf.seek(0)
         return buf.read()
     finally:
+        _cleanup_temps()
+        _temp_ctx.reset(temp_token)
         _tpl_ctx.reset(token)
