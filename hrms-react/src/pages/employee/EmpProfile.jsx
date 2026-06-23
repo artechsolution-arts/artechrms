@@ -88,7 +88,7 @@ const TABS = [
 ];
 
 const CHANGE_TYPE_META = {
-  'Joining':           { icon: LogIn,        color: 'text-green-600 dark:text-green-400',   bg: 'bg-green-50 dark:bg-green-900/30',   label: 'Joining' },
+  'Joining':           { icon: LogIn,        color: 'text-green-600 dark:text-green-400',   bg: 'bg-green-50 dark:bg-green-900/30',   label: 'Hired' },
   'Promotion':         { icon: TrendingUp,   color: 'text-blue-600 dark:text-blue-400',     bg: 'bg-blue-50 dark:bg-blue-900/30',     label: 'Promotion' },
   'Demotion':          { icon: TrendingDown, color: 'text-red-500 dark:text-red-400',       bg: 'bg-red-50 dark:bg-red-900/30',       label: 'Demotion' },
   'Transfer':          { icon: RefreshCw,    color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/30', label: 'Transfer' },
@@ -520,28 +520,42 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
         )}
 
         {/* ── HISTORY TAB (read-only) ── */}
-        {tab === 'history' && (
-          <div>
-            {historyLoad ? (
-              <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
-                <Loader2 size={18} className="animate-spin" />
-                <span className="text-sm">Loading history…</span>
-              </div>
-            ) : !history || history.length === 0 ? (
-              <div className="card px-5 py-12 text-center">
-                <History size={32} className="mx-auto mb-3 text-gray-300" />
-                <p className="text-sm font-medium text-gray-500">No history events yet</p>
-                <p className="text-xs text-gray-400 mt-1">Promotions, transfers, and role changes logged by HR will appear here.</p>
-              </div>
-            ) : (
-              <div className="px-1 pt-1">
-                {history.map((event, i) => (
-                  <HistoryCard key={event.id} event={event} isLast={i === history.length - 1} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {tab === 'history' && (() => {
+          const hasJoining = (history || []).some(r => r.change_type === 'Joining');
+          const synthetic = (!hasJoining && emp?.date_of_joining) ? [{
+            id: '__synthetic__',
+            change_type: 'Joining',
+            effective_date: emp.date_of_joining,
+            to_designation: emp.designation,
+            to_department: emp.department,
+            remarks: null,
+          }] : [];
+          const allEvents = [...(history || []), ...synthetic]
+            .sort((a, b) => new Date(b.effective_date) - new Date(a.effective_date));
+
+          return (
+            <div>
+              {historyLoad ? (
+                <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
+                  <Loader2 size={18} className="animate-spin" />
+                  <span className="text-sm">Loading history…</span>
+                </div>
+              ) : allEvents.length === 0 ? (
+                <div className="card px-5 py-12 text-center">
+                  <History size={32} className="mx-auto mb-3 text-gray-300" />
+                  <p className="text-sm font-medium text-gray-500">No history events yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Promotions, transfers, and role changes logged by HR will appear here.</p>
+                </div>
+              ) : (
+                <div className="px-1 pt-1">
+                  {allEvents.map((event, i) => (
+                    <HistoryCard key={event.id} event={event} isLast={i === allEvents.length - 1} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <p className="text-center text-xs text-gray-400 pb-2">For other changes, please contact HR.</p>
       </div>
