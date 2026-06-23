@@ -45,10 +45,8 @@ export default function Login({ onLogin }) {
     if (ssoToken && ssoUser) {
       try {
         const user = JSON.parse(decodeURIComponent(ssoUser));
-        localStorage.setItem('artech_hrms_token', decodeURIComponent(ssoToken));
-        localStorage.setItem('artech_hrms_user', JSON.stringify(user));
         window.history.replaceState({}, '', '/');
-        onLogin(user);
+        onLogin(decodeURIComponent(ssoToken), user);
         return;
       } catch { /* fall through to normal login */ }
     }
