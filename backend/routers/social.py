@@ -157,14 +157,13 @@ def _generate_ig_image(title: str, opening_id: int) -> Optional[str]:
         draw.text((540, 750), "Artech Solutions", font=font_sm, fill=(255, 255, 255, 200), anchor="mm")
         draw.text((540, 820), "artech-solutions.com", font=font_sm, fill=(200, 200, 255, 180), anchor="mm")
 
-        dest = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "static", "uploads", "ig_posts"
-        )
-        os.makedirs(dest, exist_ok=True)
+        from io import BytesIO as _BytesIO
+        from backend import storage as _storage
         fname = f"ig_{opening_id}_{int(time.time())}.png"
-        img.save(os.path.join(dest, fname))
-        return f"{_base_url()}/uploads/ig_posts/{fname}"
+        buf = _BytesIO()
+        img.save(buf, format="PNG")
+        file_url = _storage.upload_file(buf.getvalue(), "ig_posts", fname)
+        return f"{_base_url()}{file_url}"
     except Exception:
         return None
 
