@@ -151,11 +151,14 @@ def fire_leave_request_emails(
     days: float,
     reason: str,
     requester_role: str = "Employee",
+    employee_email: str = "",
 ):
     """Send leave-request emails based on who applied.
 
     Employee → TO: all HR users, CC: all CEO users.
     HR       → TO: all CEO users, CC: none.
+    employee_email is used as the Graph API sender so the email arrives
+    FROM the employee's real address (like sending from Outlook).
     """
     from backend.utils.email import send_email, new_leave_request_email
 
@@ -183,7 +186,7 @@ def fire_leave_request_emails(
                     is_cc=False,
                     **kwargs,
                 )
-                send_email(u.email, subj, html)
+                send_email(u.email, subj, html, from_email=employee_email)
     else:
         # Employee leave → HR (TO) + CEO (CC)
         cc_str = ",".join(ceo_emails)
@@ -194,9 +197,8 @@ def fire_leave_request_emails(
                     is_cc=False,
                     **kwargs,
                 )
-                send_email(u.email, subj, html, cc=cc_str)
-        # Also send a CC copy directly to CEO users (so it shows in their inbox)
-        to_str = ",".join(hr_emails)
+                send_email(u.email, subj, html, cc=cc_str, from_email=employee_email)
+        # Also send a CC copy directly to CEO users
         for u in ceo_users:
             if u.email:
                 subj, html = new_leave_request_email(
@@ -204,4 +206,4 @@ def fire_leave_request_emails(
                     is_cc=True,
                     **kwargs,
                 )
-                send_email(u.email, subj, html)
+                send_email(u.email, subj, html, from_email=employee_email)

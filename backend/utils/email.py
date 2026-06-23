@@ -1,16 +1,27 @@
 """
-Fire-and-forget email utility using Python's built-in smtplib.
-Runs on a background thread so it never blocks an API response.
+Fire-and-forget email utility.
 
-Required env vars (leave unset to disable email silently):
-  SMTP_HOST      e.g. smtp.gmail.com
+Preferred: Microsoft Graph API — emails arrive FROM the real sender's address,
+           exactly like sending from Outlook.
+Fallback:  SMTP (office365 / Gmail) — used when Graph creds are not set.
+
+Graph env vars (set all three to enable):
+  MS_CLIENT_ID      Azure AD app client ID
+  MS_CLIENT_SECRET  Azure AD app client secret
+  MS_TENANT_ID      Azure AD directory (tenant) ID
+  (App must have Mail.Send *application* permission with admin consent)
+
+SMTP env vars (fallback):
+  SMTP_HOST      e.g. smtp.office365.com
   SMTP_PORT      default 587 (STARTTLS)
-  SMTP_USER      your@gmail.com
-  SMTP_PASSWORD  app password (not your login password)
-  SMTP_FROM      optional — defaults to SMTP_USER
+  SMTP_USER      sender@yourdomain.com
+  SMTP_PASSWORD  account password or app password
+  SMTP_FROM      optional display name override
 """
 
 import os
+import time
+import threading
 import smtplib
 import logging
 from email.mime.multipart import MIMEMultipart
@@ -19,6 +30,67 @@ from concurrent.futures import ThreadPoolExecutor
 
 log = logging.getLogger(__name__)
 
+# ── Microsoft Graph ───────────────────────────────────────────────────────────
+MS_CLIENT_ID     = os.getenv("MS_CLIENT_ID", "")
+MS_CLIENT_SECRET = os.getenv("MS_CLIENT_SECRET", "")
+MS_TENANT_ID     = os.getenv("MS_TENANT_ID", "")
+
+_token_cache = {"token": "", "expires_at": 0.0}
+_token_lock  = threading.Lock()
+
+
+def _get_graph_token() -> str:
+    with _token_lock:
+        if time.time() < _token_cache["expires_at"] - 60:
+            return _token_cache["token"]
+        import httpx
+        resp = httpx.post(
+            f"https://login.microsoftonline.com/{MS_TENANT_ID}/oauth2/v2.0/token",
+            data={
+                "client_id":     MS_CLIENT_ID,
+                "client_secret": MS_CLIENT_SECRET,
+                "scope":         "https://graph.microsoft.com/.default",
+                "grant_type":    "client_credentials",
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        _token_cache["token"]      = data["access_token"]
+        _token_cache["expires_at"] = time.time() + float(data.get("expires_in", 3600))
+        return _token_cache["token"]
+
+
+def _send_graph(from_email: str, to: str, subject: str, html: str, cc: str = "") -> None:
+    """Send via Microsoft Graph API — FROM is the real sender's address."""
+    try:
+        import httpx
+        token    = _get_graph_token()
+        to_list  = [{"emailAddress": {"address": a.strip()}} for a in to.split(",")  if a.strip()]
+        cc_list  = [{"emailAddress": {"address": a.strip()}} for a in cc.split(",")  if a.strip()] if cc else []
+        payload  = {
+            "message": {
+                "subject":      subject,
+                "body":         {"contentType": "HTML", "content": html},
+                "toRecipients": to_list,
+                "ccRecipients": cc_list,
+            },
+            "saveToSentItems": True,
+        }
+        resp = httpx.post(
+            f"https://graph.microsoft.com/v1.0/users/{from_email}/sendMail",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15,
+        )
+        if not resp.is_success:
+            log.error("Graph sendMail failed [%s → %s]: %s %s",
+                      from_email, to, resp.status_code, resp.text[:300])
+    except Exception as exc:
+        log.error("Graph email from %s to %s failed: %s", from_email, to, exc)
+
+
+# ── SMTP fallback ─────────────────────────────────────────────────────────────
 SMTP_HOST     = os.getenv("SMTP_HOST", "")
 SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER     = os.getenv("SMTP_USER", "")
@@ -28,33 +100,45 @@ SMTP_FROM     = os.getenv("SMTP_FROM", SMTP_USER)
 _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="email")
 
 
-def _send_sync(to: str, subject: str, html: str, cc: str = "") -> None:
+def _send_smtp(to: str, subject: str, html: str, cc: str = "", from_email: str = "") -> None:
     try:
+        sender = from_email or SMTP_FROM or SMTP_USER
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"]    = SMTP_FROM or SMTP_USER
+        msg["From"]    = sender
         msg["To"]      = to
         if cc:
             msg["Cc"] = cc
         msg.attach(MIMEText(html, "html", "utf-8"))
-
         all_recipients = [r.strip() for r in (to + ("," + cc if cc else "")).split(",") if r.strip()]
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
             smtp.ehlo()
             smtp.starttls()
             smtp.login(SMTP_USER, SMTP_PASSWORD)
-            smtp.sendmail(SMTP_FROM or SMTP_USER, all_recipients, msg.as_string())
+            smtp.sendmail(sender, all_recipients, msg.as_string())
     except Exception as exc:
-        log.error("Email to %s (cc %s) failed: %s", to, cc, exc)
+        log.error("SMTP email to %s (cc %s) failed: %s", to, cc, exc)
 
 
-def send_email(to: str, subject: str, html: str, cc: str = "") -> None:
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def send_email(to: str, subject: str, html: str, cc: str = "", from_email: str = "") -> None:
     """Queue an email on a background thread. Returns immediately.
-    `cc` is an optional comma-separated list of CC addresses.
+
+    from_email — the sender's real Microsoft 365 address (e.g. employee or HR).
+                 Graph API will make the email appear FROM that address, exactly
+                 like sending from Outlook. Falls back to SMTP_USER if not set.
     """
-    if not to or not SMTP_HOST or not SMTP_USER:
+    if not to:
         return
-    _pool.submit(_send_sync, to, subject, html, cc)
+    if MS_CLIENT_ID and MS_CLIENT_SECRET and MS_TENANT_ID:
+        sender = from_email or SMTP_USER
+        if sender:
+            _pool.submit(_send_graph, sender, to, subject, html, cc)
+            return
+    if not SMTP_HOST or not SMTP_USER:
+        return
+    _pool.submit(_send_smtp, to, subject, html, cc, from_email)
 
 
 # ── Email templates ──────────────────────────────────────────────────────────

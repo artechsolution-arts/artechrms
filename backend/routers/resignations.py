@@ -13,7 +13,7 @@ from backend.approval_utils import require_approval_rights
 router = APIRouter(prefix="/api/resignations", tags=["Resignations"])
 
 
-def _send_resignation_status_notif(db, r: "Resignation"):
+def _send_resignation_status_notif(db, r: "Resignation", actioned_by_email: str = ""):
     """Push in-app notification + email to the employee after approve/reject."""
     from backend.services import notification_service as _notif
     from backend.utils.email import send_email, resignation_status_email
@@ -36,7 +36,7 @@ def _send_resignation_status_notif(db, r: "Resignation"):
                     priority="high")
         db.commit()
 
-    # Email to employee
+    # Email to employee — FROM the HR user who actioned
     if emp.email:
         subj, html = resignation_status_email(
             employee_name=emp_name,
@@ -45,7 +45,7 @@ def _send_resignation_status_notif(db, r: "Resignation"):
             approved_last_working_date=r.approved_last_working_date,
             hr_remarks=r.hr_remarks or "",
         )
-        send_email(emp.email, subj, html)
+        send_email(emp.email, subj, html, from_email=actioned_by_email)
 
 
 def _get_user(request: Request, db: Session) -> User:
@@ -111,7 +111,7 @@ def approve_resignation(resignation_id: int, data: ActionIn, request: Request, d
     r.actioned_at = datetime.utcnow()
     db.commit()
 
-    _send_resignation_status_notif(db, r)
+    _send_resignation_status_notif(db, r, actioned_by_email=user.email or "")
     return {"ok": True}
 
 
@@ -130,5 +130,5 @@ def reject_resignation(resignation_id: int, data: ActionIn, request: Request, db
     r.actioned_at = datetime.utcnow()
     db.commit()
 
-    _send_resignation_status_notif(db, r)
+    _send_resignation_status_notif(db, r, actioned_by_email=user.email or "")
     return {"ok": True}

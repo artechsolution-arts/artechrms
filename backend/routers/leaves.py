@@ -13,6 +13,21 @@ from backend.services import notification_service as _notif
 router = APIRouter(prefix="/api/leaves", tags=["Leaves"])
 
 
+def _requester_email(request: Request, db: Session) -> str:
+    """Return the email of the currently authenticated user (HR actioning a leave)."""
+    try:
+        from backend.auth_utils import decode_token
+        from backend.models.auth import User
+        auth = request.headers.get("Authorization", "")
+        username = decode_token(auth[7:]) if auth.startswith("Bearer ") else None
+        if not username:
+            return ""
+        user = db.query(User).filter(User.username == username).first()
+        return user.email or "" if user else ""
+    except Exception:
+        return ""
+
+
 class LeaveTypeIn(BaseModel):
     name: str
     max_leaves: float = 0
@@ -220,6 +235,7 @@ def create_leave(data: LeaveAppIn, db: Session = Depends(get_db)):
             days=total,
             reason=getattr(data, "reason", "") or "",
             requester_role=requester_role,
+            employee_email=getattr(emp, "email", "") or "",
         )
     except Exception:
         pass
@@ -245,8 +261,8 @@ def approve_leave(leave_id: int, request: Request, db: Session = Depends(get_db)
     if bal:
         bal.used = round(bal.used + leave.total_days, 2)
     db.commit()
-    # Notify employee
-    _notify_leave_status(leave, "Approved", db)
+    # Notify employee — FROM the HR user who approved
+    _notify_leave_status(leave, "Approved", db, actioned_by_email=_requester_email(request, db))
     return {"ok": True}
 
 
@@ -260,8 +276,8 @@ def reject_leave(leave_id: int, request: Request, db: Session = Depends(get_db))
     leave.status = "Rejected"
     db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
     db.commit()
-    # Notify employee
-    _notify_leave_status(leave, "Rejected", db)
+    # Notify employee — FROM the HR user who rejected
+    _notify_leave_status(leave, "Rejected", db, actioned_by_email=_requester_email(request, db))
     return {"ok": True}
 
 
@@ -365,7 +381,7 @@ def reject_leave_edit(leave_id: int, request: Request, db: Session = Depends(get
     return {"ok": True}
 
 
-def _notify_leave_status(leave, status: str, db: Session) -> None:
+def _notify_leave_status(leave, status: str, db: Session, actioned_by_email: str = "") -> None:
     """Email + in-app notification to the employee when their leave is approved/rejected."""
     try:
         from backend.models.employee import Employee
@@ -374,7 +390,6 @@ def _notify_leave_status(leave, status: str, db: Session) -> None:
             return
         leave_type_name = leave.leave_type_rel.name if leave.leave_type_rel else "Leave"
         days_label = f"{leave.total_days:.1f} day{'s' if leave.total_days != 1 else ''}"
-        icon = "approved" if status == "Approved" else "rejected"
 
         # In-app persistent notification
         if emp.user_id:
@@ -389,7 +404,7 @@ def _notify_leave_status(leave, status: str, db: Session) -> None:
             )
             db.commit()
 
-        # Email (existing behaviour — no-op if SMTP not set)
+        # Email — FROM the HR user who actioned, TO the employee
         if emp.email:
             subject, html = leave_status_email(
                 employee_name=emp.full_name or emp.email,
@@ -399,7 +414,7 @@ def _notify_leave_status(leave, status: str, db: Session) -> None:
                 days=leave.total_days,
                 status=status,
             )
-            send_email(emp.email, subject, html)
+            send_email(emp.email, subject, html, from_email=actioned_by_email)
     except Exception:
         pass  # notification errors must never break the API response
 

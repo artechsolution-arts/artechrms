@@ -332,6 +332,7 @@ def portal_apply_leave(data: PortalLeaveIn, request: Request, db: Session = Depe
             days=total,
             reason=data.reason or "",
             requester_role=requester_role,
+            employee_email=emp.email or "",
         )
     except Exception:
         pass
@@ -1150,24 +1151,25 @@ def portal_submit_resignation(data: ResignationIn, request: Request, db: Session
     ceo_users = db.query(_User).filter(_User.role == "CEO", _User.is_active == True).all()  # noqa: E712
     ceo_emails = [u.email for u in ceo_users if u.email]
 
+    emp_email = emp.email or ""
     if requester_role == "HR":
         for u in ceo_users:
             if u.email:
                 subj, html = new_resignation_email(u.full_name or u.email, emp_name,
                                                    data.last_working_date, data.reason or "", is_cc=False)
-                send_email(u.email, subj, html)
+                send_email(u.email, subj, html, from_email=emp_email)
     else:
         cc_str = ",".join(ceo_emails)
         for u in hr_users:
             if u.email:
                 subj, html = new_resignation_email(u.full_name or u.email, emp_name,
                                                    data.last_working_date, data.reason or "", is_cc=False)
-                send_email(u.email, subj, html, cc=cc_str)
+                send_email(u.email, subj, html, cc=cc_str, from_email=emp_email)
         for u in ceo_users:
             if u.email:
                 subj, html = new_resignation_email(u.full_name or u.email, emp_name,
                                                    data.last_working_date, data.reason or "", is_cc=True)
-                send_email(u.email, subj, html)
+                send_email(u.email, subj, html, from_email=emp_email)
 
     return {"id": r.id, "ok": True}
 
