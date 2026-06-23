@@ -1,14 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Menu, Bell, Home, ChevronRight, X, CheckCheck } from 'lucide-react';
+import { Menu, Bell, Home, ChevronRight, X, CheckCheck, Calendar, CalendarX, Edit3, Receipt, FileText, LogOut, UserCog, UserPlus, Megaphone, Info, AlertTriangle, CheckCircle, Clock, ClipboardList } from 'lucide-react';
 import { NAV } from './Sidebar';
 import { EMP_NAV } from './EmployeeSidebar';
 import { CEO_NAV } from './CeoSidebar';
 import { api } from '../api';
 
-const SEEN_KEY      = 'artech_seen_notif_ids';
-const DISMISSED_KEY = 'artech_dismissed_notif_ids';
-const TOKEN_KEY     = 'artech_hrms_token';
+const TOKEN_KEY = 'artech_hrms_token';
 const SLIDE_DURATION = 5500;
 
 /* ─────────────────────────────────────────────────────────────
@@ -54,9 +52,9 @@ function SlideNotif({ notif, onClose, onNavigate }) {
 
         <div className="flex items-start gap-3 px-4 py-3.5">
           {/* Icon badge */}
-          <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-[17px] mt-0.5"
+          <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center mt-0.5"
             style={{ background: color + '18' }}>
-            {notif.icon || '🔔'}
+            <NotifIcon type={notif.type || notif.entity_type} size={17} color={color} />
           </div>
 
           {/* Content */}
@@ -118,6 +116,33 @@ const PRIORITY_COLORS = {
   low:    { dot: '#6b7280', light: '#f9fafb' },
 };
 
+const TYPE_ICON_MAP = {
+  leave:            Calendar,
+  cancel_request:   CalendarX,
+  edit_request:     Edit3,
+  expense:          Receipt,
+  document:         FileText,
+  resignation:      LogOut,
+  profile_update:   UserCog,
+  recruitment:      UserPlus,
+  announcement:     Megaphone,
+  reminder:         Clock,
+  birthday:         Bell,
+  anniversary:      Bell,
+  probation:        Clock,
+  new_joiner:       UserPlus,
+  info:             Info,
+  warning:          AlertTriangle,
+  approval_request: ClipboardList,
+  approval_result:  CheckCircle,
+  alert:            AlertTriangle,
+};
+
+function NotifIcon({ type, size = 16, color }) {
+  const Icon = TYPE_ICON_MAP[type] || Bell;
+  return <Icon size={size} style={{ color }} />;
+}
+
 /* ─────────────────────────────────────────────────────────────
    Topbar
 ───────────────────────────────────────────────────────────── */
@@ -131,75 +156,51 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
   const [notifs, setNotifs]               = useState([]);
   const [notifsLoading, setNotifsLoading] = useState(false);
   const [slideNotifs, setSlideNotifs]     = useState([]);
-  const [unreadIds, setUnreadIds]         = useState(new Set());
+  const [unreadCount, setUnreadCount]     = useState(0);
 
-  const bellRef = useRef(null);
+  const bellRef    = useRef(null);
+  const knownIds   = useRef(new Set()); // tracks IDs seen this session for slide-toast dedup
 
-  /* helpers */
-  const getDismissed = () => new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]'));
+  /* Format timestamp as relative time */
+  const fmtTime = ts => {
+    if (!ts) return '';
+    const d    = new Date(ts.endsWith('Z') ? ts : ts + 'Z');
+    const diff = Math.floor((Date.now() - d) / 1000);
+    if (diff < 60)    return 'Just now';
+    if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  };
 
-  /* Core: update visible notification list + trigger slide-ins for fresh items */
-  const applyNotifs = useCallback((list, isInitial = false) => {
-    const dismissed = getDismissed();
-    const visible   = list.filter(n => !dismissed.has(String(n.id)));
+  /* Fetch persistent notifications from DB */
+  const fetchNotifs = useCallback(async (silent = false) => {
+    if (!silent) setNotifsLoading(true);
+    try {
+      const data = await api('GET', '/api/notifications/persistent?limit=50');
+      const list = Array.isArray(data) ? data : [];
 
-    const seen  = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
-    const fresh = visible.filter(n => !seen.has(String(n.id)));
-
-    if (fresh.length) {
-      // Always update badge; only show slide-toasts for notifications arriving after initial load
-      setUnreadIds(prev => new Set([...prev, ...fresh.map(n => String(n.id))]));
-      if (!isInitial) {
+      // Slide-toast for any unread items we haven't seen this session
+      const fresh = list.filter(n => !n.is_read && !knownIds.current.has(n.id));
+      if (fresh.length && knownIds.current.size > 0) {
         setSlideNotifs(prev => [
           ...prev,
-          ...fresh.slice(0, 3).map(n => ({ ...n, uid: `${n.id}-${Date.now()}` })),
+          ...fresh.slice(0, 3).map(n => ({ ...n, uid: `${n.id}-${Date.now()}`, type: n.entity_type, time: fmtTime(n.created_at) })),
         ]);
       }
-    }
+      list.forEach(n => knownIds.current.add(n.id));
 
-    // Always update seen to include all received IDs (prevents duplicate slide-ins on reconnect)
-    localStorage.setItem(SEEN_KEY, JSON.stringify(list.map(n => String(n.id))));
-    setNotifs(visible);
+      setNotifs(list.map(n => ({ ...n, time: fmtTime(n.created_at), type: n.entity_type })));
+      setUnreadCount(list.filter(n => !n.is_read).length);
+    } catch { /* silent fail */ }
+    finally { if (!silent) setNotifsLoading(false); }
   }, []);
 
-  /* Manual fetch when bell is opened */
-  const fetchNotifs = useCallback(async () => {
-    setNotifsLoading(true);
-    try {
-      const data = await api('GET', '/api/notifications');
-      applyNotifs(Array.isArray(data) ? data : []);
-    } catch { setNotifs([]); }
-    finally { setNotifsLoading(false); }
-  }, [applyNotifs]);
-
-  /* SSE: real-time push — reconnects with exponential backoff */
+  /* Initial fetch + poll every 30s */
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
-
-    let es, retryDelay = 3000, retryTimer, isFirst = true;
-
-    const connect = () => {
-      es = new EventSource(`/api/notifications/stream?token=${encodeURIComponent(token)}`);
-      es.onmessage = e => {
-        try {
-          const list = JSON.parse(e.data);
-          if (!Array.isArray(list)) return;
-          applyNotifs(list, isFirst);
-          isFirst = false;
-          retryDelay = 3000;
-        } catch {}
-      };
-      es.addEventListener('auth_error', () => es.close());
-      es.onerror = () => {
-        es.close();
-        retryTimer = setTimeout(() => { retryDelay = Math.min(retryDelay * 2, 30000); connect(); }, retryDelay);
-      };
-    };
-
-    connect();
-    return () => { clearTimeout(retryTimer); if (es) es.close(); };
-  }, [applyNotifs]);
+    fetchNotifs();
+    const id = setInterval(() => fetchNotifs(true), 30000);
+    return () => clearInterval(id);
+  }, [fetchNotifs]);
 
   /* Outside click closes bell */
   useEffect(() => {
@@ -210,18 +211,21 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  /* Opening the bell clears the unread badge */
+  /* Opening bell: refetch + mark all read in DB */
   useEffect(() => {
-    if (bellOpen) setUnreadIds(new Set());
-  }, [bellOpen]);
+    if (bellOpen) {
+      fetchNotifs();
+      api('POST', '/api/notifications/read-all').catch(() => {});
+      setUnreadCount(0);
+      setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+    }
+  }, [bellOpen, fetchNotifs]);
 
-  /* Dismiss all — persisted in localStorage so it survives refresh */
+  /* Mark all read + close */
   const clearAll = () => {
-    const ids      = notifs.map(n => String(n.id));
-    const existing = JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]');
-    localStorage.setItem(DISMISSED_KEY, JSON.stringify([...new Set([...existing, ...ids])]));
-    setNotifs([]);
-    setUnreadIds(new Set());
+    api('POST', '/api/notifications/read-all').catch(() => {});
+    setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
     setBellOpen(false);
   };
 
@@ -229,8 +233,6 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
     if (notif.action) onNavigate(notif.action);
     setBellOpen(false);
   };
-
-  const unreadCount = unreadIds.size;
 
   return (
     <>
@@ -323,30 +325,31 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
                     </div>
                   ) : (
                     notifs.map(n => {
-                      const pc = PRIORITY_COLORS[n.priority] || PRIORITY_COLORS.low;
+                      const pc      = PRIORITY_COLORS[n.priority] || PRIORITY_COLORS.low;
+                      const isUnread = !n.is_read;
                       return (
                         <button
                           key={n.id}
                           onClick={() => handleNotifClick(n)}
-                          className="w-full flex items-start gap-3 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors text-left group"
+                          className={`w-full flex items-start gap-3 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors text-left group ${isUnread ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''}`}
                         >
-                          {/* Priority dot */}
-                          <div className="flex-shrink-0 mt-2">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: pc.dot }} />
+                          {/* Unread dot */}
+                          <div className="flex-shrink-0 mt-2.5">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isUnread ? pc.dot : 'transparent' }} />
                           </div>
 
                           {/* Icon */}
                           <div
-                            className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-base"
+                            className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center"
                             style={{ backgroundColor: pc.light }}
                           >
-                            {n.icon || '🔔'}
+                            <NotifIcon type={n.type} size={16} color={pc.dot} />
                           </div>
 
                           {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2 mb-0.5">
-                              <span className="text-[12px] font-semibold text-gray-800 dark:text-gray-200 leading-tight line-clamp-1">
+                              <span className={`text-[12px] leading-tight line-clamp-1 ${isUnread ? 'font-bold text-gray-900 dark:text-white' : 'font-semibold text-gray-700 dark:text-gray-300'}`}>
                                 {n.title}
                               </span>
                               {n.time && (
@@ -379,7 +382,7 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
                       style={{ color: 'var(--accent)' }}
                     >
                       <CheckCheck size={13} />
-                      Dismiss all
+                      Mark all read
                     </button>
                   </div>
                 )}
