@@ -112,6 +112,9 @@ def _append_history(payload: dict, entry: dict):
 
 @router.put("/{employee_id}/section")
 def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Session = Depends(get_db)):
+    from datetime import date as _date_type
+    from backend.models.hrm import EmergencyContact
+
     checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == employee_id).first()
     if not checklist:
         items = _build_default_items(ONBOARDING_ITEMS)
@@ -134,6 +137,50 @@ def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Sessi
     checklist.items = json.dumps(payload)
     checklist.updated_at = datetime.utcnow()
     db.commit()
+
+    # Sync structured section data to Employee / EmergencyContact tables
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if emp and data.data:
+        d = data.data
+        emp_changed = False
+
+        if data.section == "personal_info":
+            if d.get("dob"):
+                try:
+                    emp.date_of_birth = _date_type.fromisoformat(d["dob"])
+                    emp_changed = True
+                except (ValueError, TypeError):
+                    pass
+            if d.get("present_address"):
+                emp.residential_address = d["present_address"].strip()
+                emp_changed = True
+            # Emergency contact within personal_info
+            ec_name = (d.get("emergency_name") or "").strip()
+            if ec_name:
+                existing = db.query(EmergencyContact).filter(EmergencyContact.employee_id == emp.id).first()
+                if existing:
+                    existing.name = ec_name
+                    existing.relationship_type = d.get("emergency_relation") or "Other"
+                    existing.phone = d.get("emergency_phone") or ""
+                else:
+                    db.add(EmergencyContact(
+                        employee_id=emp.id, name=ec_name,
+                        relationship_type=d.get("emergency_relation") or "Other",
+                        phone=d.get("emergency_phone") or "", is_primary=True,
+                    ))
+                emp_changed = True
+
+        elif data.section == "documents":
+            if d.get("aadhaar"):
+                emp.aadhar_no = str(d["aadhaar"]).strip().replace(" ", "")
+                emp_changed = True
+            if d.get("pan"):
+                emp.pan_no = str(d["pan"]).strip().upper()
+                emp_changed = True
+
+        if emp_changed:
+            db.commit()
+
     return {"ok": True, "sections": sections}
 
 

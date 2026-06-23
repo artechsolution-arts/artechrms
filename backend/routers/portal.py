@@ -1278,6 +1278,7 @@ class JourneyStepData(BaseModel):
 
 @router.put("/start-journey/step")
 def save_journey_step(body: JourneyStepData, request: Request, db: Session = Depends(get_db)):
+    from datetime import date as _date_type
     emp = _get_employee(request, db)
     journey = _get_journey(emp.id, db)
     step = journey.get(body.key, {})
@@ -1287,9 +1288,45 @@ def save_journey_step(body: JourneyStepData, request: Request, db: Session = Dep
     journey[body.key] = step
     _save_journey(emp.id, journey, db)
 
-    # Sync emergency contact data to the EmergencyContact table immediately
-    if body.key == "emergency_contact" and body.data:
-        d = body.data
+    if not body.data:
+        return {"ok": True, "status": "submitted"}
+
+    d = body.data
+    emp_changed = False
+
+    # ── Bank details → Employee bank columns ─────────────────────────────────
+    if body.key == "bank_details":
+        if d.get("bank_name"):      emp.bank_name       = d["bank_name"].strip();      emp_changed = True
+        if d.get("account_number"): emp.bank_account_no = d["account_number"].strip(); emp_changed = True
+        if d.get("ifsc"):           emp.bank_ifsc       = d["ifsc"].strip().upper();    emp_changed = True
+        if d.get("branch"):         emp.bank_branch     = d["branch"].strip();          emp_changed = True
+
+    # ── Aadhaar number → Employee.aadhar_no ──────────────────────────────────
+    elif body.key == "aadhaar":
+        if d.get("number"):
+            emp.aadhar_no = d["number"].strip().replace(" ", "")
+            emp_changed = True
+
+    # ── PAN number → Employee.pan_no ─────────────────────────────────────────
+    elif body.key == "pan":
+        if d.get("number"):
+            emp.pan_no = d["number"].strip().upper()
+            emp_changed = True
+
+    # ── Personal info → Employee date_of_birth + residential_address ─────────
+    elif body.key == "personal_info":
+        if d.get("dob"):
+            try:
+                emp.date_of_birth = _date_type.fromisoformat(d["dob"])
+                emp_changed = True
+            except (ValueError, TypeError):
+                pass
+        if d.get("present_address"):
+            emp.residential_address = d["present_address"].strip()
+            emp_changed = True
+
+    # ── Emergency contact → EmergencyContact table ────────────────────────────
+    elif body.key == "emergency_contact":
         name = (d.get("name") or "").strip()
         if name:
             existing = db.query(EmergencyContact).filter(EmergencyContact.employee_id == emp.id).first()
@@ -1306,6 +1343,9 @@ def save_journey_step(body: JourneyStepData, request: Request, db: Session = Dep
                     is_primary=True,
                 ))
             db.commit()
+
+    if emp_changed:
+        db.commit()
 
     return {"ok": True, "status": "submitted"}
 
