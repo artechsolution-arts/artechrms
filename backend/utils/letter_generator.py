@@ -1158,10 +1158,61 @@ def _strip_bold(text: str) -> str:
     return text.replace(_BM, '')
 
 
+_HEADING_EXCLUSIONS = frozenset({
+    'dear', 'yours', 'sincerely', 'faithfully', 'regards', 'for', 'date',
+    'subject', 'ref', 'to', 'from', 'place', 'signature', 'sign', 'acknowledgment',
+    'i hereby', 'we hereby', 'this is', 'please', 'kindly', 'note',
+})
+
+# Words commonly found in HR letter / document titles; at least one must be
+# present for a Title-Case line to be treated as a heading.
+_HEADING_KEYWORDS = frozenset({
+    'letter', 'notice', 'certificate', 'order', 'memo', 'format', 'form',
+    'agreement', 'concern', 'employment', 'probation', 'termination',
+    'appointment', 'confirmation', 'relieving', 'increment', 'promotion',
+    'resignation', 'acceptance', 'intent', 'bonafied', 'experience',
+    'joining', 'warning', 'suspension', 'extension', 'offer', 'transfer',
+    'salary', 'appraisal', 'review', 'policy', 'annexure', 'declaration',
+    'undertaking', 'reference', 'recommendation', 'appreciation', 'award',
+    'circular', 'notification', 'revision', 'amendment', 'noc', 'nda',
+    'internship', 'contract', 'release', 'discharge', 'clearance',
+})
+
+_HEADING_FILLER = frozenset({'for', 'and', 'of', 'in', 'by', 'at', 'on', 'the', 'a', 'an', 'with', 'upon'})
+
+
 def _is_heading_line(s: str) -> bool:
-    """True for ALL-CAPS lines ≤90 chars that contain at least one letter."""
+    """True for lines that look like a letter heading.
+
+    Rule 1 — ALL-CAPS ≤90 chars (e.g. 'EXPERIENCE LETTER').
+    Rule 2 — Title-Case ≤50 chars that contain at least one HR document
+              keyword (e.g. 'Experience Letter', 'Appointment Letter').
+              This catches headings from uploaded DOCX files where the
+              heading style is Title Case rather than ALL-CAPS.
+    """
     s = _strip_bold(s).strip()
-    return bool(s) and s == s.upper() and len(s) <= 90 and any(ch.isalpha() for ch in s)
+    if not s or not any(ch.isalpha() for ch in s):
+        return False
+    # Rule 1
+    if s == s.upper() and len(s) <= 90:
+        return True
+    # Rule 2 guards
+    if len(s) > 50 or len(s) < 5:
+        return False
+    sl = s.lower()
+    if any(sl.startswith(excl) for excl in _HEADING_EXCLUSIONS):
+        return False
+    if any(ch in s for ch in (',', '.', ':', ';', '?', '!')):
+        return False
+    words = s.split()
+    # Allow lowercase only for filler words (prepositions / articles)
+    if not all(w[0].isupper() or w.lower() in _HEADING_FILLER for w in words if w):
+        return False
+    # Must contain at least one recognised document-title keyword
+    word_set = {w.lower() for w in words}
+    if not word_set & _HEADING_KEYWORDS:
+        return False
+    return True
 
 
 def _render_table(c, table_rows: list[str], y: float) -> float:
@@ -1182,9 +1233,15 @@ def _render_table(c, table_rows: list[str], y: float) -> float:
     rest_w  = (usable - first_w) / (max_cols - 1) if max_cols > 1 else usable
     col_widths = [first_w] + [rest_w] * (max_cols - 1)
 
-    row_h   = LH * 1.35
+    row_h   = LH * 1.7    # tall enough so text never crosses a border line
     pad_l   = 2.5 * mm
     fsize_h = _fsize() - 0.5
+
+    # Vertical baseline inside each cell: rect spans [y-row_h+2 … y+2].
+    # Text drawn at y+2 - row_h*0.62 puts the baseline at ~60% down the cell,
+    # giving equal visual padding above (cap height) and below (descenders).
+    def _cell_text_y(y):
+        return y + 2 - row_h * 0.62
 
     y -= PG / 2
     for row_idx, cells in enumerate(parsed):
@@ -1208,7 +1265,8 @@ def _render_table(c, table_rows: list[str], y: float) -> float:
             c.line(x, y - row_h + 2, x, y + 2)
 
         # Cell text — bold for header row OR for substituted values (_BM markers)
-        x = ML
+        ty = _cell_text_y(y)
+        x  = ML
         for cell, w in zip(cells, col_widths):
             raw = cell.strip()
             plain = _strip_bold(raw)
@@ -1221,10 +1279,9 @@ def _render_table(c, table_rows: list[str], y: float) -> float:
                 txt = plain
                 while txt and c.stringWidth(txt, fnt, fsize_h) > max_cell_w:
                     txt = txt[:-1]
-                c.drawString(x + pad_l, y - LH * 0.15, txt)
+                c.drawString(x + pad_l, ty, txt)
             else:
-                # Inline bold rendering for cells with substituted values
-                _wrap_rich(c, raw, x + pad_l, y - LH * 0.15,
+                _wrap_rich(c, raw, x + pad_l, ty,
                            max_w=w - pad_l * 2, lh=LH, size=fsize_h)
             x += w
 
