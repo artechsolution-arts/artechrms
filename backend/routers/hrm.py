@@ -1052,9 +1052,39 @@ from fastapi.responses import FileResponse as _FileResponse
 
 COMPANY_DOCS_DIR = "/app/company_docs"
 
+_ALLOWED_DOC_EXTS = {
+    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+    "txt", "csv", "jpg", "jpeg", "png", "gif", "webp",
+    "zip", "rar", "7z", "odt", "ods", "odp",
+}
+
+_MIME_MAP = {
+    "pdf": "application/pdf",
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "xls": "application/vnd.ms-excel",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "ppt": "application/vnd.ms-powerpoint",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "txt": "text/plain",
+    "csv": "text/csv",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "gif": "image/gif",
+    "webp": "image/webp",
+    "zip": "application/zip",
+    "rar": "application/x-rar-compressed",
+    "7z": "application/x-7z-compressed",
+    "odt": "application/vnd.oasis.opendocument.text",
+    "ods": "application/vnd.oasis.opendocument.spreadsheet",
+    "odp": "application/vnd.oasis.opendocument.presentation",
+}
+
+
 @router.get("/company-docs")
 def list_company_docs():
-    files = sorted([f for f in storage.list_files("company-docs") if f.lower().endswith(".pdf")])
+    files = sorted(storage.list_files("company-docs"))
     return [{"name": f, "url": f"/api/hrm/company-docs/{f}"} for f in files]
 
 
@@ -1062,9 +1092,11 @@ def list_company_docs():
 def get_company_doc(filename: str):
     from fastapi.responses import Response as _Resp
     safe_name = _os.path.basename(filename)
+    ext = safe_name.rsplit(".", 1)[-1].lower() if "." in safe_name else ""
+    mime = _MIME_MAP.get(ext, "application/octet-stream")
     try:
         data = storage.download_file(f"company-docs/{safe_name}")
-        return _Resp(content=data, media_type="application/pdf",
+        return _Resp(content=data, media_type=mime,
                      headers={"Content-Disposition": f'attachment; filename="{safe_name}"'})
     except Exception:
         raise HTTPException(404, "File not found")
@@ -1072,8 +1104,9 @@ def get_company_doc(filename: str):
 
 @router.post("/company-docs/upload", status_code=201)
 async def upload_company_doc(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(400, "Only PDF files are allowed")
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if ext not in _ALLOWED_DOC_EXTS:
+        raise HTTPException(400, f"File type '.{ext}' is not allowed")
     safe_name = _os.path.basename(file.filename)
     if not safe_name:
         raise HTTPException(400, "Invalid filename")

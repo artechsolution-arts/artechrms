@@ -29,7 +29,17 @@ function DocIcon({ label, size = 18, className = '', style }) {
 }
 
 function docLabel(filename) {
-  return filename.replace(/\.pdf$/i, '').replace(/\s*\(\d+\)\s*$/, '').trim();
+  return filename.replace(/\.[^.]+$/, '').replace(/\s*\(\d+\)\s*$/, '').trim();
+}
+
+function docIcon(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp'].includes(ext)) return '🖼️';
+  if (['xls','xlsx','csv','ods'].includes(ext)) return '📊';
+  if (['ppt','pptx','odp'].includes(ext)) return '📊';
+  if (['doc','docx','odt','txt'].includes(ext)) return '📝';
+  if (['zip','rar','7z'].includes(ext)) return '🗜️';
+  return '📄';
 }
 
 // Case-insensitive lookup into letterFields (keys are e.g. "Appointment Letter")
@@ -2095,7 +2105,6 @@ export default function CompanyDocs({ toast }) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-    if (!file.name.toLowerCase().endsWith('.pdf')) { toast('Only PDF files are allowed', 'warning'); return; }
     setUploading(true);
     try {
       const fd = new FormData();
@@ -2166,7 +2175,7 @@ export default function CompanyDocs({ toast }) {
         ))}
       </div>
 
-      <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleUpload} />
+      <input ref={fileInputRef} type="file" accept="*" className="hidden" onChange={handleUpload} />
 
       {/* Letterhead Template tab */}
       {activeTab === 'template' && <LetterheadEditor toast={toast} />}
@@ -2321,25 +2330,28 @@ export default function CompanyDocs({ toast }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {docs.map(doc => {
             const label = docLabel(doc.name);
+            const ext = doc.name.split('.').pop().toUpperCase();
             const hasGenerator = !!findLetterFields(label, letterFields);
             return (
               <div key={doc.name} className="card p-4 flex items-start gap-3 hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0">
-                  <DocIcon label={label} size={20} style={{ color: 'var(--accent)' }} />
+                <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0 text-lg">
+                  {docIcon(doc.name)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-snug">{label}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">PDF Template</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{ext} Document</p>
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-                    <button
-                      onClick={() => openPreview(doc)}
-                      disabled={previewLoading}
-                      className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-                    >
-                      <Eye size={11} /> View
-                    </button>
+                    {doc.name.toLowerCase().endsWith('.pdf') && (
+                      <button
+                        onClick={() => openPreview(doc)}
+                        disabled={previewLoading}
+                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                      >
+                        <Eye size={11} /> View
+                      </button>
+                    )}
                     <button
                       onClick={() => download(doc)}
                       disabled={downloading === doc.name}
