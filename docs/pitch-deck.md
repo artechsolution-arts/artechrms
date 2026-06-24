@@ -12,7 +12,8 @@
 **Empowering People. Enhancing Performance.**
 
 A modern, role-based HR platform that unifies recruitment, onboarding, payroll,
-attendance, leave, appraisals and offboarding in one beautifully designed application.
+attendance, leave, appraisals, document generation and offboarding in one beautifully
+designed application.
 
 *Artech Solutions*
 
@@ -22,12 +23,13 @@ attendance, leave, appraisals and offboarding in one beautifully designed applic
 
 **The problem — HR teams are drowning in disconnected tools.**
 - 🧩 Separate apps for payroll, attendance, leave, recruitment & documents
-- 📄 Manual, paper-heavy onboarding, payslips and approvals
+- 📄 Manual, paper-heavy onboarding, payslips and letter generation
 - ⏳ Requests stuck in inboxes; no clear chain of authority
 - 🔍 No single source of truth — data scattered and hard to audit
+- 📬 Letters still drafted manually and sent via personal email
 
 **The solution — Artech HRMS replaces 6+ tools with one connected platform.**
-> HR runs everything from one dashboard · employees self-serve · leaders get live insight · every approval follows an enforced chain of authority.
+> HR runs everything from one dashboard · employees self-serve · leaders get live insight · every approval follows an enforced chain of authority · letters generate and email themselves.
 
 ---
 
@@ -42,7 +44,9 @@ attendance, leave, appraisals and offboarding in one beautifully designed applic
 **Complete HR suite**
 - 👤 People · 🗓️ Leave & Attendance · 💰 Payroll
 - 🧑‍💼 Recruitment & Onboarding · ⭐ Appraisals · 📁 Documents
-- 🪪 Employee Self-Service Portal · 🎉 Announcements & Holidays
+- 📄 Letter & Certificate Generation · 📬 Automated Email Delivery
+- 📱 LinkedIn & Instagram Publishing · 🪪 Employee Self-Service Portal
+- 🎉 Announcements & Holidays
 
 ---
 
@@ -50,10 +54,13 @@ attendance, leave, appraisals and offboarding in one beautifully designed applic
 
 1. **🎨 Genuinely beautiful UX** — frosted-glass theming, custom backgrounds, light/dark. Software people *want* to use.
 2. **🔐 Built-in approval hierarchy** — Employee → HR/CEO; HR's own requests → CEO only. Authority is enforced, not assumed.
-3. **🧭 Guided "Start Journey" onboarding** — download → sign → re-upload every document.
-4. **🇮🇳 India-ready payroll** — PF, ESI, Professional Tax, gratuity & bonus out of the box.
-5. **⚙️ Granular permissions** — toggle any feature per role from one matrix.
-6. **🤖 AI insights & in-app assistant.**
+3. **🧭 Guided "Start Journey" onboarding** — download → sign → re-upload every document with progress tracking.
+4. **📄 One-click document generation** — 10 predefined letter types (Appointment, Experience, Offer, Relieving, Increment and more) plus custom DOCX templates; variables auto-filled from employee records; works for candidates not yet in the system.
+5. **📬 Automatic letter email delivery** — every generated letter is emailed directly to the recipient as a PDF attachment in a professional MNC-grade format, from the company's own email address.
+6. **🇮🇳 India-ready payroll** — PF, ESI, Professional Tax, Gratuity & Bonus out of the box.
+7. **📱 Built-in social publishing** — post job openings and company news to LinkedIn and Instagram without leaving the HRMS.
+8. **⚙️ Granular permissions** — toggle any feature per role from one matrix.
+9. **🤖 AI insights & in-app assistant.**
 
 ---
 
@@ -66,11 +73,14 @@ attendance, leave, appraisals and offboarding in one beautifully designed applic
 | Automation & self-service | Statutory rules + audit trail | Enforced hierarchy | One platform | Great experience |
 
 **Traction — live & in use**
-- ✅ Deployed in production, managing a real multi-department workforce
+- ✅ Deployed in production on Railway, serving a real multi-department workforce
 - ✅ All four role experiences shipped and unified
 - ✅ Payroll, leave, attendance, appraisal & onboarding flows operational
+- ✅ Document generation for 10 letter types + custom templates, with email delivery
+- ✅ LinkedIn and Instagram publishing live with OAuth 2.0
+- ✅ All files (documents, photos, payslips) stored on Cloudflare R2
 
-**Roadmap:** native mobile · advanced analytics · integrations (biometric, e-sign, accounting) · deeper AI · multi-company.
+**Roadmap:** native mobile · advanced analytics · biometric & e-sign integrations · accounting system connectors · SSO/OIDC · multi-company.
 
 ---
 
