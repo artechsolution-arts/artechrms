@@ -1074,9 +1074,93 @@ LETTER_FIELDS = {
 }
 
 
+# ── Rich (inline-bold) text helpers ──────────────────────────────────────────
+# Substituted variable values are wrapped with _BM so the renderer can
+# switch to bold font for those spans.
+
+_BM = '\x01'   # bold-marker delimiter
+
+
+def _rich_tokens(text: str):
+    """Split _BM-delimited text into [(str, is_bold)] tokens."""
+    result = []
+    parts = text.split(_BM)
+    for i, p in enumerate(parts):
+        if p:
+            result.append((p, bool(i % 2)))
+    return result
+
+
+def _wrap_rich(c, text: str, x, y, max_w=None, lh=None, size=None, color=DARK):
+    """Like _wrap() but renders _BM-enclosed spans in bold font."""
+    if _BM not in text:
+        return _wrap(c, text, x, y, size=size, lh=lh, color=color)
+
+    if size is None: size = _fsize()
+    if max_w is None: max_w = PAGE_W - MR - x
+    if lh is None: lh = LH
+
+    fn = _font()
+    fb = _font('b')
+
+    # Build flat token list: [(word_or_space, is_bold)]
+    word_list = []
+    for seg, bold in _rich_tokens(text):
+        i = 0
+        while i < len(seg):
+            if seg[i] == ' ':
+                j = i
+                while j < len(seg) and seg[j] == ' ':
+                    j += 1
+                word_list.append((' ' * (j - i), bold))
+                i = j
+            else:
+                j = i
+                while j < len(seg) and seg[j] != ' ':
+                    j += 1
+                word_list.append((seg[i:j], bold))
+                i = j
+
+    line_items: list = []
+    line_w = 0.0
+
+    def _flush(items, y):
+        if not items:
+            return y
+        y = _check_break(c, y, lh)
+        cx = x
+        c.setFillColor(color)
+        for (t, b, w) in items:
+            c.setFont(fb if b else fn, size)
+            c.drawString(cx, y, t)
+            cx += w
+        return y - lh
+
+    for (word, bold) in word_list:
+        fnt = fb if bold else fn
+        ww = c.stringWidth(word, fnt, size)
+        if line_w + ww > max_w and line_items:
+            y = _flush(line_items, y)
+            line_items = []
+            line_w = 0.0
+            if not word.strip():
+                continue
+        line_items.append((word, bold, ww))
+        line_w += ww
+
+    if line_items:
+        y = _flush(line_items, y)
+    return y
+
+
+def _strip_bold(text: str) -> str:
+    """Remove _BM markers, returning plain text."""
+    return text.replace(_BM, '')
+
+
 def _is_heading_line(s: str) -> bool:
     """True for ALL-CAPS lines ≤90 chars that contain at least one letter."""
-    s = s.strip()
+    s = _strip_bold(s).strip()
     return bool(s) and s == s.upper() and len(s) <= 90 and any(ch.isalpha() for ch in s)
 
 
@@ -1087,9 +1171,8 @@ def _render_table(c, table_rows: list[str], y: float) -> float:
     parsed = [r.split('\t') for r in table_rows]
     max_cols = max(len(r) for r in parsed)
     if max_cols < 2:
-        # Single-column — fall back to plain text
         for r in parsed:
-            y = _wrap(c, r[0].strip(), ML, y)
+            y = _wrap_rich(c, r[0].strip(), ML, y)
             y -= PG / 2
         return y
 
@@ -1124,18 +1207,25 @@ def _render_table(c, table_rows: list[str], y: float) -> float:
             x += w
             c.line(x, y - row_h + 2, x, y + 2)
 
-        # Cell text
+        # Cell text — bold for header row OR for substituted values (_BM markers)
         x = ML
         for cell, w in zip(cells, col_widths):
-            fnt = _HF_SEMI if is_hdr else _font()
-            c.setFont(fnt, fsize_h)
-            c.setFillColor(DARK)
-            # Truncate if too wide
-            txt = cell.strip()
-            max_cell_w = w - pad_l * 2
-            while txt and c.stringWidth(txt, fnt, fsize_h) > max_cell_w:
-                txt = txt[:-1]
-            c.drawString(x + pad_l, y - LH * 0.15, txt)
+            raw = cell.strip()
+            plain = _strip_bold(raw)
+            has_bold = _BM in raw
+            if is_hdr or not has_bold:
+                fnt = _HF_SEMI if is_hdr else _font()
+                c.setFont(fnt, fsize_h)
+                c.setFillColor(DARK)
+                max_cell_w = w - pad_l * 2
+                txt = plain
+                while txt and c.stringWidth(txt, fnt, fsize_h) > max_cell_w:
+                    txt = txt[:-1]
+                c.drawString(x + pad_l, y - LH * 0.15, txt)
+            else:
+                # Inline bold rendering for cells with substituted values
+                _wrap_rich(c, raw, x + pad_l, y - LH * 0.15,
+                           max_w=w - pad_l * 2, lh=LH, size=fsize_h)
             x += w
 
         y -= row_h
@@ -1145,7 +1235,9 @@ def _render_table(c, table_rows: list[str], y: float) -> float:
 
 
 def generate_custom_letter(content: str, fields: dict, template: dict | None = None) -> bytes:
-    """Generate a PDF from a freeform template string with {{key}} variable substitution."""
+    """Generate a PDF from a freeform template string with {{key}} variable substitution.
+    Substituted values are wrapped with _BM so the renderer makes them bold.
+    """
     import re
     token = _tpl_ctx.set(template or {})
     temp_token = _temp_ctx.set([])
@@ -1161,10 +1253,12 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
             key = re.sub(r'[^a-z0-9_]', '', re.sub(r'\s+', '_', raw.lower()))
             val = fields.get(key) or fields.get(raw)
             if val is None:
-                return m.group(0)
+                return m.group(0)          # leave unresolved placeholders as-is
             if any(w in key for w in ('date', 'dob', 'doj')):
-                return _fmt(str(val))
-            return str(val)
+                val = _fmt(str(val))
+            else:
+                val = str(val)
+            return f"{_BM}{val}{_BM}"      # wrap in bold markers
 
         text = re.sub(r'\{\{([^}]+)\}\}', _replace, content)
 
@@ -1175,8 +1269,7 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
         lines = text.split('\n')
         i = 0
         while i < len(lines):
-            raw_line = lines[i]
-            stripped  = raw_line.strip()
+            stripped = lines[i].strip()
 
             # ── Blank line ──────────────────────────────────────────────────
             if not stripped:
@@ -1193,30 +1286,30 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
                 y = _render_table(c, table_rows, y)
                 continue
 
-            # ── ALL-CAPS heading ────────────────────────────────────────────
+            # ── ALL-CAPS heading (check plain text, ignoring bold markers) ──
             if _is_heading_line(stripped):
+                plain = _strip_bold(stripped)
                 y = _check_break(c, y, 14 * mm)
-                # Longer headings use a smaller font but stay centred+bold
-                size = 13 if len(stripped) <= 35 else 11
+                size = 13 if len(plain) <= 35 else 11
                 c.setFont(_HF_BOLD, size)
                 c.setFillColor(DARK)
-                c.drawCentredString(PAGE_W / 2, y, stripped)
-                y -= (size + 4) * 0.352778 * mm * 1.8   # approx line height
+                c.drawCentredString(PAGE_W / 2, y, plain)
+                y -= (size + 4) * 0.352778 * mm * 1.8
                 i += 1
                 continue
 
             # ── ANNEXURE / section markers ──────────────────────────────────
-            if re.match(r'^ANNEXURE\s', stripped, re.I):
+            if re.match(r'^ANNEXURE\s', _strip_bold(stripped), re.I):
                 y = _check_break(c, y, 10 * mm)
                 c.setFont(_HF_BOLD, _fsize() + 0.5)
                 c.setFillColor(DARK)
-                c.drawString(ML, y, stripped)
+                c.drawString(ML, y, _strip_bold(stripped))
                 y -= LH * 1.4
                 i += 1
                 continue
 
-            # ── Normal body line ────────────────────────────────────────────
-            y = _wrap(c, stripped, ML, y)
+            # ── Normal body line (with inline bold for substituted values) ──
+            y = _wrap_rich(c, stripped, ML, y)
             y -= PG / 2
             i += 1
 
