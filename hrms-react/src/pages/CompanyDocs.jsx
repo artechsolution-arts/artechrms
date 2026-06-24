@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import ConfirmModal from '../components/ConfirmModal';
 import { api } from '../api';
 import { FileText, Download, Eye, FolderOpen, Upload, Trash2, Send, ChevronDown, Search, Check, X, Settings, Image, Phone, MapPin, User, Palette, Save, RefreshCw, ZoomIn, Move, PenLine, Type, Layers, Plus, Edit2, Wand2, FileCheck, FileCheck2, FileX, Award, Clock, TrendingUp, Star, LogOut, ShieldCheck, BookOpen, Scale, Lock, ClipboardCheck, FileImage, FileSpreadsheet, Archive, File, Presentation } from 'lucide-react';
 
@@ -2047,6 +2048,8 @@ export default function CompanyDocs({ toast }) {
   const fileInputRef = useRef(null);
   const blobUrlRef = useRef(null);
 
+  const [confirmDialog, setConfirmDialog] = useState(null);
+
   // Custom templates state
   const [customTemplates, setCustomTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -2123,15 +2126,24 @@ export default function CompanyDocs({ toast }) {
   };
 
   const handleDelete = async (doc) => {
-    if (!confirm(`Delete "${docLabel(doc.name)}"? This cannot be undone.`)) return;
-    setDeleting(doc.name);
-    try {
-      await api('DELETE', `/api/hrm/company-docs/${encodeURIComponent(doc.name)}`);
-      toast('Document deleted', 'success');
-      if (preview?.doc?.name === doc.name) closePreview();
-      load();
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setDeleting(null); }
+    setConfirmDialog({
+      title: 'Delete Document',
+      message: `Delete "${docLabel(doc.name)}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setDeleting(doc.name);
+        try {
+          await api('DELETE', `/api/hrm/company-docs/${encodeURIComponent(doc.name)}`);
+          toast('Document deleted', 'success');
+          if (preview?.doc?.name === doc.name) closePreview();
+          load();
+        } catch (e) { toast(e.message, 'error'); }
+        finally { setDeleting(null); }
+      }
+    });
+    return;
   };
 
   return (
@@ -2253,15 +2265,23 @@ export default function CompanyDocs({ toast }) {
                       <Edit2 size={11} /> Edit
                     </button>
                     <button
-                      onClick={async () => {
-                        if (!confirm(`Delete template "${tpl.name}"?`)) return;
-                        setDeletingTpl(tpl.id);
-                        try {
-                          await api('DELETE', `/api/hrm/doc-templates/${tpl.id}`);
-                          setCustomTemplates(ts => ts.filter(t => t.id !== tpl.id));
-                          toast('Template deleted', 'success');
-                        } catch (e) { toast(e.message, 'error'); }
-                        finally { setDeletingTpl(null); }
+                      onClick={() => {
+                        setConfirmDialog({
+                          title: 'Delete Template',
+                          message: `Delete template "${tpl.name}"?`,
+                          confirmLabel: 'Delete',
+                          danger: true,
+                          onConfirm: async () => {
+                            setConfirmDialog(null);
+                            setDeletingTpl(tpl.id);
+                            try {
+                              await api('DELETE', `/api/hrm/doc-templates/${tpl.id}`);
+                              setCustomTemplates(ts => ts.filter(t => t.id !== tpl.id));
+                              toast('Template deleted', 'success');
+                            } catch (e) { toast(e.message, 'error'); }
+                            finally { setDeletingTpl(null); }
+                          }
+                        });
                       }}
                       disabled={deletingTpl === tpl.id}
                       className="flex items-center px-2 py-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
@@ -2438,6 +2458,16 @@ export default function CompanyDocs({ toast }) {
           toast={toast}
         />
       )}
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }

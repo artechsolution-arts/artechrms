@@ -3,6 +3,7 @@ import { api } from '../api';
 import Modal, { Field } from '../components/Modal';
 import { Plus, Trash2, Pencil, Building2 } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
+import ConfirmModal from '../components/ConfirmModal';
 
 const BG_PALETTE = [
   'from-blue-500 to-indigo-600',
@@ -20,6 +21,7 @@ export default function Departments({ toast }) {
   const [loading, setLoading] = useState(true);
   const [modal,   setModal]   = useState(null);
   const [name,    setName]    = useState('');
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,9 +51,18 @@ export default function Departments({ toast }) {
   };
 
   const del = async (id, n) => {
-    if (!confirm(`Delete department "${n}"?`)) return;
-    try { await api('DELETE', `/api/employees/departments/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Department',
+      message: `Delete department "${n}"?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/employees/departments/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   return (
@@ -149,6 +160,15 @@ export default function Departments({ toast }) {
           />
         </Field>
       </Modal>
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

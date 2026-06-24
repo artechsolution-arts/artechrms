@@ -6,6 +6,7 @@ import Modal, { FormSection, FormGrid, Field } from '../../components/Modal';
 import DatePicker from '../../components/DatePicker';
 import Select from '../../components/Select';
 import { Plus, Trash2, CalendarDays, XCircle, PencilLine } from 'lucide-react';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function EmpLeaves({ toast }) {
   const [leaves,   setLeaves]   = useState([]);
@@ -22,6 +23,8 @@ export default function EmpLeaves({ toast }) {
 
   const [editLeave,   setEditLeave]   = useState(null);
   const [editForm,    setEditForm]    = useState({});
+
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const [form, setForm] = useState({});
   const f = v => setForm(p => ({ ...p, ...v }));
@@ -70,12 +73,21 @@ export default function EmpLeaves({ toast }) {
   };
 
   const cancel = async id => {
-    if (!confirm('Cancel this leave application?')) return;
-    try {
-      await api('DELETE', `/api/portal/leaves/${id}`);
-      toast('Leave cancelled', 'success');
-      load();
-    } catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Cancel Leave',
+      message: 'Cancel this leave application?',
+      confirmLabel: 'Cancel Leave',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api('DELETE', `/api/portal/leaves/${id}`);
+          toast('Leave cancelled', 'success');
+          load();
+        } catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const openCancelRequest = id => { setCancelId(id); setCancelReason(''); setCancelModal(true); };
@@ -375,6 +387,15 @@ export default function EmpLeaves({ toast }) {
           </FormGrid>
         </FormSection>
       </Modal>
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

@@ -7,6 +7,7 @@ import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
 import { Plus, RefreshCw, CheckCircle, XCircle, Trash2, RotateCcw, PencilLine } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
+import ConfirmModal from '../components/ConfirmModal';
 
 const STATUS_TABS = [
   { value: '',                       label: 'All' },
@@ -34,6 +35,7 @@ export default function Leaves({ toast }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({});
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('artech_hrms_user') || '{}'); } catch { return {}; } })();
   const myRole = currentUser.role || '';
@@ -107,9 +109,18 @@ export default function Leaves({ toast }) {
   };
 
   const del = async id => {
-    if (!confirm('Delete this leave application?')) return;
-    try { await api('DELETE', `/api/leaves/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Leave',
+      message: 'Delete this leave application?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/leaves/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const cancelCount = allRows.filter(r => r.status === 'Cancellation Requested').length;
@@ -334,6 +345,16 @@ export default function Leaves({ toast }) {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
 
       <Modal open={modal} title="Apply Leave" onClose={() => setModal(false)} onSave={save} saveLabel="Apply Leave">
         <FormSection title="Leave Details">

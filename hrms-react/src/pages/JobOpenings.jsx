@@ -3,6 +3,7 @@ import { api, apiForm } from '../api';
 import Badge from '../components/Badge';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
+import ConfirmModal from '../components/ConfirmModal';
 import { Plus, RefreshCw, Trash2, XCircle, Paperclip, Share2, Eye, Download, X } from 'lucide-react';
 
 // ── Inline brand SVG icons ─────────────────────────────────────
@@ -532,6 +533,7 @@ function SocialAccountsModal({ open, onClose, toast }) {
   const [accounts, setAccounts] = useState([]);
   const [config, setConfig] = useState({});
   const [connecting, setConnecting] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = async () => {
     try {
@@ -581,12 +583,21 @@ function SocialAccountsModal({ open, onClose, toast }) {
   };
 
   const disconnect = async (id, name) => {
-    if (!confirm(`Disconnect "${name}"?`)) return;
-    try {
-      await api('DELETE', `/api/social/accounts/${id}`);
-      toast('Account disconnected', 'success');
-      load();
-    } catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Disconnect Account',
+      message: `Disconnect "${name}"?`,
+      confirmLabel: 'Disconnect',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api('DELETE', `/api/social/accounts/${id}`);
+          toast('Account disconnected', 'success');
+          load();
+        } catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   if (!open) return null;
@@ -676,6 +687,15 @@ function SocialAccountsModal({ open, onClose, toast }) {
           </p>
         </div>
       </div>
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }
@@ -823,6 +843,7 @@ export default function JobOpenings({ toast }) {
   const [previewOpening, setPreviewOpening] = useState(null);
   const [socialAccModal, setSocialAccModal] = useState(false);
   const [postNowOpening, setPostNowOpening] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = async (st = statusFilter) => {
     setLoading(true);
@@ -837,15 +858,33 @@ export default function JobOpenings({ toast }) {
   useEffect(() => { load(); }, []);
 
   const closeOpening = async id => {
-    if (!confirm('Close this job opening?')) return;
-    try { await api('PUT', `/api/recruitment/openings/${id}/close`); toast('Closed', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Close Job Opening',
+      message: 'Close this job opening?',
+      confirmLabel: 'Close Opening',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('PUT', `/api/recruitment/openings/${id}/close`); toast('Closed', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const del = async (id, title) => {
-    if (!confirm(`Delete "${title}"?`)) return;
-    try { await api('DELETE', `/api/recruitment/openings/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Job Opening',
+      message: `Delete "${title}"?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/recruitment/openings/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   return (
@@ -953,6 +992,15 @@ export default function JobOpenings({ toast }) {
       {previewOpening && <SocialPreviewModal opening={previewOpening} onClose={() => setPreviewOpening(null)} />}
       <SocialAccountsModal open={socialAccModal} onClose={() => setSocialAccModal(false)} toast={toast} />
       {postNowOpening && <PostNowModal opening={postNowOpening} onClose={() => setPostNowOpening(null)} toast={toast} />}
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

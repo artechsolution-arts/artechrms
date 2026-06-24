@@ -3,6 +3,7 @@ import { api } from '../api';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import Select from '../components/Select';
+import ConfirmModal from '../components/ConfirmModal';
 import { Plus, RefreshCw, Trash2, Target, Star, ClipboardCheck,
          Crown, Eye, X, FileText, Upload, Download, Lock, CalendarDays, Pencil } from 'lucide-react';
 
@@ -187,6 +188,7 @@ function EvalForm({ goals, onSubmit, submitting }) {
 function PerfDocuments({ appraisalId, documents, onRefresh, toast, isHR }) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -207,12 +209,21 @@ function PerfDocuments({ appraisalId, documents, onRefresh, toast, isHR }) {
   };
 
   const handleDelete = async (docId) => {
-    if (!confirm('Remove this document?')) return;
-    try {
-      await api('DELETE', `/api/appraisals/${appraisalId}/documents/${docId}`);
-      toast('Document removed', 'success');
-      onRefresh();
-    } catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Remove Document',
+      message: 'Remove this document?',
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api('DELETE', `/api/appraisals/${appraisalId}/documents/${docId}`);
+          toast('Document removed', 'success');
+          onRefresh();
+        } catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const docs = documents || [];
@@ -268,6 +279,15 @@ function PerfDocuments({ appraisalId, documents, onRefresh, toast, isHR }) {
           ))}
         </div>
       )}
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }
@@ -585,6 +605,7 @@ export default function Appraisals({ toast }) {
     { title: '', weight: 25, target: '' },
   ]);
   const [saving, setSaving] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -630,9 +651,18 @@ export default function Appraisals({ toast }) {
 
   const del = async (id, e) => {
     e.stopPropagation();
-    if (!confirm('Delete this appraisal? This cannot be undone.')) return;
-    try { await api('DELETE', `/api/appraisals/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Appraisal',
+      message: 'Delete this appraisal? This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/appraisals/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const PIPELINE_STAGES = [
@@ -913,6 +943,15 @@ export default function Appraisals({ toast }) {
           </div>
         </FormSection>
       </Modal>
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

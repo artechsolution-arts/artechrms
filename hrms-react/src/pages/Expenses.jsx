@@ -6,6 +6,7 @@ import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
 import { Plus, Receipt, CheckCircle, XCircle, Trash2, ChevronDown } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 
 const STATUS_COLOR = {
   Pending:  'bg-amber-50 text-amber-700 border border-amber-200',
@@ -24,6 +25,7 @@ export default function Expenses({ toast }) {
   const [actionModal, setActionModal] = useState(null); // { id, action: 'approve'|'reject' }
   const [remarks, setRemarks] = useState('');
   const [form, setForm] = useState({ claim_date: new Date().toISOString().slice(0, 10) });
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -66,9 +68,18 @@ export default function Expenses({ toast }) {
   };
 
   const del = async id => {
-    if (!confirm('Delete this expense claim?')) return;
-    try { await api('DELETE', `/api/hrm/expenses/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Expense',
+      message: 'Delete this expense claim?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/hrm/expenses/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const totalPending  = rows.filter(r => r.status === 'Pending').reduce((s, r) => s + r.amount, 0);
@@ -223,6 +234,16 @@ export default function Expenses({ toast }) {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

@@ -2,6 +2,7 @@
 import { api } from '../api';
 import { fmtDate } from '../utils/date';
 import EmpAvatar from '../components/EmpAvatar';
+import ConfirmModal from '../components/ConfirmModal';
 import {
   UserPlus, UserMinus, Search, RefreshCw, X, ChevronLeft, ChevronRight,
   CheckCircle2, Circle, Save, Clock, AlertCircle, Plus, Pencil, Trash2,
@@ -295,6 +296,7 @@ function useRowList(data, set, key = 'entries') {
   const rows = (data[key] || []).map(r => r.id ? r : { ...r, id: genId() });
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft]         = useState({});
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const startAdd = () => {
     const newRow = { id: genId() };
@@ -310,14 +312,23 @@ function useRowList(data, set, key = 'entries') {
     setDraft({});
   };
   const deleteRow = (id) => {
-    if (!window.confirm('Delete this entry?')) return;
-    set(key, rows.filter(r => r.id !== id));
+    setConfirmDialog({
+      title: 'Delete Entry',
+      message: 'Delete this entry?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        set(key, rows.filter(r => r.id !== id));
+      }
+    });
+    return;
   };
-  return { rows, editingId, draft, setDraft, startAdd, startEdit, cancelEdit, saveEdit, deleteRow };
+  return { rows, editingId, draft, setDraft, startAdd, startEdit, cancelEdit, saveEdit, deleteRow, confirmDialog, setConfirmDialog };
 }
 
 function OnEducation({ data, set }) {
-  const { rows, editingId, draft, setDraft, startAdd, startEdit, cancelEdit, saveEdit, deleteRow } =
+  const { rows, editingId, draft, setDraft, startAdd, startEdit, cancelEdit, saveEdit, deleteRow, confirmDialog, setConfirmDialog } =
     useRowList(data, set, 'entries');
 
   const D = (f, p, t = 'text') => (
@@ -374,12 +385,21 @@ function OnEducation({ data, set }) {
           )}
         </div>
       ))}
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }
 
 function OnExperience({ data, set }) {
-  const { rows, editingId, draft, setDraft, startAdd, startEdit, cancelEdit, saveEdit, deleteRow } =
+  const { rows, editingId, draft, setDraft, startAdd, startEdit, cancelEdit, saveEdit, deleteRow, confirmDialog, setConfirmDialog } =
     useRowList(data, set, 'entries');
 
   return (
@@ -430,13 +450,22 @@ function OnExperience({ data, set }) {
           )}
         </div>
       ))}
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }
 
 function OnAssets({ data, set }) {
   const ASSET_TYPES = ['Laptop / Desktop', 'Mobile Phone', 'SIM Card', 'ID Card', 'Access Card', 'Headset / Peripherals', 'Locker / Workstation', 'Other'];
-  const { rows, editingId, draft, setDraft, startAdd, startEdit, cancelEdit, saveEdit, deleteRow } =
+  const { rows, editingId, draft, setDraft, startAdd, startEdit, cancelEdit, saveEdit, deleteRow, confirmDialog, setConfirmDialog } =
     useRowList(data, set, 'assets');
 
   return (
@@ -483,6 +512,15 @@ function OnAssets({ data, set }) {
         </div>
       ))}
       <Textarea label="Additional Remarks" value={data.remarks || ''} onChange={v => set('remarks', v)} rows={2} placeholder="General asset notes…" />
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }

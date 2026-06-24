@@ -3,6 +3,7 @@ import { api } from '../api';
 import Modal, { Field } from '../components/Modal';
 import { Plus, Trash2, Pencil, Award } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
+import ConfirmModal from '../components/ConfirmModal';
 
 const BG_PALETTE = [
   'from-indigo-500 to-blue-600',
@@ -20,6 +21,7 @@ export default function Designations({ toast }) {
   const [loading, setLoading] = useState(true);
   const [modal,   setModal]   = useState(null);
   const [name,    setName]    = useState('');
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,9 +51,18 @@ export default function Designations({ toast }) {
   };
 
   const del = async (id, n) => {
-    if (!confirm(`Delete designation "${n}"?`)) return;
-    try { await api('DELETE', `/api/employees/designations/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Designation',
+      message: `Delete designation "${n}"?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/employees/designations/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   return (
@@ -149,6 +160,16 @@ export default function Designations({ toast }) {
           />
         </Field>
       </Modal>
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

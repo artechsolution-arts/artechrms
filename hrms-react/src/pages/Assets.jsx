@@ -6,6 +6,7 @@ import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
 import Badge from '../components/Badge';
 import { Plus, Monitor, Undo2, Trash2 } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 
 const STATUS_COLOR = {
   Allocated: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
@@ -23,6 +24,7 @@ export default function Assets({ toast }) {
   const [returnModal, setReturnModal] = useState(null);
   const [returnForm, setReturnForm]   = useState({ condition: 'Good', returned_date: new Date().toISOString().slice(0,10) });
   const [form, setForm] = useState({ allocated_date: new Date().toISOString().slice(0, 10), condition: 'Good' });
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -63,9 +65,18 @@ export default function Assets({ toast }) {
   };
 
   const del = async id => {
-    if (!confirm('Delete this asset record?')) return;
-    try { await api('DELETE', `/api/hrm/assets/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Asset',
+      message: 'Delete this asset record?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/hrm/assets/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   return (
@@ -213,6 +224,16 @@ export default function Assets({ toast }) {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import ConfirmModal from '../components/ConfirmModal';
 import { fmtDate, fmtHours, fmtTime12 } from '../utils/date';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
@@ -649,6 +650,7 @@ export default function Employees({ toast }) {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [updateForm, setUpdateForm] = useState({});
   const [updateSaving, setUpdateSaving] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   // Auto-load history whenever the job-info tab is active
   useEffect(() => {
@@ -807,12 +809,21 @@ export default function Employees({ toast }) {
   };
 
   const deleteEmpDoc = async (docId) => {
-    if (!confirm('Delete this document?')) return;
-    try {
-      await api('DELETE', `/api/hrm/documents/${docId}`);
-      setEmpDocs(d => d.filter(x => x.id !== docId));
-      toast('Deleted', 'success');
-    } catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Document',
+      message: 'Delete this document?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api('DELETE', `/api/hrm/documents/${docId}`);
+          setEmpDocs(d => d.filter(x => x.id !== docId));
+          toast('Deleted', 'success');
+        } catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const switchDetailTab = (tab, emp) => {
@@ -850,12 +861,21 @@ export default function Employees({ toast }) {
   };
 
   const deleteHistoryEvent = async (recordId) => {
-    if (!confirm('Delete this history event?')) return;
-    try {
-      await api('DELETE', `/api/hrm/employees/${detailEmp.id}/history/${recordId}`);
-      toast('Event deleted', 'success');
-      loadHistory(detailEmp.id);
-    } catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete History Event',
+      message: 'Delete this history event?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api('DELETE', `/api/hrm/employees/${detailEmp.id}/history/${recordId}`);
+          toast('Event deleted', 'success');
+          loadHistory(detailEmp.id);
+        } catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const openEditEvent = (ev) => {
@@ -1236,13 +1256,22 @@ export default function Employees({ toast }) {
   };
 
   const del = async (id, name) => {
-    if (!confirm(`Delete employee "${name}"? This cannot be undone.`)) return;
-    try {
-      await api('DELETE', `/api/employees/${id}`);
-      toast('Employee deleted', 'success');
-      if (detailEmp?.id === id) setDetailEmp(null);
-      load();
-    } catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Employee',
+      message: `Delete employee "${name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api('DELETE', `/api/employees/${id}`);
+          toast('Employee deleted', 'success');
+          if (detailEmp?.id === id) setDetailEmp(null);
+          load();
+        } catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const f = v => setForm(prev => ({ ...prev, ...v }));
@@ -3272,6 +3301,16 @@ export default function Employees({ toast }) {
           </FormGrid>
         </FormSection>
       </Modal>
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

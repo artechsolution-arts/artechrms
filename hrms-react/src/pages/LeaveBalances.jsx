@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import { RotateCcw, BookOpen, Search, ChevronDown, Check, X, Pencil, Save } from 'lucide-react';
 import EmpAvatar from '../components/EmpAvatar';
+import ConfirmModal from '../components/ConfirmModal';
 
 // ── Year pill-tab selector ──────────────────────────────────────
 function YearPicker({ value, onChange }) {
@@ -268,6 +269,7 @@ export default function LeaveBalances({ toast }) {
   const [filterEmp,  setFilterEmp]  = useState('');
   const [search,     setSearch]     = useState('');
   const [initializing, setInitializing] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -285,14 +287,23 @@ export default function LeaveBalances({ toast }) {
   useEffect(() => { load(); }, [year, filterEmp]);
 
   const initializeAll = async () => {
-    if (!confirm(`Initialize leave balance records for all active employees for ${year}?\n\nThis only creates missing records (allocated = 0). Existing HR-set balances will NOT be changed.`)) return;
-    setInitializing(true);
-    try {
-      const res = await api('POST', '/api/hrm/leave-balances/allocate-all', { year });
-      toast(`Done — ${res.created} records created, ${res.skipped} already exist`, 'success');
-      load();
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setInitializing(false); }
+    setConfirmDialog({
+      title: 'Initialize Leave Balances',
+      message: `Initialize leave balance records for all active employees for ${year}?\n\nThis only creates missing records (allocated = 0). Existing HR-set balances will NOT be changed.`,
+      confirmLabel: 'Initialize',
+      danger: false,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setInitializing(true);
+        try {
+          const res = await api('POST', '/api/hrm/leave-balances/allocate-all', { year });
+          toast(`Done — ${res.created} records created, ${res.skipped} already exist`, 'success');
+          load();
+        } catch (e) { toast(e.message, 'error'); }
+        finally { setInitializing(false); }
+      }
+    });
+    return;
   };
 
   const grouped = rows.reduce((acc, b) => {
@@ -389,6 +400,15 @@ export default function LeaveBalances({ toast }) {
           </div>
         )}
       </div>
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

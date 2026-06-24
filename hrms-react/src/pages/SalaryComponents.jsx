@@ -4,11 +4,13 @@ import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import { Plus, RefreshCw, Trash2 } from 'lucide-react';
 import Select from '../components/Select';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function SalaryComponents({ toast }) {
   const [comps, setComps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const [form, setForm] = useState({});
   const f = v => setForm(prev => ({ ...prev, ...v }));
 
@@ -34,9 +36,18 @@ export default function SalaryComponents({ toast }) {
   };
 
   const del = async (id, name) => {
-    if (!confirm(`Delete "${name}"?`)) return;
-    try { await api('DELETE', `/api/payroll/components/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Component',
+      message: `Delete "${name}"?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/payroll/components/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   return (
@@ -85,6 +96,16 @@ export default function SalaryComponents({ toast }) {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
 
       <Modal open={modal} title="Add Salary Component" onClose={() => setModal(false)} onSave={save} saveLabel="Add Component">
         <FormSection title="Component Details">

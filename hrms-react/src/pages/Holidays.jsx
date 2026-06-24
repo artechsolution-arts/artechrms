@@ -5,6 +5,7 @@ import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
 import { Plus, CalendarDays, Trash2 } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -14,6 +15,7 @@ export default function Holidays({ toast }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ holiday_type: 'Public' });
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -31,9 +33,18 @@ export default function Holidays({ toast }) {
   };
 
   const del = async id => {
-    if (!confirm('Delete this holiday?')) return;
-    try { await api('DELETE', `/api/hrm/holidays/${id}`); toast('Deleted','success'); load(); }
-    catch(e) { toast(e.message,'error'); }
+    setConfirmDialog({
+      title: 'Delete Holiday',
+      message: 'Delete this holiday?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/hrm/holidays/${id}`); toast('Deleted','success'); load(); }
+        catch(e) { toast(e.message,'error'); }
+      }
+    });
+    return;
   };
 
   const grouped = rows.reduce((acc, h) => {
@@ -93,6 +104,16 @@ export default function Holidays({ toast }) {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
 
       <Modal open={modal} title="Add Holiday" onClose={() => setModal(false)} onSave={save} saveLabel="Add">
         <FormSection title="Holiday Details">

@@ -3,6 +3,7 @@ import { api } from '../api';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import { Plus, Trash2, Pencil, RefreshCw, CheckCircle, XCircle, Settings2, Info } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
+import ConfirmModal from '../components/ConfirmModal';
 
 function Toggle({ checked, onChange, label }) {
   return (
@@ -32,6 +33,8 @@ export default function LeaveTypes({ toast }) {
   const [loading, setLoading] = useState(true);
   const [modal,  setModal]  = useState(null);
   const [form,   setForm]   = useState({});
+
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const [configModal,   setConfigModal]   = useState(null);
   const [configForm,    setConfigForm]    = useState({});
@@ -122,9 +125,18 @@ export default function LeaveTypes({ toast }) {
   };
 
   const del = async (id, name) => {
-    if (!confirm(`Delete leave type "${name}"?`)) return;
-    try { await api('DELETE', `/api/leaves/types/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Leave Type',
+      message: `Delete leave type "${name}"?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/leaves/types/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const lt = configModal?.lt;
@@ -281,6 +293,16 @@ export default function LeaveTypes({ toast }) {
           </Field>
         </FormGrid>
       </Modal>
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
 
       {/* Leave Policy Configuration Modal */}
       <Modal

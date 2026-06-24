@@ -3,6 +3,7 @@ import { api } from '../api';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import { Plus, Megaphone, Trash2, ToggleLeft, ToggleRight, AlertCircle, Info, ChevronUp } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 
 const PRIORITY_META = {
   High:   { label: 'High',   dot: 'bg-red-500',   badge: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',   top: 'border-t-red-400' },
@@ -18,6 +19,7 @@ export default function Announcements({ toast }) {
   const [modal,   setModal]   = useState(false);
   const [form,    setForm]    = useState({ priority: 'Medium' });
   const [expanded, setExpanded] = useState({});
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -43,9 +45,18 @@ export default function Announcements({ toast }) {
   };
 
   const del = async id => {
-    if (!confirm('Delete this announcement?')) return;
-    try { await api('DELETE', `/api/hrm/announcements/${id}`); toast('Deleted', 'success'); load(); }
-    catch (e) { toast(e.message, 'error'); }
+    setConfirmDialog({
+      title: 'Delete Announcement',
+      message: 'Delete this announcement?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try { await api('DELETE', `/api/hrm/announcements/${id}`); toast('Deleted', 'success'); load(); }
+        catch (e) { toast(e.message, 'error'); }
+      }
+    });
+    return;
   };
 
   const toggleExpand = id => setExpanded(p => ({ ...p, [id]: !p[id] }));
@@ -186,6 +197,16 @@ export default function Announcements({ toast }) {
           </>
         )}
       </div>
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
 
       <Modal open={modal} title="New Announcement" onClose={() => setModal(false)} onSave={save} saveLabel="Post">
         <FormSection title="Announcement Details">
