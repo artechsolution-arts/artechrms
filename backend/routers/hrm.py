@@ -1194,6 +1194,62 @@ def get_letter_fields():
     return LETTER_FIELDS
 
 
+def _auto_fill_fields(emp, tpl_cfg: dict, user_fields: dict) -> dict:
+    """Build a merged fields dict: auto-filled defaults overridden by user-provided values."""
+    from datetime import date as _date
+    today = str(_date.today())
+    desig  = (emp.designation_rel.name if emp.designation_rel else "") if emp else ""
+    dept   = (emp.department_rel.name  if emp.department_rel  else "") if emp else ""
+    phone  = getattr(emp, "phone",  "") or getattr(emp, "mobile", "") or "" if emp else ""
+    mobile = getattr(emp, "mobile", "") or getattr(emp, "phone",  "") or "" if emp else ""
+
+    auto = {
+        # dates
+        "letter_date":      today,
+        "date":             today,
+        # employee identity
+        "employee_name":    emp.full_name              if emp else "",
+        "full_name":        emp.full_name              if emp else "",
+        "candidate_name":   emp.full_name              if emp else "",
+        "name":             emp.full_name              if emp else "",
+        # role / dept
+        "designation":      desig,
+        "position":         desig,
+        "role":             desig,
+        "department":       dept,
+        "dept":             dept,
+        # employee ID (all common aliases)
+        "employee_id":      emp.employee_id or ""      if emp else "",
+        "employee_code":    emp.employee_id or ""      if emp else "",
+        "emp_id":           emp.employee_id or ""      if emp else "",
+        "staff_id":         emp.employee_id or ""      if emp else "",
+        "employee_id_code": emp.employee_id or ""      if emp else "",
+        # joining / birth dates
+        "joining_date":     str(emp.date_of_joining)   if emp and emp.date_of_joining else "",
+        "date_of_joining":  str(emp.date_of_joining)   if emp and emp.date_of_joining else "",
+        "doj":              str(emp.date_of_joining)   if emp and emp.date_of_joining else "",
+        "start_date":       str(emp.date_of_joining)   if emp and emp.date_of_joining else "",
+        "dob":              str(emp.date_of_birth)     if emp and emp.date_of_birth  else "",
+        "date_of_birth":    str(emp.date_of_birth)     if emp and emp.date_of_birth  else "",
+        # contact
+        "email":            emp.email  or ""           if emp else "",
+        "work_email":       emp.email  or ""           if emp else "",
+        "phone":            phone,
+        "mobile":           mobile,
+        "contact":          phone or mobile,
+        # company / HR (from letterhead config)
+        "company_name":     tpl_cfg.get("company_name")  or "AR TECH SOLUTIONS",
+        "hr_name":          tpl_cfg.get("hr_signatory")  or "HR",
+        "hr_signatory":     tpl_cfg.get("hr_signatory")  or "HR",
+        "hr_designation":   tpl_cfg.get("hr_role")       or "Human Resource Executive",
+        "hr_role":          tpl_cfg.get("hr_role")       or "Human Resource Executive",
+        "hr_title":         tpl_cfg.get("hr_role")       or "Human Resource Executive",
+        "address":          tpl_cfg.get("addr1")         or "",
+    }
+    # User-provided fields always win (merge on top of auto)
+    return {**auto, **user_fields}
+
+
 @router.post("/letters/generate")
 def generate_employee_letter(
     body: LetterGenerateRequest,
@@ -1203,14 +1259,6 @@ def generate_employee_letter(
     if not emp:
         raise HTTPException(404, "Employee not found")
 
-    # Merge employee data into fields
-    fields = dict(body.fields)
-    fields["employee_name"] = emp.full_name
-    fields["designation"]   = fields.get("designation") or (emp.designation_rel.name if emp.designation_rel else "")
-    fields["employee_code"] = emp.employee_id or ""
-    if not fields.get("department") and emp.department_rel:
-        fields["department"] = emp.department_rel.name
-
     # Load active letterhead template config
     from backend.models.hrm import LetterheadTemplate as _LT
     tpl_row = db.query(_LT).filter(_LT.id == 1).first()
@@ -1219,6 +1267,8 @@ def generate_employee_letter(
         for c in _LT.__table__.columns
         if c.key not in ("id", "updated_at")
     } if tpl_row else {}
+
+    fields = _auto_fill_fields(emp, tpl_cfg, dict(body.fields))
 
     try:
         pdf_bytes = generate_letter(body.letter_type, fields, template=tpl_cfg)
@@ -1337,18 +1387,9 @@ def generate_from_doc_template(
     if not tpl:
         raise HTTPException(404, "Template not found")
 
-    fields = dict(body.fields)
-
     emp = None
     if body.employee_id:
         emp = db.query(_Employee).filter(_Employee.id == body.employee_id).first()
-        if emp:
-            fields.setdefault("employee_name", emp.full_name)
-            fields.setdefault("candidate_name", emp.full_name)
-            fields.setdefault("employee_id_code", emp.employee_id or "")
-            fields.setdefault("designation", emp.designation_rel.name if emp.designation_rel else "")
-            fields.setdefault("department", emp.department_rel.name if emp.department_rel else "")
-            fields.setdefault("work_email", emp.email or "")
 
     from backend.models.hrm import LetterheadTemplate as _LT
     tpl_row = db.query(_LT).filter(_LT.id == 1).first()
@@ -1357,6 +1398,8 @@ def generate_from_doc_template(
         for col in _LT.__table__.columns
         if col.key not in ("id", "updated_at")
     } if tpl_row else {}
+
+    fields = _auto_fill_fields(emp, tpl_cfg, dict(body.fields))
 
     from backend.utils.letter_generator import generate_custom_letter
     pdf_bytes = generate_custom_letter(tpl.content, fields, template=tpl_cfg)

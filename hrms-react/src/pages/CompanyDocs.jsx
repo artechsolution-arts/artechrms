@@ -46,6 +46,42 @@ function DocTypeIcon({ filename, size = 20, className = '' }) {
   return <File {...props} />;
 }
 
+// Variables that can be auto-filled from an employee record (or today's date).
+// Keys = template variable names; values = functions that return the fill value.
+const TODAY = new Date().toISOString().slice(0, 10);
+function empAutoFill(emp) {
+  const desig  = emp?.designation || emp?.designation_name || '';
+  const dept   = emp?.department  || '';
+  const eid    = emp?.employee_id || '';
+  const doj    = emp?.date_of_joining || '';
+  const dob    = emp?.date_of_birth   || '';
+  const email  = emp?.email  || emp?.work_email || '';
+  const phone  = emp?.phone  || emp?.mobile     || '';
+  return {
+    letter_date: TODAY, date: TODAY,
+    employee_name: emp?.full_name || '', full_name: emp?.full_name || '',
+    candidate_name: emp?.full_name || '', name: emp?.full_name || '',
+    designation: desig, position: desig, role: desig,
+    department: dept, dept,
+    employee_id: eid, employee_code: eid, emp_id: eid, staff_id: eid, employee_id_code: eid,
+    joining_date: doj, date_of_joining: doj, doj, start_date: doj,
+    dob, date_of_birth: dob,
+    email, work_email: email,
+    phone, mobile: phone, contact: phone,
+  };
+}
+const EMP_AUTO_KEYS = new Set([
+  'letter_date','date',
+  'employee_name','full_name','candidate_name','name',
+  'designation','position','role',
+  'department','dept',
+  'employee_id','employee_code','emp_id','staff_id','employee_id_code',
+  'joining_date','date_of_joining','doj','start_date',
+  'dob','date_of_birth',
+  'email','work_email',
+  'phone','mobile','contact',
+]);
+
 // Case-insensitive lookup into letterFields (keys are e.g. "Appointment Letter")
 function findLetterFields(label, letterFields) {
   if (!label || !letterFields) return null;
@@ -145,15 +181,26 @@ function GenerateModal({ doc, employees, letterFields, onClose, toast }) {
   const fields = findLetterFields(letterType, letterFields) || [];
 
   const [empId, setEmpId] = useState(null);
-  const [form, setForm] = useState(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const defaults = {};
-    fields.forEach(f => { if (f.type === 'date' && f.key === 'letter_date') defaults[f.key] = today; });
-    return defaults;
-  });
+  const [form, setForm] = useState(() => ({ letter_date: TODAY }));
   const [generating, setGenerating] = useState(false);
 
   const f = patch => setForm(p => ({ ...p, ...patch }));
+
+  // Auto-fill known fields from employee when selection changes
+  useEffect(() => {
+    if (!empId) return;
+    const emp = employees.find(e => e.id === empId);
+    const auto = empAutoFill(emp);
+    setForm(prev => {
+      const next = { ...prev };
+      fields.forEach(fld => {
+        if (EMP_AUTO_KEYS.has(fld.key) && auto[fld.key] && !prev[fld.key]) {
+          next[fld.key] = auto[fld.key];
+        }
+      });
+      return next;
+    });
+  }, [empId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async () => {
     if (!empId) return toast('Please select an employee', 'warning');
@@ -576,27 +623,38 @@ function TemplateFormModal({ template, onClose, onSave, toast, docs = [] }) {
 
 
 function GenerateFromTemplateModal({ template, employees, onClose, toast }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const vars  = template.variables || [];
+  const vars = template.variables || [];
 
-  const [empId, setEmpId]       = useState(null);
-  const [form, setForm]         = useState(() => {
-    const d = {};
-    vars.forEach(v => { if (v.type === 'date') d[v.key] = today; });
-    return d;
-  });
+  const [empId, setEmpId]         = useState(null);
+  const [form,  setForm]          = useState({});
   const [generating, setGenerating] = useState(false);
 
   const f = patch => setForm(p => ({ ...p, ...patch }));
 
-  // Auto-fill employee data from DB when employee is selected
-  const empMeta = empId ? employees.find(e => e.id === empId) : null;
+  const emp = empId ? employees.find(e => e.id === empId) : null;
+
+  // Whenever employee changes, recalculate auto-filled values and merge into form
+  useEffect(() => {
+    const auto = empAutoFill(emp);
+    setForm(prev => {
+      const next = { ...prev };
+      vars.forEach(v => {
+        // Set auto value if the key is known; don't overwrite what HR already typed manually
+        if (EMP_AUTO_KEYS.has(v.key) && auto[v.key]) next[v.key] = auto[v.key];
+        // Seed date fields with today if not set
+        if (v.type === 'date' && !next[v.key]) next[v.key] = TODAY;
+      });
+      return next;
+    });
+  }, [empId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Split variables into auto-filled (shown as badges) and manual (shown as inputs)
+  const autoVars   = vars.filter(v => EMP_AUTO_KEYS.has(v.key) && form[v.key]);
+  const manualVars = vars.filter(v => !EMP_AUTO_KEYS.has(v.key));
 
   const submit = async () => {
-    // validate non-auto-fill required vars
-    const autoKeys = new Set(['employee_name','candidate_name','designation','department','employee_id_code','work_email']);
-    for (const v of vars) {
-      if (!autoKeys.has(v.key) && !form[v.key]?.toString().trim()) {
+    for (const v of manualVars) {
+      if (!form[v.key]?.toString().trim()) {
         return toast(`"${v.label}" is required`, 'warning');
       }
     }
@@ -626,9 +684,6 @@ function GenerateFromTemplateModal({ template, employees, onClose, toast }) {
     }
   };
 
-  const autoKeys = new Set(['employee_name','candidate_name','designation','department','employee_id_code','work_email']);
-  const manualVars = vars.filter(v => !autoKeys.has(v.key));
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div
@@ -652,46 +707,43 @@ function GenerateFromTemplateModal({ template, employees, onClose, toast }) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
           {/* Employee picker */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-              Employee <span className="text-gray-400 font-normal normal-case">(optional — auto-fills name, role, dept)</span>
+              Employee <span className="text-gray-400 font-normal normal-case">(auto-fills name, role, dept, dates…)</span>
             </label>
             <EmpDropdown value={empId} onChange={setEmpId} employees={employees} />
-            {empMeta && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {[['Name', empMeta.full_name], ['Role', empMeta.designation], ['Dept', empMeta.department]].filter(([,v]) => v).map(([l, v]) => (
-                  <span key={l} className="text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
-                    {l}: {v}
+          </div>
+
+          {/* Auto-filled badges */}
+          {autoVars.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Auto-filled from employee</p>
+              <div className="flex flex-wrap gap-1.5">
+                {autoVars.map(v => (
+                  <span key={v.key} className="text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2.5 py-1 rounded-full border border-green-200 dark:border-green-800">
+                    <span className="font-medium">{v.label}:</span> {form[v.key]}
                   </span>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Manual variable fields */}
+          {/* Manual fields HR must fill */}
           {manualVars.length > 0 && (
             <div className="space-y-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fill in Details</p>
               {manualVars.map(v => (
                 <div key={v.key}>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    {v.label}
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{v.label}</label>
                   {v.type === 'date' ? (
-                    <DatePicker
-                      value={form[v.key] || ''}
-                      onChange={val => f({ [v.key]: val })}
-                      placeholder={`Select ${v.label.toLowerCase()}…`}
-                    />
+                    <DatePicker value={form[v.key] || ''} onChange={val => f({ [v.key]: val })}
+                      placeholder={`Select ${v.label.toLowerCase()}…`} />
                   ) : (
-                    <input
-                      type={v.type === 'number' ? 'number' : 'text'}
-                      value={form[v.key] || ''}
+                    <input type={v.type === 'number' ? 'number' : 'text'} value={form[v.key] || ''}
                       onChange={e => f({ [v.key]: e.target.value })}
-                      placeholder={`Enter ${v.label.toLowerCase()}…`}
-                      className="lp-input w-full"
-                    />
+                      placeholder={`Enter ${v.label.toLowerCase()}…`} className="lp-input w-full" />
                   )}
                 </div>
               ))}
