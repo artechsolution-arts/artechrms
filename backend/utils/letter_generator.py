@@ -1074,6 +1074,76 @@ LETTER_FIELDS = {
 }
 
 
+def _is_heading_line(s: str) -> bool:
+    """True for ALL-CAPS lines ≤90 chars that contain at least one letter."""
+    s = s.strip()
+    return bool(s) and s == s.upper() and len(s) <= 90 and any(ch.isalpha() for ch in s)
+
+
+def _render_table(c, table_rows: list[str], y: float) -> float:
+    """Render tab-separated rows as a bordered table. Returns updated y."""
+    if not table_rows:
+        return y
+    parsed = [r.split('\t') for r in table_rows]
+    max_cols = max(len(r) for r in parsed)
+    if max_cols < 2:
+        # Single-column — fall back to plain text
+        for r in parsed:
+            y = _wrap(c, r[0].strip(), ML, y)
+            y -= PG / 2
+        return y
+
+    usable = PAGE_W - ML - MR
+    # First column slightly wider for the label
+    first_w = usable * 0.38
+    rest_w  = (usable - first_w) / (max_cols - 1) if max_cols > 1 else usable
+    col_widths = [first_w] + [rest_w] * (max_cols - 1)
+
+    row_h   = LH * 1.35
+    pad_l   = 2.5 * mm
+    fsize_h = _fsize() - 0.5
+
+    y -= PG / 2
+    for row_idx, cells in enumerate(parsed):
+        while len(cells) < max_cols:
+            cells.append('')
+        y = _check_break(c, y, row_h + 1 * mm)
+        is_hdr = row_idx == 0
+
+        # Row background for header
+        if is_hdr:
+            c.setFillColor(colors.HexColor('#F0F4F8'))
+            c.rect(ML, y - row_h + 2, usable, row_h, fill=1, stroke=0)
+
+        # Outer + inner borders
+        c.setStrokeColor(colors.HexColor('#AAAAAA'))
+        c.setLineWidth(0.4)
+        c.rect(ML, y - row_h + 2, usable, row_h, fill=0, stroke=1)
+        x = ML
+        for w in col_widths[:-1]:
+            x += w
+            c.line(x, y - row_h + 2, x, y + 2)
+
+        # Cell text
+        x = ML
+        for cell, w in zip(cells, col_widths):
+            fnt = _HF_SEMI if is_hdr else _font()
+            c.setFont(fnt, fsize_h)
+            c.setFillColor(DARK)
+            # Truncate if too wide
+            txt = cell.strip()
+            max_cell_w = w - pad_l * 2
+            while txt and c.stringWidth(txt, fnt, fsize_h) > max_cell_w:
+                txt = txt[:-1]
+            c.drawString(x + pad_l, y - LH * 0.15, txt)
+            x += w
+
+        y -= row_h
+
+    y -= PG
+    return y
+
+
 def generate_custom_letter(content: str, fields: dict, template: dict | None = None) -> bytes:
     """Generate a PDF from a freeform template string with {{key}} variable substitution."""
     import re
@@ -1088,7 +1158,6 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
 
         def _replace(m):
             raw = m.group(1).strip()
-            # Normalize to snake_case so {{Employee Name}} matches field "employee_name"
             key = re.sub(r'[^a-z0-9_]', '', re.sub(r'\s+', '_', raw.lower()))
             val = fields.get(key) or fields.get(raw)
             if val is None:
@@ -1103,28 +1172,54 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
         c.setFillColor(DARK)
         y = _header_bottom_y() - 10 * mm
 
-        for para in text.split('\n\n'):
-            para = para.strip()
-            if not para:
-                continue
-            for line in para.split('\n'):
-                line = line.strip()
-                if not line:
-                    y -= PG
-                    continue
-                y = _wrap(c, line, ML, y)
-                y -= PG / 2
-                if y < 55 * mm:
-                    c.showPage()
-                    _draw_header(c)
-                    _draw_footer(c)
-                    _draw_watermark(c)
-                    c.setFont(_font(), _fsize())
-                    c.setFillColor(DARK)
-                    y = _header_bottom_y() - 10 * mm
-            y -= PG
+        lines = text.split('\n')
+        i = 0
+        while i < len(lines):
+            raw_line = lines[i]
+            stripped  = raw_line.strip()
 
-        _signoff(c, y - PG * 2, _t("hr_signatory", HR_SIGNATORY))
+            # ── Blank line ──────────────────────────────────────────────────
+            if not stripped:
+                y -= PG / 2
+                i += 1
+                continue
+
+            # ── Table block: collect consecutive tab-delimited lines ────────
+            if '\t' in stripped:
+                table_rows = []
+                while i < len(lines) and '\t' in lines[i]:
+                    table_rows.append(lines[i].strip())
+                    i += 1
+                y = _render_table(c, table_rows, y)
+                continue
+
+            # ── ALL-CAPS heading ────────────────────────────────────────────
+            if _is_heading_line(stripped):
+                y = _check_break(c, y, 14 * mm)
+                # Longer headings use a smaller font but stay centred+bold
+                size = 13 if len(stripped) <= 35 else 11
+                c.setFont(_HF_BOLD, size)
+                c.setFillColor(DARK)
+                c.drawCentredString(PAGE_W / 2, y, stripped)
+                y -= (size + 4) * 0.352778 * mm * 1.8   # approx line height
+                i += 1
+                continue
+
+            # ── ANNEXURE / section markers ──────────────────────────────────
+            if re.match(r'^ANNEXURE\s', stripped, re.I):
+                y = _check_break(c, y, 10 * mm)
+                c.setFont(_HF_BOLD, _fsize() + 0.5)
+                c.setFillColor(DARK)
+                c.drawString(ML, y, stripped)
+                y -= LH * 1.4
+                i += 1
+                continue
+
+            # ── Normal body line ────────────────────────────────────────────
+            y = _wrap(c, stripped, ML, y)
+            y -= PG / 2
+            i += 1
+
         c.save()
         buf.seek(0)
         return buf.read()
