@@ -1085,25 +1085,30 @@ _MIME_MAP = {
 @router.get("/company-docs")
 def list_company_docs(db: Session = Depends(get_db)):
     from sqlalchemy import text as _t
-    # R2 is always the source of truth for existence
+    # R2 is always the source of truth for what exists
     files = storage.list_files("company-docs")
     if not files:
         return []
-    # Backfill any R2 files not yet tracked in DB
-    db_rows = {r[0] for r in db.execute(_t("SELECT name FROM company_documents")).fetchall()}
-    for f in files:
-        if f not in db_rows:
-            db.execute(_t("""
-                INSERT INTO company_documents (name, r2_key)
-                VALUES (:name, :key) ON CONFLICT (name) DO NOTHING
-            """), {"name": f, "key": f"company-docs/{f}"})
-    db.commit()
-    # Return ordered by upload time
-    rows = db.execute(_t(
-        "SELECT name, uploaded_by, uploaded_at FROM company_documents WHERE name = ANY(:names) ORDER BY uploaded_at DESC"
-    ), {"names": files}).fetchall()
-    return [{"name": r[0], "uploaded_by": r[1], "uploaded_at": str(r[2]) if r[2] else None,
-             "url": f"/api/hrm/company-docs/{r[0]}"} for r in rows]
+    files_set = set(files)
+    try:
+        # Backfill any R2 files not yet in DB
+        db_names = {r[0] for r in db.execute(_t("SELECT name FROM company_documents")).fetchall()}
+        for f in files:
+            if f not in db_names:
+                db.execute(_t("""
+                    INSERT INTO company_documents (name, r2_key)
+                    VALUES (:name, :key) ON CONFLICT (name) DO NOTHING
+                """), {"name": f, "key": f"company-docs/{f}"})
+        db.commit()
+        # Fetch metadata for all tracked files, filter to R2-verified set
+        all_rows = db.execute(_t(
+            "SELECT name, uploaded_by, uploaded_at FROM company_documents ORDER BY uploaded_at DESC"
+        )).fetchall()
+        return [{"name": r[0], "uploaded_by": r[1], "uploaded_at": str(r[2]) if r[2] else None,
+                 "url": f"/api/hrm/company-docs/{r[0]}"} for r in all_rows if r[0] in files_set]
+    except Exception:
+        # Fallback if DB tables not ready yet
+        return [{"name": f, "url": f"/api/hrm/company-docs/{f}"} for f in sorted(files)]
 
 
 @router.get("/company-docs/{filename}")
@@ -1143,16 +1148,25 @@ async def upload_company_doc(request: Request, file: UploadFile = File(...), db:
 
 @router.delete("/company-docs/{filename}", status_code=200)
 def delete_company_doc(filename: str, request: Request, db: Session = Depends(get_db)):
+    import json as _json
     from sqlalchemy import text as _t
     safe_name = _os.path.basename(filename)
+    # Delete from R2 first
     storage.delete_file(f"/files/company-docs/{safe_name}")
     deleted_by = getattr(request.state, "username", None)
-    db.execute(_t("DELETE FROM company_documents WHERE name = :name"), {"name": safe_name})
-    db.execute(_t("""
-        INSERT INTO deletion_log (entity_type, entity_name, deleted_by, extra)
-        VALUES ('company_document', :name, :by, :extra::jsonb)
-    """), {"name": safe_name, "by": deleted_by, "extra": f'{{"r2_key":"company-docs/{safe_name}"}}'})
-    db.commit()
+    try:
+        db.execute(_t("DELETE FROM company_documents WHERE name = :name"), {"name": safe_name})
+        db.execute(_t("""
+            INSERT INTO deletion_log (entity_type, entity_name, deleted_by, extra)
+            VALUES ('company_document', :name, :by, :extra::jsonb)
+        """), {
+            "name": safe_name,
+            "by": deleted_by,
+            "extra": _json.dumps({"r2_key": f"company-docs/{safe_name}"}),
+        })
+        db.commit()
+    except Exception:
+        pass  # DB audit is best-effort; R2 deletion already succeeded
     return {"deleted": safe_name}
 
 
