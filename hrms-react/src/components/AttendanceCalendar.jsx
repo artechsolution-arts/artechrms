@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MonthYearPicker from './MonthYearPicker';
 
 // Convert decimal hours (e.g. 8.92) → "8h 55m"
 const fmtHours = (h) => {
@@ -54,6 +55,7 @@ export default function AttendanceCalendar({
   loading = false,
   onPrev,
   onNext,
+  onMonthChange = null,
   selected,
   onSelect,
 }) {
@@ -79,9 +81,18 @@ export default function AttendanceCalendar({
         >
           <ChevronLeft size={18} className="text-gray-600 dark:text-gray-400" />
         </button>
-        <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-          {MONTH_NAMES[month - 1]} {year}
-        </span>
+        {onMonthChange ? (
+          <MonthYearPicker
+            month={month}
+            year={year}
+            onChange={onMonthChange}
+            className="border-0 gap-0 [&>button:first-child]:hidden [&>button:last-child]:hidden"
+          />
+        ) : (
+          <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+            {MONTH_NAMES[month - 1]} {year}
+          </span>
+        )}
         <button
           onClick={onNext}
           className="w-9 h-9 rounded-full flex items-center justify-center border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

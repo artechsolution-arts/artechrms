@@ -4,6 +4,7 @@ import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import { Plus, RefreshCw, Eye, Printer, FileDown } from 'lucide-react';
 import Select from '../components/Select';
+import MonthYearPicker from '../components/MonthYearPicker';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_NAMES = [
@@ -139,6 +140,8 @@ export default function SalarySlips({ toast }) {
   const [form, setForm] = useState({});
 
   const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(now.getFullYear());
   const f = v => setForm(prev => ({ ...prev, ...v }));
 
   const load = async () => {
@@ -227,6 +230,7 @@ export default function SalarySlips({ toast }) {
       <div className="page-head">
         <h1 className="page-title">Salary Slips</h1>
         <div className="flex items-center gap-2">
+          <MonthYearPicker month={month} year={year} onChange={(m, y) => { setMonth(m); setYear(y); }} />
           <button onClick={load} className="btn btn-secondary btn-sm gap-1.5"><RefreshCw size={13} /> Refresh</button>
           <button onClick={() => { setForm({ month: now.getMonth() + 1, year: now.getFullYear() }); setCreateModal(true); }}
             className="btn btn-primary btn-sm gap-1.5"><Plus size={13} /> Create Slip</button>
@@ -253,7 +257,7 @@ export default function SalarySlips({ toast }) {
                       <p className="text-sm text-gray-500">No salary slips yet. Run payroll from the Payroll page.</p>
                     </div>
                   </td></tr>
-                ) : slips.map(s => (
+                ) : slips.filter(s => s.month === month && s.year === year).map(s => (
                   <tr key={s.id}>
                     <td><code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">{s.slip_id}</code></td>
                     <td className="font-medium text-gray-900 dark:text-white">{s.employee_name}</td>

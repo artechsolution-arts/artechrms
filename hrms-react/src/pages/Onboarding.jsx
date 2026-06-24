@@ -3,6 +3,7 @@ import { api } from '../api';
 import { fmtDate } from '../utils/date';
 import EmpAvatar from '../components/EmpAvatar';
 import ConfirmModal from '../components/ConfirmModal';
+import DatePicker from '../components/DatePicker';
 import {
   UserPlus, UserMinus, Search, RefreshCw, X, ChevronLeft, ChevronRight,
   CheckCircle2, Circle, Save, Clock, AlertCircle, Plus, Pencil, Trash2,
@@ -113,6 +114,16 @@ const Textarea = ({ label, value, onChange, rows = 3, placeholder }) => (
   </div>
 );
 
+const DateField = ({ label, value, onChange, required, hint, disabled, className }) => (
+  <div>
+    <label className="onb-form-label" style={{ display: 'block', fontSize: 11.5, fontWeight: 600, marginBottom: 5, letterSpacing: '0.01em' }}>
+      {label}{required && <span style={{ color: '#EF4444', marginLeft: 3 }}>*</span>}
+    </label>
+    {hint && <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{hint}</div>}
+    <DatePicker value={value || ''} onChange={v => onChange(v)} className={className} disabled={disabled} />
+  </div>
+);
+
 const Toggle = ({ label, value, onChange, description }) => (
   <div className="onb-toggle-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
     <div>
@@ -163,7 +174,7 @@ function OnPersonalInfo({ data, set, emp }) {
         <Input label="Personal Email" value={data.personal_email} onChange={v => set('personal_email', v)} type="email" placeholder="personal@example.com" />
       </Grid2>
       <Grid2>
-        <Input label="Date of Birth" value={data.dob} onChange={v => set('dob', v)} type="date" />
+        <DateField label="Date of Birth" value={data.dob} onChange={v => set('dob', v)} />
         <Select label="Gender" value={data.gender} onChange={v => set('gender', v)} options={['Male', 'Female', 'Other', 'Prefer not to say']} />
       </Grid2>
       <Grid2>
@@ -193,7 +204,7 @@ function OnEmployment({ data, set, emp }) {
       <SectionHeader title="Employment Details" subtitle="Job and organisation details" />
       <Grid2>
         <Input label="Employee ID" value={data.employee_id || emp?.employee_id} onChange={v => set('employee_id', v)} disabled />
-        <Input label="Date of Joining" value={data.date_of_joining || emp?.date_of_joining} onChange={v => set('date_of_joining', v)} type="date" disabled />
+        <DateField label="Date of Joining" value={data.date_of_joining || emp?.date_of_joining} onChange={v => set('date_of_joining', v)} disabled />
       </Grid2>
       <Grid2>
         <Input label="Department" value={data.department || emp?.department} onChange={v => set('department', v)} disabled />
@@ -215,7 +226,7 @@ function OnEmployment({ data, set, emp }) {
       <Grid2>
         <Select label="Shift Timing" value={data.shift} onChange={v => set('shift', v)}
           options={['General (9 AM - 6 PM)', 'Morning (7 AM - 4 PM)', 'Evening (2 PM - 11 PM)', 'Night (10 PM - 7 AM)', 'Flexible']} />
-        <Input label="Confirmation Date" value={data.confirmation_date} onChange={v => set('confirmation_date', v)} type="date" hint="After probation" />
+        <DateField label="Confirmation Date" value={data.confirmation_date} onChange={v => set('confirmation_date', v)} hint="After probation" />
       </Grid2>
     </div>
   );
@@ -237,7 +248,7 @@ function OnDocuments({ data, set }) {
   const DocRow = ({ label, fieldKey, placeholder }) => (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, alignItems: 'end' }}>
       <Input label={label} value={data[fieldKey]} onChange={v => set(fieldKey, v)} placeholder={placeholder} />
-      <Input label="Expiry Date (if any)" value={data[fieldKey + '_expiry']} onChange={v => set(fieldKey + '_expiry', v)} type="date" />
+      <DateField label="Expiry Date (if any)" value={data[fieldKey + '_expiry']} onChange={v => set(fieldKey + '_expiry', v)} />
       <div style={{ paddingBottom: 2 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Status</div>
         <StatusBadge val={data[fieldKey + '_status']} onChange={v => set(fieldKey + '_status', v)} />
@@ -441,8 +452,8 @@ function OnExperience({ data, set }) {
                 <Input label="Job Title / Role" value={draft.role || ''} onChange={v => setDraft(p => ({ ...p, role: v }))} placeholder="e.g. Software Engineer" />
               </Grid2>
               <Grid2>
-                <Input label="From" value={draft.from_date || ''} onChange={v => setDraft(p => ({ ...p, from_date: v }))} type="date" />
-                <Input label="To" value={draft.to_date || ''} onChange={v => setDraft(p => ({ ...p, to_date: v }))} type="date" />
+                <DateField label="From" value={draft.from_date || ''} onChange={v => setDraft(p => ({ ...p, from_date: v }))} />
+                <DateField label="To" value={draft.to_date || ''} onChange={v => setDraft(p => ({ ...p, to_date: v }))} />
               </Grid2>
               <Input label="Last Drawn CTC" value={draft.last_ctc || ''} onChange={v => setDraft(p => ({ ...p, last_ctc: v }))} placeholder="e.g. ₹5,00,000 p.a." />
               <Textarea label="Key Responsibilities" value={draft.responsibilities || ''} onChange={v => setDraft(p => ({ ...p, responsibilities: v }))} rows={2} />
@@ -503,7 +514,7 @@ function OnAssets({ data, set }) {
                 <Input label="Asset ID / Serial No." value={draft.serial || ''} onChange={v => setDraft(p => ({ ...p, serial: v }))} placeholder="Serial number" />
               </Grid2>
               <Grid2>
-                <Input label="Issue Date" value={draft.issue_date || ''} onChange={v => setDraft(p => ({ ...p, issue_date: v }))} type="date" />
+                <DateField label="Issue Date" value={draft.issue_date || ''} onChange={v => setDraft(p => ({ ...p, issue_date: v }))} />
                 <Select label="Condition" value={draft.condition || ''} onChange={v => setDraft(p => ({ ...p, condition: v }))} options={['New', 'Good', 'Fair', 'Poor']} />
               </Grid2>
               <Input label="Notes" value={draft.notes || ''} onChange={v => setDraft(p => ({ ...p, notes: v }))} placeholder="Any notes about this asset" />
@@ -578,7 +589,7 @@ function OnTraining({ data, set }) {
           </div>
           {data[key] && (
             <Grid2>
-              <Input label="Completed Date" value={data[key + '_date']} onChange={v => set(key + '_date', v)} type="date" />
+              <DateField label="Completed Date" value={data[key + '_date']} onChange={v => set(key + '_date', v)} />
               <Input label="Conducted By" value={data[key + '_by']} onChange={v => set(key + '_by', v)} placeholder="Trainer / HR name" />
             </Grid2>
           )}
@@ -660,8 +671,8 @@ function OffExitDetails({ data, set }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionHeader title="Exit Details" subtitle="Capture exit reason and resignation details" />
       <Grid2>
-        <Input label="Resignation Date" value={data.resignation_date} onChange={v => set('resignation_date', v)} type="date" required />
-        <Input label="Last Working Day" value={data.last_working_day} onChange={v => set('last_working_day', v)} type="date" required />
+        <DateField label="Resignation Date" value={data.resignation_date} onChange={v => set('resignation_date', v)} required />
+        <DateField label="Last Working Day" value={data.last_working_day} onChange={v => set('last_working_day', v)} required />
       </Grid2>
       <Select label="Reason for Leaving" value={data.exit_reason} onChange={v => set('exit_reason', v)} required
         options={['Better Opportunity', 'Higher Studies', 'Personal Reasons', 'Relocation', 'Health Issues', 'Company Culture', 'Compensation', 'Career Growth', 'Retirement', 'Involuntary Termination', 'Contract End', 'Other']} />
@@ -686,8 +697,8 @@ function OffNoticePeriod({ data, set }) {
         <Input label="Served Notice (days)" value={data.served_days} onChange={v => set('served_days', v)} type="number" placeholder="30" />
       </Grid2>
       <Grid2>
-        <Input label="Notice Start Date" value={data.start_date} onChange={v => set('start_date', v)} type="date" />
-        <Input label="Notice End Date" value={data.end_date} onChange={v => set('end_date', v)} type="date" />
+        <DateField label="Notice Start Date" value={data.start_date} onChange={v => set('start_date', v)} />
+        <DateField label="Notice End Date" value={data.end_date} onChange={v => set('end_date', v)} />
       </Grid2>
       <Toggle label="Notice Period Waived" value={data.waived} onChange={v => set('waived', v)} description="HR approved early release" />
       {data.waived && (
@@ -707,9 +718,9 @@ function OffKT({ data, set }) {
       <SectionHeader title="Knowledge Transfer" subtitle="Ensure smooth handover of responsibilities" />
       <Grid2>
         <Input label="Successor Name" value={data.successor} onChange={v => set('successor', v)} placeholder="Who takes over" />
-        <Input label="KT Start Date" value={data.kt_start} onChange={v => set('kt_start', v)} type="date" />
+        <DateField label="KT Start Date" value={data.kt_start} onChange={v => set('kt_start', v)} />
       </Grid2>
-      <Input label="KT End Date" value={data.kt_end} onChange={v => set('kt_end', v)} type="date" />
+      <DateField label="KT End Date" value={data.kt_end} onChange={v => set('kt_end', v)} />
       {[
         { key: 'kt_plan', label: 'KT Plan Document Prepared' },
         { key: 'kt_completed', label: 'Knowledge Transfer Completed' },
@@ -747,7 +758,7 @@ function OffAssets({ data, set }) {
           </div>
           {data[key] && (
             <Grid2>
-              <Input label="Return Date" value={data[key + '_date']} onChange={v => set(key + '_date', v)} type="date" />
+              <DateField label="Return Date" value={data[key + '_date']} onChange={v => set(key + '_date', v)} />
               <Select label="Condition" value={data[key + '_condition']} onChange={v => set(key + '_condition', v)}
                 options={['Good', 'Minor Damage', 'Major Damage', 'Lost']} />
             </Grid2>
@@ -775,7 +786,7 @@ function OffAccess({ data, set }) {
         <Toggle key={key} label={label} value={data[key]} onChange={v => set(key, v)} description={desc} />
       ))}
       <Grid2>
-        <Input label="Revocation Date" value={data.revocation_date} onChange={v => set('revocation_date', v)} type="date" />
+        <DateField label="Revocation Date" value={data.revocation_date} onChange={v => set('revocation_date', v)} />
         <Input label="Executed By" value={data.executed_by} onChange={v => set('executed_by', v)} placeholder="IT admin name" />
       </Grid2>
       <Textarea label="Notes" value={data.notes} onChange={v => set('notes', v)} rows={2} />
@@ -791,7 +802,7 @@ function OffExitInterview({ data, set }) {
       {data.completed && (
         <>
           <Grid2>
-            <Input label="Interview Date" value={data.interview_date} onChange={v => set('interview_date', v)} type="date" />
+            <DateField label="Interview Date" value={data.interview_date} onChange={v => set('interview_date', v)} />
             <Input label="Conducted By" value={data.conducted_by} onChange={v => set('conducted_by', v)} placeholder="HR name" />
           </Grid2>
           <Textarea label="Key Feedback / Reasons" value={data.feedback} onChange={v => set('feedback', v)} rows={3} placeholder="What the employee shared…" />
@@ -844,7 +855,7 @@ function OffSettlement({ data, set }) {
       <Grid2>
         <Select label="Settlement Status" value={data.settlement_status} onChange={v => set('settlement_status', v)}
           options={['Pending', 'Under Process', 'Approved', 'Paid']} />
-        <Input label="Settlement Date" value={data.settlement_date} onChange={v => set('settlement_date', v)} type="date" />
+        <DateField label="Settlement Date" value={data.settlement_date} onChange={v => set('settlement_date', v)} />
       </Grid2>
     </div>
   );
@@ -870,7 +881,7 @@ function OffDocuments({ data, set }) {
           </div>
           {data[key] && (
             <Grid2>
-              <Input label="Issue Date" value={data[key + '_date']} onChange={v => set(key + '_date', v)} type="date" />
+              <DateField label="Issue Date" value={data[key + '_date']} onChange={v => set(key + '_date', v)} />
               <Input label="Issued By" value={data[key + '_by']} onChange={v => set(key + '_by', v)} placeholder="HR name" />
             </Grid2>
           )}

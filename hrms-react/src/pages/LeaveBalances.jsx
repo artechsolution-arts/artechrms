@@ -1,30 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
-import { RotateCcw, BookOpen, Search, ChevronDown, Check, X, Pencil, Save } from 'lucide-react';
+import { RotateCcw, BookOpen, Search, ChevronDown, ChevronLeft, ChevronRight, Check, X, Pencil, Save } from 'lucide-react';
 import EmpAvatar from '../components/EmpAvatar';
 import ConfirmModal from '../components/ConfirmModal';
-
-// ── Year pill-tab selector ──────────────────────────────────────
-function YearPicker({ value, onChange }) {
-  const years = [2024, 2025, 2026, 2027];
-  return (
-    <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-      {years.map(y => (
-        <button
-          key={y}
-          onClick={() => onChange(y)}
-          className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-            value === y
-              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-          }`}
-        >
-          {y}
-        </button>
-      ))}
-    </div>
-  );
-}
+import DatePicker from '../components/DatePicker';
 
 // ── Searchable employee dropdown ────────────────────────────────
 function EmpDropdown({ value, onChange, employees }) {
@@ -322,7 +301,11 @@ export default function LeaveBalances({ toast }) {
       <div className="page-head">
         <h1 className="page-title">Leave Balances</h1>
         <div className="flex flex-wrap gap-2 items-center">
-          <YearPicker value={year} onChange={setYear} />
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={() => setYear(y => y - 1)} className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"><ChevronLeft size={14} /></button>
+            <span className="px-3 py-1.5 text-sm font-semibold text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-lg">{year}</span>
+            <button type="button" onClick={() => setYear(y => y + 1)} className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"><ChevronRight size={14} /></button>
+          </div>
           <EmpDropdown value={filterEmp} onChange={setFilterEmp} employees={employees} />
           <button onClick={initializeAll} disabled={initializing} className="btn btn-secondary btn-sm gap-1.5">
             <RotateCcw size={13} className={initializing ? 'animate-spin' : ''} />

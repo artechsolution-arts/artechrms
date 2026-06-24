@@ -4,8 +4,9 @@ import { fmtDate } from '../utils/date';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
 import AttendanceCalendar from '../components/AttendanceCalendar';
-import { Plus, RefreshCw, ChevronLeft, ChevronRight, X, Search, Users, Pencil, Save } from 'lucide-react';
+import { Plus, RefreshCw, X, Search, Users, Pencil, Save } from 'lucide-react';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
+import MonthYearPicker from '../components/MonthYearPicker';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -97,17 +98,6 @@ export default function Attendance({ toast }) {
       out_time: rec?.out_time || '',
     });
   }, [popupSelected, popupRecords]);
-
-  const prevMonth = () => {
-    const ny = calMonth === 1 ? calYear - 1 : calYear;
-    const nm = calMonth === 1 ? 12 : calMonth - 1;
-    setCalYear(ny); setCalMonth(nm);
-  };
-  const nextMonth = () => {
-    const ny = calMonth === 12 ? calYear + 1 : calYear;
-    const nm = calMonth === 12 ? 1 : calMonth + 1;
-    setCalYear(ny); setCalMonth(nm);
-  };
 
   const openPopup = async (emp) => {
     setPopupEmp(emp);
@@ -232,13 +222,7 @@ export default function Attendance({ toast }) {
         <h1 className="page-title">Attendance</h1>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Month selector */}
-          <div className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1">
-            <button onClick={prevMonth} className="p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><ChevronLeft size={14} /></button>
-            <span className="text-sm font-semibold text-gray-800 dark:text-white min-w-[110px] text-center">
-              {MONTH_NAMES[calMonth - 1]} {calYear}
-            </span>
-            <button onClick={nextMonth} className="p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><ChevronRight size={14} /></button>
-          </div>
+          <MonthYearPicker month={calMonth} year={calYear} onChange={(m, y) => { setCalMonth(m); setCalYear(y); }} />
           <button onClick={() => loadSummaries(calYear, calMonth)} className="btn btn-secondary btn-sm gap-1.5"><RefreshCw size={13} /></button>
           <button onClick={() => { setForm({ date: todayStr, status: 'Present' }); setModal(true); }} className="btn btn-primary btn-sm gap-1.5">
             <Plus size={13} /> Mark Attendance

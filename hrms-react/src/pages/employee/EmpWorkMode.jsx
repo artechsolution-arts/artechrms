@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api';
-import { ChevronLeft, ChevronRight, CalendarCheck2, Users, LayoutGrid, List } from 'lucide-react';
+import { CalendarCheck2, Users, LayoutGrid, List } from 'lucide-react';
+import MonthYearPicker from '../../components/MonthYearPicker';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -252,15 +253,6 @@ export default function EmpWorkMode({ toast }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const prevMonth = () => {
-    if (month === 1) { setYear(y => y - 1); setMonth(12); }
-    else setMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (month === 12) { setYear(y => y + 1); setMonth(1); }
-    else setMonth(m => m + 1);
-  };
-
   const approved = leaves.filter(l => l.status === 'Approved').length;
   const pending  = leaves.filter(l => l.status === 'Pending').length;
 
@@ -295,17 +287,7 @@ export default function EmpWorkMode({ toast }) {
 
       {/* Month navigator + stats */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <button onClick={prevMonth} className="btn btn-secondary btn-sm p-1.5">
-            <ChevronLeft size={15} />
-          </button>
-          <span className="text-sm font-semibold text-gray-800 dark:text-white min-w-[140px] text-center">
-            {MONTH_NAMES[month - 1]} {year}
-          </span>
-          <button onClick={nextMonth} className="btn btn-secondary btn-sm p-1.5">
-            <ChevronRight size={15} />
-          </button>
-        </div>
+        <MonthYearPicker month={month} year={year} onChange={(m, y) => { setMonth(m); setYear(y); }} />
         {leaves.length > 0 && (
           <div className="flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1 text-gray-500">

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import Badge from '../components/Badge';
-import { ChevronLeft, ChevronRight, RefreshCw, Search, ArrowLeft } from 'lucide-react';
+import { RefreshCw, Search, ArrowLeft } from 'lucide-react';
+import MonthYearPicker from '../components/MonthYearPicker';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -74,20 +75,6 @@ export default function HRStatusSheet({ toast }) {
     loadSheet(emp.id, today.getFullYear(), today.getMonth() + 1);
   };
 
-  const prevMonth = () => {
-    const ny = month === 1 ? year - 1 : year;
-    const nm = month === 1 ? 12 : month - 1;
-    setYear(ny); setMonth(nm);
-    loadSheet(selectedEmp.id, ny, nm);
-  };
-  const nextMonth = () => {
-    if (isCurrentMonth) return;
-    const ny = month === 12 ? year + 1 : year;
-    const nm = month === 12 ? 1 : month + 1;
-    setYear(ny); setMonth(nm);
-    loadSheet(selectedEmp.id, ny, nm);
-  };
-
   const filtered = employees.filter(e => {
     if (!search) return true;
     const s = search.toLowerCase();
@@ -124,21 +111,11 @@ export default function HRStatusSheet({ toast }) {
           </div>
 
           {/* Month navigation */}
-          <div className="flex items-center gap-2">
-            <button onClick={prevMonth} className="btn btn-secondary btn-sm p-1.5">
-              <ChevronLeft size={15} />
-            </button>
-            <span className="text-sm font-semibold text-gray-800 dark:text-white min-w-[130px] text-center">
-              {MONTH_NAMES[month - 1]} {year}
-            </span>
-            <button
-              onClick={nextMonth}
-              disabled={isCurrentMonth}
-              className="btn btn-secondary btn-sm p-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronRight size={15} />
-            </button>
-          </div>
+          <MonthYearPicker
+            month={month} year={year}
+            onChange={(m, y) => { setMonth(m); setYear(y); loadSheet(selectedEmp?.id, y, m); }}
+            maxMonth={new Date().getMonth() + 1} maxYear={new Date().getFullYear()}
+          />
         </div>
 
         <div className="page-content">

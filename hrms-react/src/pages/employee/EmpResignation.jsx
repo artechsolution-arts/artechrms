@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import { fmtDate } from '../../utils/date';
 import { FileText, AlertTriangle, CheckCircle2, XCircle, Clock, Undo2 } from 'lucide-react';
+import DatePicker from '../../components/DatePicker';
 
 const STATUS_CONFIG = {
   Pending:   { icon: Clock,         color: 'text-amber-600',  bg: 'bg-amber-50 dark:bg-amber-900/20',  border: 'border-amber-200 dark:border-amber-800',  label: 'Pending Review' },
@@ -211,12 +212,11 @@ export default function EmpResignation({ toast }) {
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   Preferred Last Working Date
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   className="form-input w-full"
                   value={form.last_working_date}
                   min={new Date().toISOString().slice(0, 10)}
-                  onChange={e => f({ last_working_date: e.target.value })}
+                  onChange={v => f({ last_working_date: v })}
                 />
               </div>
               <div>

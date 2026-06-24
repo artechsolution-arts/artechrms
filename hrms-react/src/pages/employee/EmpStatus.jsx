@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api';
 import DatePicker from '../../components/DatePicker';
 import Select from '../../components/Select';
-import { ChevronLeft, ChevronRight, Save, CheckCircle2, ClipboardList } from 'lucide-react';
+import MonthYearPicker from '../../components/MonthYearPicker';
+import { Save, CheckCircle2, ClipboardList } from 'lucide-react';
 
 const STATUSES = ['In Progress', 'Completed', 'On Hold', 'Pending'];
 
@@ -81,16 +82,6 @@ export default function EmpStatus({ toast }) {
     finally { setSaving(prev => { const n = { ...prev }; delete n[id]; return n; }); }
   };
 
-  const prevMonth = () => {
-    if (month === 1) { setYear(y => y - 1); setMonth(12); }
-    else setMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (isCurrentMonth) return;
-    if (month === 12) { setYear(y => y + 1); setMonth(1); }
-    else setMonth(m => m + 1);
-  };
-
   const completedCount = entries.filter(e => (localData[e.id]?.status || e.status) === 'Completed').length;
 
   return (
@@ -106,21 +97,7 @@ export default function EmpStatus({ toast }) {
 
         {/* Month navigator + stats */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button onClick={prevMonth} className="btn btn-secondary btn-sm p-1.5">
-              <ChevronLeft size={15} />
-            </button>
-            <span className="text-sm font-semibold text-gray-800 dark:text-white min-w-[130px] text-center">
-              {MONTH_NAMES[month - 1]} {year}
-            </span>
-            <button
-              onClick={nextMonth}
-              disabled={isCurrentMonth}
-              className="btn btn-secondary btn-sm p-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronRight size={15} />
-            </button>
-          </div>
+          <MonthYearPicker month={month} year={year} onChange={(m, y) => { setMonth(m); setYear(y); }} />
 
           <div className="flex items-center gap-3">
             {isCurrentMonth && (

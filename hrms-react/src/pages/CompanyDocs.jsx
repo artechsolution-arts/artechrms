@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ConfirmModal from '../components/ConfirmModal';
+import DatePicker from '../components/DatePicker';
 import { api } from '../api';
 import { FileText, Download, Eye, FolderOpen, Upload, Trash2, Send, ChevronDown, Search, Check, X, Settings, Image, Phone, MapPin, User, Palette, Save, RefreshCw, ZoomIn, Move, PenLine, Type, Layers, Plus, Edit2, Wand2, FileCheck, FileCheck2, FileX, Award, Clock, TrendingUp, Star, LogOut, ShieldCheck, BookOpen, Scale, Lock, ClipboardCheck, FileImage, FileSpreadsheet, Archive, File, Presentation } from 'lucide-react';
 
@@ -241,11 +242,11 @@ function GenerateModal({ doc, employees, letterFields, onClose, toast }) {
                 {field.required && <span className="text-red-500 ml-0.5">*</span>}
               </label>
               {field.type === 'date' ? (
-                <input
-                  type="date"
+                <DatePicker
                   className="form-input w-full"
                   value={form[field.key] || ''}
-                  onChange={e => f({ [field.key]: e.target.value })}
+                  onChange={v => f({ [field.key]: v })}
+                  placeholder="Select date"
                 />
               ) : field.type === 'select' ? (
                 <select

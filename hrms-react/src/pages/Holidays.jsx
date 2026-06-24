@@ -4,7 +4,7 @@ import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Select from '../components/Select';
-import { Plus, CalendarDays, Trash2 } from 'lucide-react';
+import { Plus, CalendarDays, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -59,13 +59,11 @@ export default function Holidays({ toast }) {
       <div className="page-head">
         <h1 className="page-title">Holiday Calendar</h1>
         <div className="flex gap-2">
-          <Select
-            value={year}
-            onChange={v => setYear(Number(v))}
-            options={[2024,2025,2026,2027].map(y => ({ value: y, label: String(y) }))}
-            size="sm"
-            className="w-24"
-          />
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={() => setYear(y => y - 1)} className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"><ChevronLeft size={14} /></button>
+            <span className="px-3 py-1.5 text-sm font-semibold text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-lg">{year}</span>
+            <button type="button" onClick={() => setYear(y => y + 1)} className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"><ChevronRight size={14} /></button>
+          </div>
           <button onClick={() => setModal(true)} className="btn btn-primary btn-sm gap-1.5"><Plus size={13}/>Add Holiday</button>
         </div>
       </div>
