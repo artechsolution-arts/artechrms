@@ -24,8 +24,11 @@ import time
 import threading
 import smtplib
 import logging
+import base64
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 from concurrent.futures import ThreadPoolExecutor
 
 log = logging.getLogger(__name__)
@@ -61,19 +64,29 @@ def _get_graph_token() -> str:
         return _token_cache["token"]
 
 
-def _send_graph(from_email: str, to: str, subject: str, html: str, cc: str = "") -> None:
+def _send_graph(from_email: str, to: str, subject: str, html: str,
+                cc: str = "", attachments: list | None = None) -> None:
     """Send via Microsoft Graph API — FROM is the real sender's address."""
     try:
         import httpx
         token    = _get_graph_token()
         to_list  = [{"emailAddress": {"address": a.strip()}} for a in to.split(",")  if a.strip()]
         cc_list  = [{"emailAddress": {"address": a.strip()}} for a in cc.split(",")  if a.strip()] if cc else []
+        att_list = []
+        for fname, data, ctype in (attachments or []):
+            att_list.append({
+                "@odata.type":  "#microsoft.graph.fileAttachment",
+                "name":         fname,
+                "contentType":  ctype,
+                "contentBytes": base64.b64encode(data).decode(),
+            })
         payload  = {
             "message": {
                 "subject":      subject,
                 "body":         {"contentType": "HTML", "content": html},
                 "toRecipients": to_list,
                 "ccRecipients": cc_list,
+                "attachments":  att_list,
             },
             "saveToSentItems": True,
         }
@@ -100,16 +113,24 @@ SMTP_FROM     = os.getenv("SMTP_FROM", SMTP_USER)
 _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="email")
 
 
-def _send_smtp(to: str, subject: str, html: str, cc: str = "", from_email: str = "") -> None:
+def _send_smtp(to: str, subject: str, html: str, cc: str = "",
+               from_email: str = "", attachments: list | None = None) -> None:
     try:
         sender = from_email or SMTP_FROM or SMTP_USER
-        msg = MIMEMultipart("alternative")
+        msg = MIMEMultipart("mixed")
         msg["Subject"] = subject
         msg["From"]    = sender
         msg["To"]      = to
         if cc:
             msg["Cc"] = cc
         msg.attach(MIMEText(html, "html", "utf-8"))
+        for fname, data, ctype in (attachments or []):
+            main_type, sub_type = ctype.split("/", 1)
+            part = MIMEBase(main_type, sub_type)
+            part.set_payload(data)
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", f'attachment; filename="{fname}"')
+            msg.attach(part)
         all_recipients = [r.strip() for r in (to + ("," + cc if cc else "")).split(",") if r.strip()]
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
             smtp.ehlo()
@@ -122,23 +143,26 @@ def _send_smtp(to: str, subject: str, html: str, cc: str = "", from_email: str =
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def send_email(to: str, subject: str, html: str, cc: str = "", from_email: str = "") -> None:
+def send_email(to: str, subject: str, html: str, cc: str = "",
+               from_email: str = "",
+               attachments: list | None = None) -> None:
     """Queue an email on a background thread. Returns immediately.
 
-    from_email — the sender's real Microsoft 365 address (e.g. employee or HR).
-                 Graph API will make the email appear FROM that address, exactly
-                 like sending from Outlook. Falls back to SMTP_USER if not set.
+    attachments — list of (filename, bytes_data, mime_type) tuples,
+                  e.g. [("Letter.pdf", pdf_bytes, "application/pdf")]
+    from_email  — the sender's real Microsoft 365 address (Graph) or
+                  overrides SMTP_FROM. Falls back to SMTP_USER if not set.
     """
     if not to:
         return
     if MS_CLIENT_ID and MS_CLIENT_SECRET and MS_TENANT_ID:
         sender = from_email or SMTP_USER
         if sender:
-            _pool.submit(_send_graph, sender, to, subject, html, cc)
+            _pool.submit(_send_graph, sender, to, subject, html, cc, attachments)
             return
     if not SMTP_HOST or not SMTP_USER:
         return
-    _pool.submit(_send_smtp, to, subject, html, cc, from_email)
+    _pool.submit(_send_smtp, to, subject, html, cc, from_email, attachments)
 
 
 # ── Email templates ──────────────────────────────────────────────────────────
@@ -333,6 +357,29 @@ def _pretty_date(d) -> str:
     months = ["January", "February", "March", "April", "May", "June",
               "July", "August", "September", "October", "November", "December"]
     return f"{_ordinal(d.day)} {months[d.month - 1]}"
+
+
+def document_ready_email(
+    recipient_name: str,
+    letter_type: str,
+    company_name: str = "AR Tech Solutions",
+) -> tuple[str, str]:
+    """Email body for delivering a generated letter as an attachment."""
+    subject = f"Your {letter_type} — {company_name}"
+    p = lambda txt: f'<p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 18px">{txt}</p>'
+    html = _base(f"""
+        <div style="padding:8px 0 24px;font-family:Arial,sans-serif">
+          {p(f"Dear {recipient_name},")}
+          {p(f"Please find your <strong>{letter_type}</strong> attached to this email, "
+             f"issued by <strong>{company_name}</strong>.")}
+          {p("If you have any questions regarding the document, please reach out to the HR team.")}
+          {p("Wishing you all the best.")}
+          <p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 4px">Yours sincerely,</p>
+          <p style="color:#111827;font-size:15px;font-weight:700;margin:0 0 4px">HR Team</p>
+          <p style="color:#6b7280;font-size:13px;margin:0">{company_name}</p>
+        </div>
+    """)
+    return subject, html
 
 
 def _reason_clause(reason: str) -> str:

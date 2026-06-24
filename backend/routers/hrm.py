@@ -1178,8 +1178,29 @@ from datetime import datetime as _dt
 from fastapi.responses import Response as _Response
 from pydantic import BaseModel as _BM
 from typing import Any as _Any
+from backend.utils.email import send_email, document_ready_email
 
 GENERATED_DOCS_DIR = "/app/generated_docs"
+
+
+def _send_letter_email(pdf_bytes: bytes, filename: str, fields: dict,
+                       letter_type: str, company_name: str) -> None:
+    """Fire-and-forget: email the generated letter PDF to the recipient if email is set."""
+    recipient_email = (
+        fields.get("email") or fields.get("work_email") or ""
+    ).strip()
+    if not recipient_email:
+        return
+    recipient_name = (
+        fields.get("employee_name") or fields.get("full_name") or "Candidate"
+    ).strip()
+    subject, html = document_ready_email(recipient_name, letter_type, company_name)
+    send_email(
+        to=recipient_email,
+        subject=subject,
+        html=html,
+        attachments=[(filename, pdf_bytes, "application/pdf")],
+    )
 
 
 class LetterGenerateRequest(_BM):
@@ -1298,6 +1319,10 @@ def generate_employee_letter(
             file_name=filename,
         ))
         db.commit()
+
+    # Email the letter if a recipient email is available
+    _send_letter_email(pdf_bytes, filename, fields, body.letter_type,
+                       tpl_cfg.get("company_name") or "AR Tech Solutions")
 
     return _Response(
         content=pdf_bytes,
@@ -1426,6 +1451,10 @@ def generate_from_doc_template(
             file_name=filename,
         ))
         db.commit()
+
+    # Email the letter if a recipient email is available
+    _send_letter_email(pdf_bytes, filename, fields, tpl.name,
+                       tpl_cfg.get("company_name") or "AR Tech Solutions")
 
     return _Response(
         content=pdf_bytes,
