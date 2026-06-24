@@ -1308,6 +1308,17 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
                 i += 1
                 continue
 
+            # ── Numbered section heading (e.g. "1. Employment Details") ─────
+            plain_s = _strip_bold(stripped)
+            if re.match(r'^\d{1,2}\.\s+\S', plain_s) and len(plain_s) <= 70:
+                y = _check_break(c, y, 10 * mm)
+                c.setFont(_HF_SEMI, _fsize())
+                c.setFillColor(DARK)
+                c.drawString(ML, y, plain_s)
+                y -= LH * 1.25
+                i += 1
+                continue
+
             # ── Normal body line (with inline bold for substituted values) ──
             y = _wrap_rich(c, stripped, ML, y)
             y -= PG / 2
@@ -1322,7 +1333,336 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
         _tpl_ctx.reset(token)
 
 
+# ── Letter template strings ───────────────────────────────────────────────────
+# Every predefined letter type has a template string that runs through
+# generate_custom_letter, so ALL formatting rules (centered ALL-CAPS headings,
+# inline bold for substituted values, numbered-section headings, tables) apply
+# to every letter automatically — including any new ones added in future.
+
+LETTER_TEMPLATES: dict[str, str] = {
+
+"Experience Letter": """\
+Date: {{letter_date}}
+
+TO WHOMSOEVER IT MAY CONCERN
+
+EXPERIENCE LETTER
+
+This is to certify that Mr./Ms. {{employee_name}} was employed with {{company_name}} as a {{designation}} from {{joining_date}} to {{last_working_date}}.
+
+During the tenure of employment, the employee was responsible for handling duties related to {{department}}. We found him/her to be sincere, hardworking, and professional in carrying out the assigned responsibilities.
+
+His/Her conduct and performance during the employment period were satisfactory. We wish him/her all the best for future endeavors.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+""",
+
+"Relieving Letter": """\
+RELIEVING LETTER
+
+Date: {{letter_date}}
+
+TO WHOMSOEVER IT MAY CONCERN
+
+This is to certify that Mr./Ms. {{employee_name}} worked with {{company_name}} as a {{designation}} from {{joining_date}} to {{last_working_date}}.
+
+He/She has been formally relieved from the duties and responsibilities of the organization with effect from {{relieving_date}} after completing the required notice period and knowledge handover.
+
+We appreciate his/her contribution to the organization and wish him/her all the best for future endeavors.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+""",
+
+"Extended of Probation Letter": """\
+Date: {{letter_date}}
+{{employee_name}}
+{{designation}}
+
+EXTENSION OF PROBATION PERIOD
+
+Dear {{employee_name}},
+
+This is to inform you that your probation period, which was scheduled to conclude on {{previous_end_date}}, has been extended for a further period of {{duration}} effective from {{new_start_date}} to {{new_end_date}}.
+
+The extension is being made to provide additional time for assessing your performance, work responsibilities, and overall suitability for the role. During this period, your performance and conduct will continue to be reviewed as per company standards and expectations.
+
+We encourage you to focus on the areas discussed and demonstrate consistent improvement during the extended probation period.
+
+All other terms and conditions of your employment remain unchanged.
+Please acknowledge receipt of this letter.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+""",
+
+"Appointment Letter": """\
+Date: {{letter_date}}
+
+APPOINTMENT LETTER
+
+Dear {{employee_name}},
+
+We are pleased to confirm your appointment as {{designation}} with {{company_name}}, effective from {{joining_date}}.
+
+Your employment with us will be governed by the following terms and conditions:
+
+1. Employment Details
+Designation: {{designation}}
+Department: {{department}}
+
+2. Probation Period
+You will be on probation for a period of 3 months from the date of joining. During the probation period, your performance and conduct will be evaluated.
+
+The company reserves the right to extend the probation period or terminate employment during probation with notice if performance or conduct is found unsatisfactory.
+
+3. Confirmation of Employment
+Having successfully completed your probation for three months, your services are hereby confirmed with {{company_name}}, effective from {{confirmation_date}}.
+
+4. Compensation
+Your Compensation will be as per company norms. Your detailed salary structure is enclosed as Annexure A – Compensation Structure, which forms an integral part of this Appointment Letter.
+
+5. Leave Entitlement
+Details regarding leave entitlement, leave structure, and leave approval procedures shall be governed as per the policies mentioned in the company handbook.
+
+6. Notice Period
+Notice period of 60 days applicable from either side for termination of employment, unless otherwise decided by the management.
+
+7. Termination of Services
+Services may be terminated for invalid documents, failed background verification, medical unfitness, misconduct, breach of trust, non-compliance, or false information provided during the hiring process.
+
+8. Company Rules & Non-Compete
+Employment governed by company rules; for two years post-employment, employees must not compete with the company.
+
+9. Job & Location Changes
+Designation, duties, or location may change as per business needs without affecting compensation.
+
+10. Final Settlement
+Full and Final settlement of dues shall be processed within 30 days from the last working day, subject to successful completion of the notice period and proper handover of all company assets.
+
+11. Address & Communication
+Inform the company within 24 hours of any address change.
+
+12. Dispute Resolution
+Hyderabad will be considered the legal jurisdiction for any disputes.
+
+All other Terms and Conditions of your employment remain the same as set out in your offer letter and the Company Handbook, as amended from time to time.
+
+We look forward to your continued contributions and commitment toward the growth of {{company_name}}.
+
+Kindly sign and return a copy of this letter as a token of your acceptance.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+
+
+ACKNOWLEDGMENT AND ACCEPTANCE
+
+I, {{employee_name}}, hereby accept the appointment as per the terms mentioned above.
+
+Signature: ______________________
+
+Date: ____________________________
+""",
+
+"Confirmation Letter": """\
+Date: {{letter_date}}
+
+CONFIRMATION OF EMPLOYMENT
+
+Dear {{employee_name}},
+
+We are pleased to inform you that you have successfully completed your probation period with {{company_name}} effective from {{probation_start_date}}.
+
+Based on your performance, conduct, and contribution during the probationary period, the management is happy to confirm your appointment as a permanent employee in the position of {{designation}} from {{confirmation_date}}.
+
+We appreciate your efforts and commitment and look forward to your continued contribution and growth with the organization.
+
+Congratulations and best wishes for a successful career with us.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+""",
+
+"New Increment Letter": """\
+Date: {{letter_date}}
+{{employee_name}}
+{{designation}}
+
+INCREMENT LETTER
+
+Dear {{employee_name}},
+
+We are pleased to inform you that based on your performance, dedication, and contribution to the organization, your salary has been revised with effect from {{effective_date}}.
+
+Your revised Annual Salary will be {{old_ctc}} to {{new_ctc}} as per the company's compensation structure and policies.
+
+We appreciate your hard work and commitment towards the organization and look forward to your continued support and contribution to the growth of the company.
+
+All other terms and conditions of your employment remain unchanged.
+We wish you continued success in your role.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+""",
+
+"New Promotion Letter": """\
+Date: {{letter_date}}
+{{employee_name}}
+{{designation}}
+
+PROMOTION LETTER
+
+Dear {{employee_name}},
+
+We are pleased to inform you that, based on your performance, dedication, and contributions to the organization, you have been promoted to the position of {{new_designation}}, effective from {{effective_date}}.
+
+Your revised compensation will be {{ctc_details}}, along with applicable benefits as per company policy.
+
+We are confident that you will continue to perform your duties with the same level of excellence and commitment in your new position.
+
+Congratulations on your well-deserved promotion. We wish you continued success in your career with us.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+""",
+
+"New Termination Letter": """\
+Date: {{letter_date}}
+{{employee_name}}
+{{designation}}
+
+TERMINATION OF EMPLOYMENT
+
+Dear {{employee_name}},
+
+This letter is to inform you that your employment with {{company_name}} will be terminated effectively from {{last_working_date}}.
+
+The decision has been taken due to the following performance concerns:
+
+1. Delay in completing assigned tasks
+2. Not providing regular work updates
+3. Unsatisfactory work performance
+
+Despite multiple discussions and opportunities provided for improvement, the expected performance standards have not been met.
+
+You are requested to complete all handover formalities and return any company assets before your last working day.
+
+Your final settlement will be processed as per company policy after completion of exit formalities.
+
+We thank you for your services and wish you all the best for your future endeavors.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+""",
+
+"New Letter Of Intent": """\
+Date: {{letter_date}}
+{{employee_name}}
+{{employee_address}}
+
+LETTER OF INTENT
+
+Dear {{employee_name}},
+
+This is with reference to the discussions you had with us. As mutually agreed, we would be pleased to offer you an appointment as {{designation}} at {{company_name}} and your date of joining will be {{joining_date}}.
+
+You have been offered annual compensation of {{ctc_words}} only Rs. {{ctc_amount}}/-
+
+The Appointment Letter will be handed over to the employee on the date of joining.
+
+Confirmation of employment will be provided upon successful completion of the probation period, subject to satisfactory performance and conduct.
+
+You will be on probation for a period of 3 months. During the probation period you will not be entitled to take any leave except in case of emergency. Any leave taken during probation period will be considered as Leave Without Pay (LOP). The termination notices on Either side will be 15 days during probation period and 60 days after confirmation.
+
+Please note that this offer shall automatically lapse if you fail to commence the arrangement on the aforesaid date. The management may, however, in its absolute discretion, extend the said date upon a written request being received from you.
+
+You are requested to sign and return the duplicate copy of this letter as a token of your acceptance of the above offer. Looking forward to a mutually beneficial association.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+""",
+
+"Resignation Acceptance Letter": """\
+Date: {{letter_date}}
+{{employee_name}}
+{{employee_code}}
+{{designation}}
+
+RESIGNATION ACCEPTANCE LETTER
+
+Dear {{employee_name}},
+
+This is with reference to your resignation letter dated {{resignation_date}}. We hereby accept your resignation from the position of {{designation}} at {{company_name}}. Your last working day with the organization will be {{last_working_date}} as per the notice period terms.
+
+You are requested to complete the knowledge transfer process and hand over all company assets and responsibilities before your relieving date.
+
+We thank you for your contributions to the organization and wish you success in your future endeavors.
+
+Yours sincerely,
+For {{company_name}}
+
+
+{{hr_signatory}}
+{{hr_role}}
+""",
+
+}  # end LETTER_TEMPLATES
+
+
 def generate_letter(letter_type: str, fields: dict, template: dict | None = None) -> bytes:
+    tpl_string = LETTER_TEMPLATES.get(letter_type)
+    if tpl_string is not None:
+        tpl_cfg   = template or {}
+        company   = tpl_cfg.get("company_name") or "AR Tech Solutions"
+        hr_sig    = tpl_cfg.get("hr_signatory") or HR_SIGNATORY
+        hr_role   = tpl_cfg.get("hr_role")      or HR_ROLE
+        merged    = {
+            "company_name": company,
+            "hr_signatory": hr_sig,
+            "hr_role":      hr_role,
+            **fields,
+        }
+        return generate_custom_letter(tpl_string, merged, template=template)
+
+    # Legacy fallback for any letter type not yet converted to a template
     renderer = BODY_RENDERERS.get(letter_type)
     if renderer is None:
         raise ValueError(f"No renderer for letter type: {letter_type!r}")
