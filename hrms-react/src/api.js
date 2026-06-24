@@ -17,7 +17,8 @@ export async function api(method, path, body) {
     const err = await res.json().catch(() => ({ detail: 'Request failed' }));
     throw new Error(err.detail || 'Request failed');
   }
-  return res.json();
+  if (res.status === 204 || res.headers.get('content-length') === '0') return null;
+  return res.json().catch(() => null);
 }
 
 export async function apiForm(path, formData) {
@@ -35,5 +36,6 @@ export async function apiForm(path, formData) {
     const err = await res.json().catch(() => ({ detail: 'Request failed' }));
     throw new Error(err.detail || 'Request failed');
   }
-  return res.json();
+  if (res.status === 204 || res.headers.get('content-length') === '0') return null;
+  return res.json().catch(() => null);
 }

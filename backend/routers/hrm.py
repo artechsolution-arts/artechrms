@@ -1083,9 +1083,27 @@ _MIME_MAP = {
 
 
 @router.get("/company-docs")
-def list_company_docs():
-    files = sorted(storage.list_files("company-docs"))
-    return [{"name": f, "url": f"/api/hrm/company-docs/{f}"} for f in files]
+def list_company_docs(db: Session = Depends(get_db)):
+    from sqlalchemy import text as _t
+    # R2 is always the source of truth for existence
+    files = storage.list_files("company-docs")
+    if not files:
+        return []
+    # Backfill any R2 files not yet tracked in DB
+    db_rows = {r[0] for r in db.execute(_t("SELECT name FROM company_documents")).fetchall()}
+    for f in files:
+        if f not in db_rows:
+            db.execute(_t("""
+                INSERT INTO company_documents (name, r2_key)
+                VALUES (:name, :key) ON CONFLICT (name) DO NOTHING
+            """), {"name": f, "key": f"company-docs/{f}"})
+    db.commit()
+    # Return ordered by upload time
+    rows = db.execute(_t(
+        "SELECT name, uploaded_by, uploaded_at FROM company_documents WHERE name = ANY(:names) ORDER BY uploaded_at DESC"
+    ), {"names": files}).fetchall()
+    return [{"name": r[0], "uploaded_by": r[1], "uploaded_at": str(r[2]) if r[2] else None,
+             "url": f"/api/hrm/company-docs/{r[0]}"} for r in rows]
 
 
 @router.get("/company-docs/{filename}")
@@ -1103,21 +1121,39 @@ def get_company_doc(filename: str):
 
 
 @router.post("/company-docs/upload", status_code=201)
-async def upload_company_doc(file: UploadFile = File(...)):
+async def upload_company_doc(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    from sqlalchemy import text as _t
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     if ext not in _ALLOWED_DOC_EXTS:
         raise HTTPException(400, f"File type '.{ext}' is not allowed")
     safe_name = _os.path.basename(file.filename)
     if not safe_name:
         raise HTTPException(400, "Invalid filename")
+    r2_key = f"company-docs/{safe_name}"
     storage.upload_file(await file.read(), "company-docs", safe_name)
+    uploaded_by = getattr(request.state, "username", None)
+    db.execute(_t("""
+        INSERT INTO company_documents (name, r2_key, uploaded_by)
+        VALUES (:name, :r2_key, :by)
+        ON CONFLICT (name) DO UPDATE SET r2_key = EXCLUDED.r2_key, uploaded_by = EXCLUDED.uploaded_by, uploaded_at = NOW()
+    """), {"name": safe_name, "r2_key": r2_key, "by": uploaded_by})
+    db.commit()
     return {"name": safe_name, "url": f"/api/hrm/company-docs/{safe_name}"}
 
 
-@router.delete("/company-docs/{filename}", status_code=204)
-def delete_company_doc(filename: str):
+@router.delete("/company-docs/{filename}", status_code=200)
+def delete_company_doc(filename: str, request: Request, db: Session = Depends(get_db)):
+    from sqlalchemy import text as _t
     safe_name = _os.path.basename(filename)
     storage.delete_file(f"/files/company-docs/{safe_name}")
+    deleted_by = getattr(request.state, "username", None)
+    db.execute(_t("DELETE FROM company_documents WHERE name = :name"), {"name": safe_name})
+    db.execute(_t("""
+        INSERT INTO deletion_log (entity_type, entity_name, deleted_by, extra)
+        VALUES ('company_document', :name, :by, :extra::jsonb)
+    """), {"name": safe_name, "by": deleted_by, "extra": f'{{"r2_key":"company-docs/{safe_name}"}}'})
+    db.commit()
+    return {"deleted": safe_name}
 
 
 # ── Letter generation ───────────────────────────────────────────────────────

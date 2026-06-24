@@ -274,6 +274,24 @@ with engine.connect() as _conn:
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )""",
         "CREATE INDEX IF NOT EXISTS idx_oauth_created ON oauth_states(created_at)",
+        # Company documents — metadata tracked alongside R2 objects
+        """CREATE TABLE IF NOT EXISTS company_documents (
+            id          SERIAL PRIMARY KEY,
+            name        VARCHAR(255) NOT NULL UNIQUE,
+            r2_key      VARCHAR(500) NOT NULL,
+            uploaded_by VARCHAR(100),
+            uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )""",
+        # Deletion audit log — who deleted what and when
+        """CREATE TABLE IF NOT EXISTS deletion_log (
+            id           SERIAL PRIMARY KEY,
+            entity_type  VARCHAR(100) NOT NULL,
+            entity_name  TEXT         NOT NULL,
+            deleted_by   VARCHAR(100),
+            deleted_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            extra        JSONB
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_del_log_type ON deletion_log(entity_type, deleted_at DESC)",
     ]:
         try:
             _conn.execute(text(_stmt))
