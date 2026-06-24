@@ -2362,7 +2362,7 @@ export default function CompanyDocs({ toast }) {
           {docs.map(doc => {
             const label = docLabel(doc.name);
             const ext = doc.name.split('.').pop().toUpperCase();
-            const hasGenerator = !!findLetterFields(label, letterFields);
+            const hasGenerator = doc.name.toLowerCase().match(/\.(docx?|pdf)$/) !== null;
             return (
               <div key={doc.name} className="card p-4 flex items-start gap-3 hover:shadow-md transition-shadow">
                 <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0">
@@ -2430,7 +2430,7 @@ export default function CompanyDocs({ toast }) {
                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{docLabel(preview.doc.name)}</span>
               </div>
               <div className="flex items-center gap-2">
-                {findLetterFields(docLabel(preview.doc.name), letterFields) && (
+                {preview.doc.name.toLowerCase().match(/\.(docx?|pdf)$/) && (
                   <button
                     onClick={() => { closePreview(); setGenerateDoc(preview.doc); }}
                     className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
