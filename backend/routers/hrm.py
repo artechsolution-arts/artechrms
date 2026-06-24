@@ -1454,6 +1454,39 @@ def _normalise_placeholders(text: str):
     return converted, variables
 
 
+def _extract_docx_text(docx_bytes: bytes) -> str:
+    """Extract all text from a DOCX preserving document order (paragraphs + table cells)."""
+    from docx import Document as _DocxDoc
+    from docx.oxml.ns import qn as _qn
+    import io as _io
+
+    doc = _DocxDoc(_io.BytesIO(docx_bytes))
+    lines = []
+
+    # Walk the document body in XML order so table rows appear in the right place
+    body = doc.element.body
+    for child in body.iterchildren():
+        tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+        if tag == "p":
+            # Regular paragraph
+            para_text = "".join(n.text or "" for n in child.iter() if n.tag.endswith("}t"))
+            lines.append(para_text)
+        elif tag == "tbl":
+            # Table — iterate rows and cells
+            for row in child.iter(_qn("w:tr")):
+                cell_texts = []
+                for cell in row.iter(_qn("w:tc")):
+                    cell_text = "".join(
+                        n.text or "" for n in cell.iter() if n.tag.endswith("}t")
+                    ).strip()
+                    if cell_text:
+                        cell_texts.append(cell_text)
+                if cell_texts:
+                    lines.append("\t".join(cell_texts))
+
+    return "\n".join(lines).strip()
+
+
 @router.post("/doc-templates/extract-from-doc")
 def extract_from_existing_doc(body: _ExtractFromDocReq):
     """Extract text + detect variables from an already-uploaded company document."""
@@ -1469,10 +1502,7 @@ def extract_from_existing_doc(body: _ExtractFromDocReq):
 
     if ext == "docx":
         try:
-            from docx import Document as _DocxDoc
-            import io as _io
-            doc = _DocxDoc(_io.BytesIO(file_data))
-            text = "\n".join(p.text for p in doc.paragraphs).strip()
+            text = _extract_docx_text(file_data)
         except Exception as e:
             raise HTTPException(400, f"Could not read DOCX: {e}")
     elif ext == "pdf":
@@ -1501,10 +1531,7 @@ async def extract_text_from_file(file: UploadFile = File(...)):
 
     if fname.endswith(".docx"):
         try:
-            from docx import Document as _DocxDoc
-            import io as _io
-            doc = _DocxDoc(_io.BytesIO(data))
-            text = "\n".join(p.text for p in doc.paragraphs).strip()
+            text = _extract_docx_text(data)
         except Exception as e:
             raise HTTPException(400, f"Could not read DOCX: {e}")
 
