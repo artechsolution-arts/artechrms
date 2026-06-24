@@ -678,13 +678,21 @@ function GenerateFromTemplateModal({ template, employees, onClose, toast }) {
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                     {v.label}
                   </label>
-                  <input
-                    type={v.type === 'date' ? 'date' : v.type === 'number' ? 'number' : 'text'}
-                    value={form[v.key] || ''}
-                    onChange={e => f({ [v.key]: e.target.value })}
-                    placeholder={`Enter ${v.label.toLowerCase()}…`}
-                    className="lp-input w-full"
-                  />
+                  {v.type === 'date' ? (
+                    <DatePicker
+                      value={form[v.key] || ''}
+                      onChange={val => f({ [v.key]: val })}
+                      placeholder={`Select ${v.label.toLowerCase()}…`}
+                    />
+                  ) : (
+                    <input
+                      type={v.type === 'number' ? 'number' : 'text'}
+                      value={form[v.key] || ''}
+                      onChange={e => f({ [v.key]: e.target.value })}
+                      placeholder={`Enter ${v.label.toLowerCase()}…`}
+                      className="lp-input w-full"
+                    />
+                  )}
                 </div>
               ))}
             </div>
