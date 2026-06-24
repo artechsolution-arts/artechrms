@@ -508,7 +508,7 @@ def document_ready_email(
               please notify the sender immediately and delete this message from your system.
             </p>
             <p style="margin:8px 0 0;font-size:11px;color:#94a3b8;">
-              © {today.year} {company_name}. All rights reserved. &nbsp;·&nbsp; Generated via Artech HRMS
+              © {today.year} {company_name}. All rights reserved.
             </p>
           </td>
         </tr>
