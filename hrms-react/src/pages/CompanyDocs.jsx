@@ -173,6 +173,77 @@ function EmpDropdown({ value, onChange, employees }) {
   );
 }
 
+const EMPTY_MANUAL_EMP = {
+  full_name: '', designation: '', department: '',
+  employee_id: '', date_of_joining: '', email: '', phone: '',
+};
+
+// Toggle pill shared by both generate modals
+function EmpModeToggle({ mode, onChange }) {
+  return (
+    <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-2">
+      {[['existing', 'Select Employee'], ['manual', 'New / External']].map(([val, lbl]) => (
+        <button key={val} type="button"
+          onClick={() => onChange(val)}
+          className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            mode === val
+              ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-white'
+              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >{lbl}</button>
+      ))}
+    </div>
+  );
+}
+
+// Manual employee entry form
+function ManualEmpFields({ value, onChange }) {
+  const f = (k, v) => onChange({ ...value, [k]: v });
+  return (
+    <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-3 bg-gray-50 dark:bg-gray-800/40 space-y-2">
+      <div className="col-span-2">
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+          Full Name <span className="text-red-500">*</span>
+        </label>
+        <input className="form-input w-full" placeholder="e.g. John Doe"
+          value={value.full_name} onChange={e => f('full_name', e.target.value)} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Designation</label>
+          <input className="form-input w-full" placeholder="e.g. Software Engineer"
+            value={value.designation} onChange={e => f('designation', e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Department</label>
+          <input className="form-input w-full" placeholder="e.g. Engineering"
+            value={value.department} onChange={e => f('department', e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Employee ID</label>
+          <input className="form-input w-full" placeholder="e.g. EMP001"
+            value={value.employee_id} onChange={e => f('employee_id', e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Date of Joining</label>
+          <input type="date" className="form-input w-full"
+            value={value.date_of_joining} onChange={e => f('date_of_joining', e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email</label>
+          <input type="email" className="form-input w-full" placeholder="email@company.com"
+            value={value.email} onChange={e => f('email', e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Phone</label>
+          <input className="form-input w-full" placeholder="+91 98765 43210"
+            value={value.phone} onChange={e => f('phone', e.target.value)} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Generate Letter Modal ───────────────────────────────────────────────────
 function GenerateModal({ doc, employees, letterFields, onClose, toast }) {
   const rawLabel = docLabel(doc.name);
@@ -180,30 +251,46 @@ function GenerateModal({ doc, employees, letterFields, onClose, toast }) {
   const letterType = Object.keys(letterFields).find(k => k.toLowerCase() === rawLabel.toLowerCase()) || rawLabel;
   const fields = findLetterFields(letterType, letterFields) || [];
 
-  const [empId, setEmpId] = useState(null);
-  const [form, setForm] = useState(() => ({ letter_date: TODAY }));
+  const [empMode,    setEmpMode]    = useState('existing');
+  const [empId,      setEmpId]      = useState(null);
+  const [manualEmp,  setManualEmp]  = useState(EMPTY_MANUAL_EMP);
+  const [form,       setForm]       = useState(() => ({ letter_date: TODAY }));
   const [generating, setGenerating] = useState(false);
 
   const f = patch => setForm(p => ({ ...p, ...patch }));
 
-  // Auto-fill known fields from employee when selection changes
+  // Auto-fill from existing employee
   useEffect(() => {
-    if (!empId) return;
+    if (empMode !== 'existing' || !empId) return;
     const emp = employees.find(e => e.id === empId);
     const auto = empAutoFill(emp);
     setForm(prev => {
       const next = { ...prev };
       fields.forEach(fld => {
-        if (EMP_AUTO_KEYS.has(fld.key) && auto[fld.key] && !prev[fld.key]) {
-          next[fld.key] = auto[fld.key];
-        }
+        if (EMP_AUTO_KEYS.has(fld.key) && auto[fld.key] && !prev[fld.key]) next[fld.key] = auto[fld.key];
       });
       return next;
     });
-  }, [empId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [empId, empMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-fill from manual entry fields
+  useEffect(() => {
+    if (empMode !== 'manual') return;
+    const auto = empAutoFill(manualEmp);
+    setForm(prev => {
+      const next = { ...prev };
+      fields.forEach(fld => {
+        if (EMP_AUTO_KEYS.has(fld.key) && auto[fld.key]) next[fld.key] = auto[fld.key];
+      });
+      return next;
+    });
+  }, [manualEmp, empMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async () => {
-    if (!empId) return toast('Please select an employee', 'warning');
+    if (empMode === 'existing' && !empId)
+      return toast('Please select an employee', 'warning');
+    if (empMode === 'manual' && !manualEmp.full_name.trim())
+      return toast('Please enter the employee name', 'warning');
     for (const field of fields) {
       if (field.required && !form[field.key]?.toString().trim()) {
         return toast(`"${field.label}" is required`, 'warning');
@@ -212,26 +299,33 @@ function GenerateModal({ doc, employees, letterFields, onClose, toast }) {
     setGenerating(true);
     try {
       const token = localStorage.getItem('artech_hrms_token');
+      const mergedFields = empMode === 'manual'
+        ? { ...empAutoFill(manualEmp), ...form }
+        : form;
       const res = await fetch('/api/hrm/letters/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ letter_type: letterType, employee_id: empId, fields: form }),
+        body: JSON.stringify({
+          letter_type: letterType,
+          employee_id: empMode === 'existing' ? empId : null,
+          fields: mergedFields,
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Generation failed' }));
         throw new Error(err.detail || 'Generation failed');
       }
-      // Trigger download
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const emp = employees.find(e => e.id === empId);
+      const displayName = empMode === 'existing'
+        ? (employees.find(e => e.id === empId)?.full_name || 'Employee')
+        : (manualEmp.full_name || 'Employee');
       a.href = url;
-      a.download = `${letterType} - ${emp?.full_name || 'Employee'}.pdf`;
+      a.download = `${letterType} - ${displayName}.pdf`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-
-      toast(`Letter generated and sent to employee's portal`, 'success');
+      toast(empMode === 'existing' ? `Letter generated and sent to employee's portal` : 'Letter generated and downloaded', 'success');
       onClose();
     } catch (e) { toast(e.message, 'error'); }
     finally { setGenerating(false); }
@@ -267,15 +361,22 @@ function GenerateModal({ doc, employees, letterFields, onClose, toast }) {
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
               Employee <span className="text-red-500">*</span>
             </label>
-            <EmpDropdown value={empId} onChange={setEmpId} employees={employees} />
-            {emp && (
-              <div className="mt-1.5 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--accent)]/5 border border-[var(--accent)]/20">
-                <span className="text-xs text-gray-600 dark:text-gray-400">
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">{emp.full_name}</span>
-                  {emp.designation_name && <> · {emp.designation_name}</>}
-                  {emp.employee_id && <span className="ml-1 font-mono text-gray-400">{emp.employee_id}</span>}
-                </span>
-              </div>
+            <EmpModeToggle mode={empMode} onChange={m => { setEmpMode(m); setEmpId(null); setManualEmp(EMPTY_MANUAL_EMP); }} />
+            {empMode === 'existing' ? (
+              <>
+                <EmpDropdown value={empId} onChange={setEmpId} employees={employees} />
+                {emp && (
+                  <div className="mt-1.5 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--accent)]/5 border border-[var(--accent)]/20">
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">{emp.full_name}</span>
+                      {emp.designation_name && <> · {emp.designation_name}</>}
+                      {emp.employee_id && <span className="ml-1 font-mono text-gray-400">{emp.employee_id}</span>}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <ManualEmpFields value={manualEmp} onChange={setManualEmp} />
             )}
           </div>
 
@@ -625,34 +726,36 @@ function TemplateFormModal({ template, onClose, onSave, toast, docs = [] }) {
 function GenerateFromTemplateModal({ template, employees, onClose, toast }) {
   const vars = template.variables || [];
 
-  const [empId, setEmpId]         = useState(null);
-  const [form,  setForm]          = useState({});
+  const [empMode,    setEmpMode]    = useState('existing');
+  const [empId,      setEmpId]      = useState(null);
+  const [manualEmp,  setManualEmp]  = useState(EMPTY_MANUAL_EMP);
+  const [form,       setForm]       = useState({});
   const [generating, setGenerating] = useState(false);
 
   const f = patch => setForm(p => ({ ...p, ...patch }));
 
-  const emp = empId ? employees.find(e => e.id === empId) : null;
+  const emp = (empMode === 'existing' && empId) ? employees.find(e => e.id === empId) : null;
 
-  // Whenever employee changes, recalculate auto-filled values and merge into form
+  // Whenever employee (or manual emp) changes, recalculate auto-filled values
   useEffect(() => {
-    const auto = empAutoFill(emp);
+    const src = empMode === 'existing' ? emp : (manualEmp.full_name ? manualEmp : null);
+    const auto = empAutoFill(src);
     setForm(prev => {
       const next = { ...prev };
       vars.forEach(v => {
-        // Set auto value if the key is known; don't overwrite what HR already typed manually
         if (EMP_AUTO_KEYS.has(v.key) && auto[v.key]) next[v.key] = auto[v.key];
-        // Seed date fields with today if not set
         if (v.type === 'date' && !next[v.key]) next[v.key] = TODAY;
       });
       return next;
     });
-  }, [empId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [empId, empMode, manualEmp.full_name, manualEmp.designation, manualEmp.department, manualEmp.employee_id, manualEmp.date_of_joining, manualEmp.email, manualEmp.phone]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Split variables into auto-filled (shown as badges) and manual (shown as inputs)
   const autoVars   = vars.filter(v => EMP_AUTO_KEYS.has(v.key) && form[v.key]);
   const manualVars = vars.filter(v => !EMP_AUTO_KEYS.has(v.key));
 
   const submit = async () => {
+    if (empMode === 'manual' && !manualEmp.full_name.trim())
+      return toast('Please enter the employee name', 'warning');
     for (const v of manualVars) {
       if (!form[v.key]?.toString().trim()) {
         return toast(`"${v.label}" is required`, 'warning');
@@ -661,10 +764,13 @@ function GenerateFromTemplateModal({ template, employees, onClose, toast }) {
     setGenerating(true);
     try {
       const token = localStorage.getItem('artech_hrms_token');
+      const mergedFields = empMode === 'manual'
+        ? { ...empAutoFill(manualEmp), ...form }
+        : form;
       const res = await fetch(`/api/hrm/doc-templates/${template.id}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ employee_id: empId || null, fields: form }),
+        body: JSON.stringify({ employee_id: empId || null, fields: mergedFields }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -713,7 +819,12 @@ function GenerateFromTemplateModal({ template, employees, onClose, toast }) {
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
               Employee <span className="text-gray-400 font-normal normal-case">(auto-fills name, role, dept, dates…)</span>
             </label>
-            <EmpDropdown value={empId} onChange={setEmpId} employees={employees} />
+            <EmpModeToggle mode={empMode} onChange={m => { setEmpMode(m); setEmpId(null); setManualEmp(EMPTY_MANUAL_EMP); }} />
+            {empMode === 'existing' ? (
+              <EmpDropdown value={empId} onChange={setEmpId} employees={employees} />
+            ) : (
+              <ManualEmpFields value={manualEmp} onChange={setManualEmp} />
+            )}
           </div>
 
           {/* Auto-filled badges */}

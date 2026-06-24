@@ -1184,8 +1184,8 @@ GENERATED_DOCS_DIR = "/app/generated_docs"
 
 class LetterGenerateRequest(_BM):
     letter_type: str
-    employee_id: int
-    fields: dict[str, _Any]
+    employee_id: int | None = None  # None for manual / external candidate entries
+    fields: dict[str, _Any] = {}
 
 
 @router.get("/letter-fields")
@@ -1255,9 +1255,11 @@ def generate_employee_letter(
     body: LetterGenerateRequest,
     db: Session = Depends(get_db),
 ):
-    emp = db.query(_Employee).filter(_Employee.id == body.employee_id).first()
-    if not emp:
-        raise HTTPException(404, "Employee not found")
+    emp = None
+    if body.employee_id:
+        emp = db.query(_Employee).filter(_Employee.id == body.employee_id).first()
+        if not emp:
+            raise HTTPException(404, "Employee not found")
 
     # Load active letterhead template config
     from backend.models.hrm import LetterheadTemplate as _LT
@@ -1275,25 +1277,27 @@ def generate_employee_letter(
     except ValueError as e:
         raise HTTPException(400, str(e))
 
-    # Save generated PDF so it's available for download + employee record
     safe_type = body.letter_type.replace(" ", "_").replace("/", "_")
     timestamp = _dt.utcnow().strftime("%Y%m%d_%H%M%S")
-    filename = f"{emp.employee_id}_{safe_type}_{timestamp}.pdf"
+    emp_prefix = (emp.employee_id or str(body.employee_id)) if emp else (
+        fields.get("employee_name", "manual").replace(" ", "_")[:30]
+    )
+    filename = f"{emp_prefix}_{safe_type}_{timestamp}.pdf"
     storage.upload_file(pdf_bytes, "generated-letters", filename)
 
-    # Create a fulfilled DocumentRequest so employee sees it in My Documents
-    from backend.models.document_request import DocumentRequest as _DR
-    doc_req = _DR(
-        employee_id=body.employee_id,
-        doc_type=body.letter_type,
-        status="Fulfilled",
-        requested_at=_dt.utcnow(),
-        fulfilled_at=_dt.utcnow(),
-        file_url=f"/api/hrm/letters/download/{filename}",
-        file_name=filename,
-    )
-    db.add(doc_req)
-    db.commit()
+    # Only store DocumentRequest when linked to a real employee
+    if emp:
+        from backend.models.document_request import DocumentRequest as _DR
+        db.add(_DR(
+            employee_id=body.employee_id,
+            doc_type=body.letter_type,
+            status="Fulfilled",
+            requested_at=_dt.utcnow(),
+            fulfilled_at=_dt.utcnow(),
+            file_url=f"/api/hrm/letters/download/{filename}",
+            file_name=filename,
+        ))
+        db.commit()
 
     return _Response(
         content=pdf_bytes,
