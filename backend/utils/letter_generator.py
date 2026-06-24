@@ -1087,15 +1087,17 @@ def generate_custom_letter(content: str, fields: dict, template: dict | None = N
         _draw_watermark(c)
 
         def _replace(m):
-            key = m.group(1).strip()
-            val = fields.get(key)
+            raw = m.group(1).strip()
+            # Normalize to snake_case so {{Employee Name}} matches field "employee_name"
+            key = re.sub(r'[^a-z0-9_]', '', re.sub(r'\s+', '_', raw.lower()))
+            val = fields.get(key) or fields.get(raw)
             if val is None:
                 return m.group(0)
-            if key.endswith('_date'):
+            if any(w in key for w in ('date', 'dob', 'doj')):
                 return _fmt(str(val))
             return str(val)
 
-        text = re.sub(r'\{\{(\w+)\}\}', _replace, content)
+        text = re.sub(r'\{\{([^}]+)\}\}', _replace, content)
 
         c.setFont(_font(), _fsize())
         c.setFillColor(DARK)

@@ -1345,29 +1345,52 @@ class _ExtractFromDocReq(_BM):
 
 
 def _normalise_placeholders(text: str):
-    """Convert [Square Bracket Placeholder] and {{double_curly}} formats to {{snake_case}}.
+    """Convert all placeholder formats to {{snake_case}}.
+
+    Handles:
+      {{Employee Name}}  →  {{employee_name}}   (spaced / Title Case)
+      {{EmployeeName}}   →  {{employeename}}     (no separator)
+      [Employee Name]    →  {{employee_name}}    (square brackets)
+      {{joining_date}}   →  unchanged            (already snake_case)
 
     Returns (converted_text, variables_list).
-    Brackets like [Employee Name] → {{employee_name}}.
-    Existing {{var}} are kept as-is.
     """
     import re as _re
 
-    label_map: dict[str, str] = {}  # key → original label
+    label_map: dict[str, str] = {}  # snake_key → original display label
+
+    def _to_snake(label: str) -> str:
+        key = _re.sub(r'\s+', '_', label.strip().lower())
+        key = _re.sub(r'[^a-z0-9_]', '', key)
+        return key
+
+    def curly_replacer(m):
+        inner = m.group(1)
+        # Already a valid snake_case identifier — keep as-is
+        if _re.match(r'^[a-z][a-z0-9_]*$', inner):
+            return m.group(0)
+        label = inner.strip()
+        key = _to_snake(label)
+        if not key:
+            return m.group(0)
+        label_map[key] = label   # remember original label for display
+        return f"{{{{{key}}}}}"
 
     def bracket_replacer(m):
         label = m.group(1).strip()
-        key   = _re.sub(r'\s+', '_', label.lower())
-        key   = _re.sub(r'[^a-z0-9_]', '', key)
+        key = _to_snake(label)
         if not key:
             return m.group(0)
         label_map[key] = label
         return f"{{{{{key}}}}}"
 
-    # Convert [Placeholder Text] → {{placeholder_text}}
-    converted = _re.sub(r'\[([^\[\]]{1,60})\]', bracket_replacer, text)
+    # Step 1: normalize {{Any Format}} → {{snake_case}}
+    converted = _re.sub(r'\{\{([^}]+)\}\}', curly_replacer, text)
 
-    # Now collect all {{keys}} in order (bracket-converted + any pre-existing)
+    # Step 2: convert [Square Bracket Placeholder] → {{snake_case}}
+    converted = _re.sub(r'\[([^\[\]]{1,60})\]', bracket_replacer, converted)
+
+    # Step 3: collect all {{keys}} in document order (deduplicated)
     all_keys = list(dict.fromkeys(_re.findall(r'\{\{(\w+)\}\}', converted)))
     variables = []
     for k in all_keys:
