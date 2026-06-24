@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../api';
-import { FileText, Download, Eye, FolderOpen, Upload, Trash2, Send, ChevronDown, Search, Check, X, Settings, Image, Phone, MapPin, User, Palette, Save, RefreshCw, ZoomIn, Move, PenLine, Type, Layers, Plus, Edit2, Wand2, FileCheck, FileCheck2, FileX, Award, Clock, TrendingUp, Star, LogOut, ShieldCheck, BookOpen, Scale, Lock, ClipboardCheck } from 'lucide-react';
+import { FileText, Download, Eye, FolderOpen, Upload, Trash2, Send, ChevronDown, Search, Check, X, Settings, Image, Phone, MapPin, User, Palette, Save, RefreshCw, ZoomIn, Move, PenLine, Type, Layers, Plus, Edit2, Wand2, FileCheck, FileCheck2, FileX, Award, Clock, TrendingUp, Star, LogOut, ShieldCheck, BookOpen, Scale, Lock, ClipboardCheck, FileImage, FileSpreadsheet, Archive, File, Presentation } from 'lucide-react';
 
 const DOC_ICONS = [
   { key: 'Appointment Letter',     icon: ClipboardCheck },
@@ -32,14 +32,16 @@ function docLabel(filename) {
   return filename.replace(/\.[^.]+$/, '').replace(/\s*\(\d+\)\s*$/, '').trim();
 }
 
-function docIcon(filename) {
-  const ext = filename.split('.').pop().toLowerCase();
-  if (['jpg','jpeg','png','gif','webp'].includes(ext)) return '🖼️';
-  if (['xls','xlsx','csv','ods'].includes(ext)) return '📊';
-  if (['ppt','pptx','odp'].includes(ext)) return '📊';
-  if (['doc','docx','odt','txt'].includes(ext)) return '📝';
-  if (['zip','rar','7z'].includes(ext)) return '🗜️';
-  return '📄';
+function DocTypeIcon({ filename, size = 20, className = '' }) {
+  const ext = (filename || '').split('.').pop().toLowerCase();
+  const props = { size, className };
+  if (['jpg','jpeg','png','gif','webp'].includes(ext)) return <FileImage {...props} />;
+  if (['xls','xlsx','csv','ods'].includes(ext)) return <FileSpreadsheet {...props} />;
+  if (['ppt','pptx','odp'].includes(ext)) return <Presentation {...props} />;
+  if (['doc','docx','odt','txt'].includes(ext)) return <FileText {...props} />;
+  if (['zip','rar','7z'].includes(ext)) return <Archive {...props} />;
+  if (ext === 'pdf') return <FileText {...props} />;
+  return <File {...props} />;
 }
 
 // Case-insensitive lookup into letterFields (keys are e.g. "Appointment Letter")
@@ -2334,8 +2336,8 @@ export default function CompanyDocs({ toast }) {
             const hasGenerator = !!findLetterFields(label, letterFields);
             return (
               <div key={doc.name} className="card p-4 flex items-start gap-3 hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0 text-lg">
-                  {docIcon(doc.name)}
+                <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0">
+                  <DocTypeIcon filename={doc.name} size={20} className="text-[var(--accent)]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-snug">{label}</p>
