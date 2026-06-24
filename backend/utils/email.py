@@ -364,21 +364,161 @@ def document_ready_email(
     letter_type: str,
     company_name: str = "AR Tech Solutions",
 ) -> tuple[str, str]:
-    """Email body for delivering a generated letter as an attachment."""
-    subject = f"Your {letter_type} — {company_name}"
-    p = lambda txt: f'<p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 18px">{txt}</p>'
-    html = _base(f"""
-        <div style="padding:8px 0 24px;font-family:Arial,sans-serif">
-          {p(f"Dear {recipient_name},")}
-          {p(f"Please find your <strong>{letter_type}</strong> attached to this email, "
-             f"issued by <strong>{company_name}</strong>.")}
-          {p("If you have any questions regarding the document, please reach out to the HR team.")}
-          {p("Wishing you all the best.")}
-          <p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 4px">Yours sincerely,</p>
-          <p style="color:#111827;font-size:15px;font-weight:700;margin:0 0 4px">HR Team</p>
-          <p style="color:#6b7280;font-size:13px;margin:0">{company_name}</p>
-        </div>
-    """)
+    """MNC-grade professional email delivering a generated letter as an attachment."""
+    from datetime import date as _date
+    today = _date.today()
+    months = ["January","February","March","April","May","June",
+              "July","August","September","October","November","December"]
+    date_str = f"{today.day} {months[today.month - 1]}, {today.year}"
+    ref = f"HR/DOC/{today.year}/{today.month:02d}{today.day:02d}"
+
+    subject = f"Issuance of {letter_type} — {recipient_name} | {company_name}"
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+</head>
+<body style="margin:0;padding:0;background-color:#f0f2f5;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="620" cellpadding="0" cellspacing="0" style="max-width:620px;width:100%;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.10);">
+
+        <!-- ── Header Band ── -->
+        <tr>
+          <td style="background:#0f2044;padding:0;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:28px 36px 24px;">
+                  <p style="margin:0;font-size:20px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">{company_name}</p>
+                  <p style="margin:6px 0 0;font-size:11px;font-weight:400;color:#93afd4;letter-spacing:1.8px;text-transform:uppercase;">Human Resources Department</p>
+                </td>
+                <td align="right" style="padding:28px 36px 24px;vertical-align:middle;">
+                  <p style="margin:0;font-size:10px;color:#6b8ab5;letter-spacing:0.5px;">OFFICIAL CORRESPONDENCE</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── Gold Rule ── -->
+        <tr><td style="background:#c8a456;height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+        <!-- ── Ref & Date Bar ── -->
+        <tr>
+          <td style="background:#f7f9fc;padding:12px 36px;border-bottom:1px solid #e4e9f0;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="font-size:11px;color:#64748b;">
+                  <span style="font-weight:600;color:#374151;">Ref No.:</span>&nbsp;{ref}
+                </td>
+                <td align="right" style="font-size:11px;color:#64748b;">
+                  <span style="font-weight:600;color:#374151;">Date:</span>&nbsp;{date_str}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── Body ── -->
+        <tr>
+          <td style="padding:36px 36px 28px;">
+
+            <!-- Subject Line -->
+            <p style="margin:0 0 24px;font-size:13px;color:#374151;">
+              <span style="font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">Subject:</span>&nbsp;
+              Issuance of {letter_type}
+            </p>
+
+            <!-- Salutation -->
+            <p style="margin:0 0 20px;font-size:15px;color:#1e293b;line-height:1.7;">
+              Dear <strong>{recipient_name}</strong>,
+            </p>
+
+            <!-- Opening -->
+            <p style="margin:0 0 18px;font-size:15px;color:#374151;line-height:1.8;">
+              We are pleased to issue your <strong>{letter_type}</strong> as requested. Please find the
+              official document attached to this communication for your records and reference.
+            </p>
+
+            <!-- Details box -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;border-radius:4px;overflow:hidden;border:1px solid #dde3ed;">
+              <tr>
+                <td style="background:#f1f5fb;padding:10px 18px;border-bottom:1px solid #dde3ed;">
+                  <p style="margin:0;font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;">Document Details</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 18px;">
+                  <table width="100%" cellpadding="4" cellspacing="0" style="font-size:13px;color:#374151;">
+                    <tr>
+                      <td style="width:38%;color:#64748b;font-weight:600;">Document Type</td>
+                      <td style="color:#1e293b;">{letter_type}</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#64748b;font-weight:600;">Issued To</td>
+                      <td style="color:#1e293b;">{recipient_name}</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#64748b;font-weight:600;">Issued By</td>
+                      <td style="color:#1e293b;">{company_name} — HR Department</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#64748b;font-weight:600;">Date of Issue</td>
+                      <td style="color:#1e293b;">{date_str}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Body paragraphs -->
+            <p style="margin:0 0 18px;font-size:15px;color:#374151;line-height:1.8;">
+              Kindly review the attached document and retain it for your personal records.
+              Should you have any queries or require any corrections, please do not hesitate
+              to contact the Human Resources Department at your earliest convenience.
+            </p>
+
+            <p style="margin:0 0 32px;font-size:15px;color:#374151;line-height:1.8;">
+              We wish you continued success and look forward to your valuable contributions
+              to the organisation.
+            </p>
+
+            <!-- Signature block -->
+            <p style="margin:0 0 4px;font-size:14px;color:#374151;line-height:1.6;">Yours sincerely,</p>
+            <p style="margin:0 0 2px;font-size:15px;font-weight:700;color:#0f2044;">HR Department</p>
+            <p style="margin:0 0 2px;font-size:13px;color:#374151;">{company_name}</p>
+            <p style="margin:16px 0 0;display:inline-block;padding:4px 0;font-size:12px;color:#c8a456;border-top:2px solid #c8a456;letter-spacing:0.4px;">
+              This document has been digitally processed and issued via the HRMS portal.
+            </p>
+          </td>
+        </tr>
+
+        <!-- ── Divider ── -->
+        <tr><td style="padding:0 36px;"><hr style="border:none;border-top:1px solid #e4e9f0;margin:0;"/></td></tr>
+
+        <!-- ── Footer ── -->
+        <tr>
+          <td style="padding:20px 36px 28px;background:#f7f9fc;">
+            <p style="margin:0 0 6px;font-size:11px;color:#94a3b8;line-height:1.7;">
+              <strong style="color:#64748b;">CONFIDENTIALITY NOTICE:</strong>&nbsp;
+              This email and any attachments are intended solely for the named recipient and may contain
+              confidential and/or legally privileged information. If you have received this email in error,
+              please notify the sender immediately and delete this message from your system.
+            </p>
+            <p style="margin:8px 0 0;font-size:11px;color:#94a3b8;">
+              © {today.year} {company_name}. All rights reserved. &nbsp;·&nbsp; Generated via Artech HRMS
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
     return subject, html
 
 
