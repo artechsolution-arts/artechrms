@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../../api';
 import {
   Users, CalendarDays, Clock, CheckCircle, XCircle, ChevronRight,
   TrendingUp, Briefcase, DollarSign, UserPlus, FileText, AlertCircle,
-  Building2, IndianRupee,
+  Building2, IndianRupee, TrendingUp as HikeIcon, Info,
 } from 'lucide-react';
 import StatCard from '../../components/StatCard';
 
@@ -47,6 +47,159 @@ function EmptyState({ icon: Icon, message }) {
         <Icon size={18} className="text-gray-400" />
       </div>
       <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+    </div>
+  );
+}
+
+function HikeCalculator() {
+  const [hikeData, setHikeData] = useState(null);
+  const [hikePct, setHikePct] = useState(10);
+  const [filterDept, setFilterDept] = useState('All');
+  const [loadingHike, setLoadingHike] = useState(true);
+
+  useEffect(() => {
+    api('GET', '/api/dashboard/hike-snapshot')
+      .then(d => setHikeData(d))
+      .catch(() => {})
+      .finally(() => setLoadingHike(false));
+  }, []);
+
+  const result = useMemo(() => {
+    if (!hikeData) return null;
+    const emps = filterDept === 'All'
+      ? hikeData.employees
+      : hikeData.employees.filter(e => e.department === filterDept);
+
+    const currentMonthly = emps.reduce((s, e) => s + e.gross_salary, 0);
+    const hikeAmount     = currentMonthly * (hikePct / 100);
+    const newMonthly     = currentMonthly + hikeAmount;
+    const annualImpact   = hikeAmount * 12;
+
+    // Dept breakdown
+    const deptMap = {};
+    emps.forEach(e => {
+      if (!deptMap[e.department]) deptMap[e.department] = { current: 0, count: 0 };
+      deptMap[e.department].current += e.gross_salary;
+      deptMap[e.department].count += 1;
+    });
+    const depts = Object.entries(deptMap)
+      .map(([name, { current, count }]) => ({
+        name, count,
+        current,
+        increase: current * (hikePct / 100),
+      }))
+      .sort((a, b) => b.increase - a.increase);
+
+    return { currentMonthly, newMonthly, hikeAmount, annualImpact, depts, count: emps.length };
+  }, [hikeData, hikePct, filterDept]);
+
+  const depts = hikeData
+    ? ['All', ...new Set(hikeData.employees.map(e => e.department))]
+    : ['All'];
+
+  return (
+    <div className="card">
+      {/* Header */}
+      <div className="card-head">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: 'var(--accent-50)' }}>
+            <TrendingUp size={14} style={{ color: 'var(--accent)' }} />
+          </div>
+          <span className="card-title">Salary Hike Impact Simulator</span>
+        </div>
+        <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+          <Info size={11} /> Based on current gross salaries
+        </span>
+      </div>
+
+      {loadingHike ? (
+        <div className="p-8 text-center text-sm text-gray-400">Loading salary data…</div>
+      ) : !hikeData || hikeData.employees.length === 0 ? (
+        <EmptyState icon={IndianRupee} message="No salary data available yet" />
+      ) : (
+        <div className="p-5 space-y-5">
+          {/* Controls */}
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-[220px]">
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                Hike Percentage — <span style={{ color: 'var(--accent)' }} className="text-base font-bold">{hikePct}%</span>
+              </label>
+              <input
+                type="range" min="1" max="50" step="1"
+                value={hikePct}
+                onChange={e => setHikePct(Number(e.target.value))}
+                className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                style={{ accentColor: 'var(--accent)' }}
+              />
+              <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                <span>1%</span><span>10%</span><span>20%</span><span>30%</span><span>40%</span><span>50%</span>
+              </div>
+            </div>
+            <div className="flex-shrink-0">
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Department</label>
+              <select
+                value={filterDept}
+                onChange={e => setFilterDept(e.target.value)}
+                className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none"
+                style={{ '--tw-ring-color': 'var(--accent)' }}
+              >
+                {depts.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {result && (
+            <>
+              {/* Impact summary cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: 'Employees Affected', value: result.count, sub: filterDept === 'All' ? 'All departments' : filterDept, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+                  { label: 'Monthly Hike Cost', value: fmt(result.hikeAmount), sub: `+${hikePct}% on gross`, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+                  { label: 'New Monthly Total', value: fmt(result.newMonthly), sub: `Was ${fmt(result.currentMonthly)}`, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20' },
+                  { label: 'Annual Extra Cost', value: fmt(result.annualImpact), sub: 'Additional per year', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-900/20' },
+                ].map(({ label, value, sub, color, bg }) => (
+                  <div key={label} className={`rounded-xl p-3.5 ${bg}`}>
+                    <div className={`text-xl font-bold ${color} leading-tight`}>{value}</div>
+                    <div className="text-xs font-semibold text-gray-600 dark:text-gray-300 mt-0.5">{label}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Department breakdown */}
+              {result.depts.length > 1 && (
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Department Breakdown</div>
+                  <div className="space-y-2">
+                    {result.depts.map(d => (
+                      <div key={d.name} className="flex items-center gap-3 text-sm">
+                        <span className="text-gray-600 dark:text-gray-400 w-32 truncate text-xs flex-shrink-0">{d.name}</span>
+                        <div className="flex-1 h-6 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative">
+                          <div
+                            className="h-full rounded-lg transition-[width] duration-300 ease-out"
+                            style={{
+                              width: `${(d.increase / result.hikeAmount) * 100}%`,
+                              backgroundColor: 'var(--accent)',
+                              opacity: 0.7,
+                            }}
+                          />
+                          <span className="absolute inset-0 flex items-center px-2 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
+                            +{fmt(d.increase)}/mo &nbsp;·&nbsp; {d.count} emp
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-14 text-right flex-shrink-0">
+                          +{fmt(d.increase * 12)}/yr
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -334,6 +487,9 @@ export default function CeoDashboard({ toast, onNavigate }) {
           )}
         </div>
       </div>
+
+      {/* ── Hike Impact Calculator ── */}
+      <HikeCalculator />
 
     </div>
   );

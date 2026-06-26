@@ -144,3 +144,38 @@ def get_dashboard(db: Session = Depends(get_db)):
             for j in open_jobs
         ],
     }
+
+
+@router.get("/hike-snapshot")
+def get_hike_snapshot(db: Session = Depends(get_db)):
+    """Return per-employee salary data for the CEO hike impact calculator."""
+    today = date.today()
+    employees = db.query(Employee).filter(Employee.status == "Active").all()
+
+    # Latest salary slip per employee (for gross_pay)
+    latest_slips = {}
+    slips = (
+        db.query(SalarySlip)
+        .order_by(SalarySlip.year.desc(), SalarySlip.month.desc())
+        .all()
+    )
+    for slip in slips:
+        if slip.employee_id not in latest_slips:
+            latest_slips[slip.employee_id] = slip
+
+    result = []
+    for emp in employees:
+        slip = latest_slips.get(emp.id)
+        gross = slip.gross_pay if slip else (emp.basic_salary * 2 if emp.basic_salary else 0)
+        basic = emp.basic_salary or (gross * 0.5)
+        dept = emp.department_rel.name if emp.department_rel else "Unassigned"
+        result.append({
+            "id": emp.id,
+            "name": emp.full_name,
+            "department": dept,
+            "designation": emp.designation_rel.name if emp.designation_rel else "",
+            "basic_salary": round(basic, 2),
+            "gross_salary": round(gross, 2),
+        })
+
+    return {"employees": result, "total_monthly": round(sum(e["gross_salary"] for e in result), 2)}
