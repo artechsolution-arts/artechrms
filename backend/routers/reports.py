@@ -55,15 +55,15 @@ class GenerateReportIn(BaseModel):
 
 
 class EmployeeHoursItem(BaseModel):
-    employee_id:  int
-    actual_hours: float
+    employee_id:    int
+    actual_hours:   float
+    required_hours: float   # per-employee (adjusted for joining date)
 
 
 class HoursReminderIn(BaseModel):
-    period_label:   str
-    period_type:    str    # "week" | "month"
-    required_hours: float
-    employees:      List[EmployeeHoursItem]
+    period_label: str
+    period_type:  str    # "week" | "month"
+    employees:    List[EmployeeHoursItem]
 
 
 # ── Helpers ────────────────────────────────────────────────────
@@ -162,11 +162,12 @@ def generate_attendance_report(
                 "hours":    h,
             })
         rows.append({
-            "employee_id":   emp.id,
-            "employee_code": emp.employee_id or "",
-            "employee_name": emp.full_name,
-            "department":    dept_name,
-            "in_probation":  in_probation,
+            "employee_id":      emp.id,
+            "employee_code":    emp.employee_id or "",
+            "employee_name":    emp.full_name,
+            "department":       dept_name,
+            "in_probation":     in_probation,
+            "date_of_joining":  str(emp.date_of_joining) if emp.date_of_joining else None,
             "days":          day_entries,
             "total_hours":   round(total_hours, 2),
             "present_days":  present_days,
@@ -247,7 +248,7 @@ def send_hours_reminder(data: HoursReminderIn, db: Session = Depends(get_db)):
     skipped = 0
 
     for item in data.employees:
-        if item.actual_hours >= data.required_hours:
+        if item.actual_hours >= item.required_hours:
             skipped += 1
             continue
 
@@ -256,12 +257,12 @@ def send_hours_reminder(data: HoursReminderIn, db: Session = Depends(get_db)):
             skipped += 1
             continue
 
-        shortage = round(data.required_hours - item.actual_hours, 2)
+        shortage = round(item.required_hours - item.actual_hours, 2)
         html = _hours_reminder_html(
             name         = emp.full_name,
             period       = data.period_label,
             period_word  = period_word,
-            required_fmt = _fmt_h(data.required_hours),
+            required_fmt = _fmt_h(item.required_hours),
             actual_fmt   = _fmt_h(item.actual_hours),
             shortage_fmt = _fmt_h(shortage),
         )

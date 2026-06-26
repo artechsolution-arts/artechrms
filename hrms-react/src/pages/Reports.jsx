@@ -269,13 +269,41 @@ export default function Reports() {
     return v !== undefined ? (parseFloat(v) || 0) : orig;
   };
 
-  // ── Derived stats (respect edits) ─────────────────────────────
+  // ── Per-employee required hours (adjusted for mid-period joining) ──
+  const holidaySetMemo = useMemo(() => new Set(periodHols.map(h => h.date.slice(0, 10))), [periodHols]);
+
+  const getEmpReqHours = (row) => {
+    if (reqHours === null || !report) return null;
+    const join = row.date_of_joining ? new Date(row.date_of_joining + 'T00:00:00') : null;
+    const pStart = new Date(report.start_date + 'T00:00:00');
+    const pEnd   = new Date(report.end_date   + 'T00:00:00');
+
+    // Joined before or on period start → full standard target
+    if (!join || join <= pStart) return reqHours;
+
+    // Joined after period ended → not applicable
+    if (join > pEnd) return 0;
+
+    // Joined mid-period → count working days from join date to period end
+    let workDays = 0;
+    const cur = new Date(join);
+    while (cur <= pEnd) {
+      const dow = cur.getDay();
+      const ds  = localISO(cur);
+      if (dow !== 0 && dow !== 6 && !holidaySetMemo.has(ds)) workDays++;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return workDays * 9;
+  };
+
+  // ── Derived stats (respect edits + per-employee targets) ─────
   const totalPresent = report?.rows.reduce((s, r) => s + r.present_days, 0) ?? 0;
   const totalHours   = report?.rows.reduce((s, r) => s + effectiveHours(r.employee_id, r.total_hours), 0) ?? 0;
   const avgHours     = report?.rows.length ? totalHours / report.rows.length : 0;
-  const belowTarget  = reqHours !== null
-    ? (report?.rows.filter(r => effectiveHours(r.employee_id, r.total_hours) < reqHours).length ?? 0)
-    : 0;
+  const belowTarget  = report?.rows.filter(r => {
+    const req = getEmpReqHours(r);
+    return req !== null && req > 0 && effectiveHours(r.employee_id, r.total_hours) < req;
+  }).length ?? 0;
 
   // ── Generate report ───────────────────────────────────────────
   async function generate() {
@@ -353,13 +381,13 @@ export default function Reports() {
     setSending(true);
     try {
       const employees = report.rows.map(r => ({
-        employee_id:  r.employee_id,
-        actual_hours: effectiveHours(r.employee_id, r.total_hours),
+        employee_id:    r.employee_id,
+        actual_hours:   effectiveHours(r.employee_id, r.total_hours),
+        required_hours: getEmpReqHours(r) ?? 0,
       }));
       const res = await api('POST', '/api/reports/attendance/send-hours-reminder', {
-        period_label:   report.period_label,
-        period_type:    periodType,
-        required_hours: reqHours,
+        period_label: report.period_label,
+        period_type:  periodType,
         employees,
       });
       if (res.sent === 0) {
@@ -469,7 +497,7 @@ export default function Reports() {
               {!editMode ? (
                 <button
                   onClick={() => setEditMode(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 border border-amber-300 dark:border-amber-700 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition-all shadow-sm"
                 >
                   <Pencil size={13} />
                   Edit Hours
@@ -478,7 +506,7 @@ export default function Reports() {
                 <>
                   <button
                     onClick={handleCancelEdit}
-                    className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-semibold transition-all shadow-sm"
                   >
                     Cancel
                   </button>
@@ -495,7 +523,7 @@ export default function Reports() {
               {/* Hide/Preview */}
               <button
                 onClick={() => setPreview(p => !p)}
-                className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-semibold transition-all shadow-sm"
               >
                 {preview ? <EyeOff size={13} /> : <Eye size={13} />}
                 {preview ? 'Hide' : 'Preview'}
@@ -584,9 +612,10 @@ export default function Reports() {
                   </thead>
                   <tbody>
                     {report.rows.map((row, ri) => {
-                      const effH      = effectiveHours(row.employee_id, row.total_hours);
-                      const belowReq  = reqHours !== null && effH < reqHours;
-                      const rowBg     = ri % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/40 dark:bg-gray-800/20';
+                      const effH     = effectiveHours(row.employee_id, row.total_hours);
+                      const empReq   = getEmpReqHours(row);
+                      const belowReq = empReq !== null && empReq > 0 && effH < empReq;
+                      const rowBg    = ri % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/40 dark:bg-gray-800/20';
                       return (
                         <tr
                           key={row.employee_id}
@@ -653,9 +682,9 @@ export default function Reports() {
                                   : 'text-gray-700 dark:text-gray-200'
                               }`}>
                                 {fmtHours(effH)}
-                                {belowReq && reqHours !== null && (
+                                {belowReq && empReq !== null && (
                                   <span className="ml-1 text-[9px] font-normal text-red-400">
-                                    ({Math.round((reqHours - effH) * 10) / 10}h short)
+                                    ({Math.round((empReq - effH) * 10) / 10}h short)
                                   </span>
                                 )}
                               </span>
