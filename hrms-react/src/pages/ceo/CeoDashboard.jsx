@@ -1,12 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import {
   Users, CalendarDays, Clock, CheckCircle, XCircle, ChevronRight,
-  TrendingUp, Briefcase, DollarSign, UserPlus, FileText, AlertCircle,
-  Building2, IndianRupee, TrendingUp as HikeIcon, Info,
+  TrendingUp, Briefcase, UserPlus, FileText, AlertCircle,
+  Building2, IndianRupee,
 } from 'lucide-react';
 import StatCard from '../../components/StatCard';
-import Select from '../../components/Select';
 
 const fmt = n => n >= 10_00_000
   ? `₹${(n / 10_00_000).toFixed(2)}L`
@@ -52,7 +51,8 @@ function EmptyState({ icon: Icon, message }) {
   );
 }
 
-function HikeCalculator() {
+// HikeCalculator moved to CompensationPlanner page
+function _removed() {
   const [hikeData, setHikeData] = useState(null);
   const [hikePct, setHikePct] = useState(10);
   const [filterDept, setFilterDept] = useState('All');
@@ -599,9 +599,6 @@ export default function CeoDashboard({ toast, onNavigate }) {
           )}
         </div>
       </div>
-
-      {/* ── Hike Impact Calculator ── */}
-      <HikeCalculator />
 
     </div>
   );

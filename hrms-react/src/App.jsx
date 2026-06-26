@@ -58,7 +58,8 @@ import EmpEditRequests   from './pages/employee/EmpEditRequests';
 import EmpResignation    from './pages/employee/EmpResignation';
 
 // ── CEO pages ──────────────────────────────────────────────────
-import CeoDashboard      from './pages/ceo/CeoDashboard';
+import CeoDashboard          from './pages/ceo/CeoDashboard';
+import CompensationPlanner   from './pages/ceo/CompensationPlanner';
 
 // ── SuperAdmin pages ───────────────────────────────────────────
 import AdminOverview     from './pages/superadmin/AdminOverview';
@@ -111,7 +112,8 @@ const PAGES = {
   'my-edit-requests':  EmpEditRequests,
   'my-resignation':    EmpResignation,
   // ── CEO ──
-  'ceo-dashboard':     CeoDashboard,
+  'ceo-dashboard':          CeoDashboard,
+  'compensation-planner':   CompensationPlanner,
   // ── SuperAdmin ──
   'admin-overview':    AdminOverview,
   'admin-users':       UserManagement,

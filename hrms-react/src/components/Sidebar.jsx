@@ -28,7 +28,8 @@ const NAV = [
   { key: 'admin-users',       label: 'User Accounts',             icon: Users,           section: 'Admin' },
   { key: 'admin-permissions', label: 'Feature Permissions',       icon: Key,             section: 'Admin' },
   // ── CEO ─────────────────────────────────────────────────
-  { key: 'ceo-dashboard',     label: 'Dashboard',                 icon: Crown,           section: 'CEO' },
+  { key: 'ceo-dashboard',          label: 'Dashboard',            icon: Crown,      section: 'CEO' },
+  { key: 'compensation-planner',   label: 'Compensation Planner', icon: BarChart2,   section: 'CEO' },
   // ── HR Dashboard (null = always top, filtered by allowedFeatures) ──
   { key: 'dashboard',         label: 'Dashboard',                 icon: LayoutDashboard, section: null },
   // ── Employee Dashboard (null = always top, filtered by allowedFeatures) ──

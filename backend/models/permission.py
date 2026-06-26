@@ -27,12 +27,13 @@ HR_FEATURES = [
 # Employee-portal features
 EMP_FEATURES = list(PORTAL_FEATURES)
 
-ALL_FEATURES = sorted(set(HR_FEATURES + EMP_FEATURES + ["ceo-dashboard"]))
+ALL_FEATURES = sorted(set(HR_FEATURES + EMP_FEATURES + ["ceo-dashboard", "compensation-planner"]))
 
 DEFAULT_PERMISSIONS = {
     "HR": HR_FEATURES,
     "CEO": [
-        "ceo-dashboard", "employees", "departments", "leaves", "work-mode-sheet",
+        "ceo-dashboard", "compensation-planner",
+        "employees", "departments", "leaves", "work-mode-sheet",
         "attendance", "holidays", "announcements", "onboarding",
         "document-requests", "appraisals", "status-sheets", "company-docs",
         "job-openings", "applicants", "payroll-entry", "salary-slips", "resignations",
