@@ -23,7 +23,7 @@ const FEATURES = [
 ];
 
 /* hexagon arrangement: row → feature indices */
-const HEX_ROWS = [[0], [1, 2], [3, 4], [5]];
+const HEX_ROWS = [[0, 1, 2], [3, 4, 5]];
 
 export default function Login({ onLogin }) {
   const [mode, setMode]               = useState('checking');
@@ -351,8 +351,10 @@ export default function Login({ onLogin }) {
           z-index: 10;
           display: flex;
           flex-direction: column;
+          align-items: center;
+          text-align: center;
           min-height: 100%;
-          padding: 44px 52px 36px;
+          padding: 36px 48px 28px;
           opacity: 0;
           pointer-events: none;
           transition: opacity 0.5s ease 0.55s;
@@ -362,7 +364,7 @@ export default function Login({ onLogin }) {
           pointer-events: auto;
         }
 
-        /* ── Hexagon grid ── */
+        /* ── Hexagon grid — 3+3 honeycomb ── */
         .hex-grid {
           flex: 1;
           display: flex;
@@ -371,12 +373,16 @@ export default function Login({ onLogin }) {
           justify-content: center;
           position: relative;
           z-index: 1;
+          gap: 0;
         }
         .hex-row {
           display: flex;
-          gap: 18px;
+          gap: 16px;
         }
-        .hex-row + .hex-row { margin-top: -44px; }
+        /* Row 2 shifts right by half a column width to create the honeycomb offset.
+           Each row also shifts ±33px so the pair is visually centered. */
+        .hex-row-1 { transform: translateX(-33px); }
+        .hex-row-2 { transform: translateX(33px); margin-top: 14px; }
 
         /* motion.div wrapper — receives framer-motion transforms */
         .hex-wrap {
@@ -388,10 +394,18 @@ export default function Login({ onLogin }) {
           filter: drop-shadow(0 0 28px rgba(45,212,191,0.38));
         }
 
-        /* border layer — the clip-path hexagon */
+        /* outer div: border + icon container */
+        .hex-item-wrap {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+
+        /* border layer */
         .hex-outer {
-          width: 150px;
-          height: 170px;
+          width: 116px;
+          height: 134px;
           position: relative;
           clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
           background: rgba(255,255,255,0.08);
@@ -406,26 +420,24 @@ export default function Login({ onLogin }) {
           clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
           background: rgba(255,255,255,0.04);
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 9px;
-          padding: 10px;
           transition: background 0.3s ease;
         }
         .hex-wrap:hover .hex-inner { background: rgba(45,212,191,0.12); }
 
+        /* label sits below the hexagon */
         .hex-label {
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.85);
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          color: rgba(255,255,255,0.82);
           text-align: center;
-          line-height: 1.35;
+          line-height: 1.3;
+          width: 116px;
         }
 
-        /* per-hex float variants (applied to hex-outer so they don't conflict with framer transform) */
+        /* per-hex float variants */
         .hf-a { animation: hexFloatA 3.2s ease-in-out infinite; }
         .hf-b { animation: hexFloatB 3.8s ease-in-out infinite; }
         .hf-c { animation: hexFloatC 3.5s ease-in-out infinite; }
@@ -775,9 +787,9 @@ export default function Login({ onLogin }) {
             {/* Canvas: particles + connection lines */}
             <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} />
 
-            {/* Logo */}
+            {/* Logo — centered */}
             <motion.div
-              style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, position: 'relative', zIndex: 1 }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16, position: 'relative', zIndex: 1, width: '100%' }}
               initial={{ opacity: 0, y: 20 }}
               animate={revealed ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.58, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
@@ -790,25 +802,26 @@ export default function Login({ onLogin }) {
               }}>
                 <img src="/logo.svg" alt="Artech" style={{ width: 26, height: 26 }} />
               </div>
-              <div>
+              <div style={{ textAlign: 'left' }}>
                 <div style={{ fontWeight: 800, fontSize: 20, color: '#fff', letterSpacing: '0.01em' }}>AR Peopliz</div>
                 <div style={{ fontSize: 11, color: C.teal, opacity: 0.85, marginTop: 1, letterSpacing: '0.04em', fontWeight: 500 }}>Human Resource Management</div>
               </div>
             </motion.div>
 
-            {/* Tagline */}
+            {/* Tagline — centered */}
             <motion.div
-              style={{ marginBottom: 18, position: 'relative', zIndex: 1 }}
+              style={{ marginBottom: 22, position: 'relative', zIndex: 1 }}
               initial={{ opacity: 0, y: 20 }}
               animate={revealed ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.64, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
             >
               <h2 style={{
                 fontFamily: "'DM Serif Display', serif",
-                fontSize: 'clamp(1.55rem, 2.2vw, 2rem)',
+                fontSize: 'clamp(1.5rem, 2.1vw, 1.9rem)',
                 color: '#fff',
                 letterSpacing: '-0.02em',
                 lineHeight: 1.25,
+                textAlign: 'center',
               }}>
                 Everything you need<br />
                 <span style={{
@@ -821,32 +834,32 @@ export default function Login({ onLogin }) {
               </h2>
             </motion.div>
 
-            {/* Hexagon grid */}
+            {/* Hexagon grid — 3+3 honeycomb, labels below */}
             <div className="hex-grid">
               {HEX_ROWS.map((row, rowIdx) => (
                 <div
                   key={rowIdx}
-                  className="hex-row"
-                  style={{ zIndex: HEX_ROWS.length - rowIdx }}
+                  className={`hex-row hex-row-${rowIdx + 1}`}
                 >
                   {row.map((featIdx) => {
                     const { icon: Icon, title } = FEATURES[featIdx];
                     const floatClass = ['hf-a', 'hf-b', 'hf-c'][featIdx % 3];
-                    const floatDelay = `${featIdx * 0.22}s`;
                     return (
                       <motion.div
                         key={title}
                         className="hex-wrap"
-                        initial={{ opacity: 0, y: 38, scale: 0.78 }}
+                        initial={{ opacity: 0, y: 32, scale: 0.80 }}
                         animate={revealed ? { opacity: 1, y: 0, scale: 1 } : {}}
-                        transition={{ delay: 0.72 + featIdx * 0.1, duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
-                        whileHover={{ y: -10, scale: 1.06, transition: { duration: 0.22, ease: [0.23, 1, 0.32, 1] } }}
+                        transition={{ delay: 0.70 + featIdx * 0.09, duration: 0.52, ease: [0.23, 1, 0.32, 1] }}
+                        whileHover={{ y: -8, scale: 1.07, transition: { duration: 0.22, ease: [0.23, 1, 0.32, 1] } }}
                       >
-                        <div className={`hex-outer ${floatClass}`} style={{ animationDelay: floatDelay }}>
-                          <div className="hex-inner">
-                            <Icon size={22} color="#2DD4BF" strokeWidth={1.6} />
-                            <span className="hex-label">{title}</span>
+                        <div className="hex-item-wrap">
+                          <div className={`hex-outer ${floatClass}`} style={{ animationDelay: `${featIdx * 0.22}s` }}>
+                            <div className="hex-inner">
+                              <Icon size={24} color="#2DD4BF" strokeWidth={1.5} />
+                            </div>
                           </div>
+                          <span className="hex-label">{title}</span>
                         </div>
                       </motion.div>
                     );
