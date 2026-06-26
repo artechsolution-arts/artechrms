@@ -319,6 +319,26 @@ except Exception:
 finally:
     _seed_db.close()
 
+# Migrate role permissions to current defaults if outdated
+_perm_db = _SL()
+try:
+    from backend.models.permission import RolePermission, DEFAULT_PERMISSIONS
+    for role, defaults in DEFAULT_PERMISSIONS.items():
+        rp = _perm_db.query(RolePermission).filter(RolePermission.role == role).first()
+        if rp is None:
+            _perm_db.add(RolePermission(role=role, allowed_features=defaults))
+        else:
+            # Upgrade if the stored list is missing features that are now in defaults
+            stored = set(rp.allowed_features or [])
+            missing = [f for f in defaults if f not in stored]
+            if missing:
+                rp.allowed_features = list(stored | set(defaults))
+    _perm_db.commit()
+except Exception:
+    _perm_db.rollback()
+finally:
+    _perm_db.close()
+
 app = FastAPI(title="Artech HRMS", version="1.0.0")
 
 # Rate limiter: 10 login attempts per minute per IP
