@@ -312,17 +312,21 @@ function _removed() {
 }
 
 export default function CeoDashboard({ toast, onNavigate }) {
-  const [data, setData] = useState(null);
-  const [pending, setPending] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData]           = useState(null);
+  const [pending, setPending]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [leaveMonths, setLeaveMonths] = useState(null);
+  const [selMonth, setSelMonth]   = useState(5); // default = latest month
 
   useEffect(() => {
     Promise.all([
       api('GET', '/api/dashboard'),
       api('GET', '/api/leaves?status=Pending').catch(() => []),
-    ]).then(([d, p]) => {
+      api('GET', '/api/dashboard/monthly-leaves').catch(() => null),
+    ]).then(([d, p, lm]) => {
       setData(d);
       setPending(Array.isArray(p) ? p.slice(0, 6) : []);
+      setLeaveMonths(lm);
     }).catch(e => toast(e.message, 'error'))
       .finally(() => setLoading(false));
   }, []);
@@ -545,23 +549,116 @@ export default function CeoDashboard({ toast, onNavigate }) {
         </div>
       </div>
 
-      {/* ── Row: Leave summary + Recent hires ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* ── Monthly Leave Overview (full width) ── */}
+      {leaveMonths && (
+        <div className="card">
+          <div className="card-head">
+            <div className="card-title">Monthly Leave Overview</div>
+            <button onClick={() => onNavigate('leaves')} className="text-xs flex items-center gap-0.5 hover:underline" style={{ color: 'var(--accent)' }}>
+              View all <ChevronRight size={12} />
+            </button>
+          </div>
+          <div className="p-5 space-y-5">
 
-        {/* Leave breakdown */}
+            {/* ── 6-month bar chart ── */}
+            <div className="flex items-end gap-2 h-28">
+              {leaveMonths.labels.map((label, mi) => {
+                const maxTotal = Math.max(...leaveMonths.month_totals, 1);
+                const val = leaveMonths.month_totals[mi] || 0;
+                const heightPct = (val / maxTotal) * 100;
+                const isSelected = mi === selMonth;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setSelMonth(mi)}
+                    className="flex-1 flex flex-col items-center gap-1 group"
+                    title={`${label}: ${val} day${val !== 1 ? 's' : ''}`}
+                  >
+                    <span className={`text-[10px] font-semibold transition-colors ${isSelected ? 'text-[var(--accent)]' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`}>
+                      {val > 0 ? val : ''}
+                    </span>
+                    <div className="w-full flex items-end" style={{ height: 80 }}>
+                      <div
+                        className="w-full rounded-t-md transition-all duration-300"
+                        style={{
+                          height: `${Math.max(heightPct, val > 0 ? 4 : 0)}%`,
+                          minHeight: val > 0 ? 4 : 0,
+                          backgroundColor: isSelected ? 'var(--accent)' : 'var(--accent)',
+                          opacity: isSelected ? 1 : 0.35,
+                        }}
+                      />
+                    </div>
+                    <span className={`text-[10px] transition-colors whitespace-nowrap ${isSelected ? 'font-semibold text-[var(--accent)]' : 'text-gray-400 dark:text-gray-500'}`}>
+                      {label.split(' ')[0]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ── Employee breakdown for selected month ── */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {leaveMonths.labels[selMonth]} — Employee Breakdown
+                </span>
+                <span className="text-xs text-gray-400">
+                  {leaveMonths.month_totals[selMonth] || 0} days total ·{' '}
+                  {leaveMonths.employees.filter(e => e.monthly[selMonth] > 0).length} employees on leave
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 max-h-72 overflow-y-auto pr-1">
+                {leaveMonths.employees.map(emp => {
+                  const days = emp.monthly[selMonth] || 0;
+                  const maxDays = Math.max(...leaveMonths.employees.map(e => e.monthly[selMonth] || 0), 1);
+                  return (
+                    <div key={emp.id} className="flex items-center gap-2.5">
+                      <div
+                        className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
+                        style={{ backgroundColor: days > 0 ? 'var(--accent)' : '#d1d5db', opacity: days > 0 ? 0.85 : 0.5 }}
+                      >
+                        {emp.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className={`text-xs truncate ${days > 0 ? 'font-medium text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-600'}`}>
+                            {emp.name}
+                          </span>
+                          <span className={`text-[10px] font-semibold ml-2 flex-shrink-0 ${days > 0 ? 'text-[var(--accent)]' : 'text-gray-300 dark:text-gray-700'}`}>
+                            {days > 0 ? `${days}d` : '—'}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-[width] duration-500"
+                            style={{ width: `${days > 0 ? (days / maxDays) * 100 : 0}%`, backgroundColor: 'var(--accent)', opacity: 0.7 }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Row: Recent hires ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
-            <div className="card-title">Leave Summary</div>
+            <div className="card-title">Leave Status</div>
             <button onClick={() => onNavigate('leaves')} className="text-xs flex items-center gap-0.5 hover:underline" style={{ color: 'var(--accent)' }}>
               View all <ChevronRight size={12} />
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Pending',               value: ls.pending,                color: 'text-amber-600 dark:text-amber-400',  bar: 'bg-amber-400' },
-              { label: 'Approved',              value: ls.approved,               color: 'text-green-600 dark:text-green-400',  bar: 'bg-green-400' },
-              { label: 'Cancellation Requests', value: ls.cancellation_requests,  color: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400' },
-              { label: 'Rejected',              value: ls.rejected,               color: 'text-red-500 dark:text-red-400',      bar: 'bg-red-400' },
+              { label: 'Pending',               value: ls.pending,               color: 'text-amber-600 dark:text-amber-400',   bar: 'bg-amber-400' },
+              { label: 'Approved',              value: ls.approved,              color: 'text-green-600 dark:text-green-400',   bar: 'bg-green-400' },
+              { label: 'Cancellation Requests', value: ls.cancellation_requests, color: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400' },
+              { label: 'Rejected',              value: ls.rejected,              color: 'text-red-500 dark:text-red-400',       bar: 'bg-red-400' },
             ].map(({ label, value, color, bar }) => {
               const total = (ls.pending || 0) + (ls.approved || 0) + (ls.rejected || 0) + (ls.cancellation_requests || 0) || 1;
               return (

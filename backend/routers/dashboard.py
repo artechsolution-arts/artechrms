@@ -179,3 +179,61 @@ def get_hike_snapshot(db: Session = Depends(get_db)):
         })
 
     return {"employees": result, "total_monthly": round(sum(e["gross_salary"] for e in result), 2)}
+
+
+@router.get("/monthly-leaves")
+def get_monthly_leaves(db: Session = Depends(get_db)):
+    """Monthly approved leave days per employee — last 6 months."""
+    today = date.today()
+
+    # Build 6-month window
+    months = []
+    for i in range(5, -1, -1):
+        yr, mo = today.year, today.month - i
+        while mo <= 0:
+            mo += 12; yr -= 1
+        first = date(yr, mo, 1)
+        last  = date(yr, mo + 1, 1) - timedelta(days=1) if mo < 12 else date(yr + 1, 1, 1) - timedelta(days=1)
+        months.append((yr, mo, first, last, first.strftime("%b %Y")))
+
+    window_start, window_end = months[0][2], months[-1][3]
+
+    employees = db.query(Employee).filter(Employee.status == "Active").order_by(Employee.full_name).all()
+
+    # Approved leaves that overlap the window
+    leaves = db.query(LeaveApplication).filter(
+        LeaveApplication.status == "Approved",
+        LeaveApplication.from_date <= window_end,
+        LeaveApplication.to_date   >= window_start,
+    ).all()
+
+    # Per-employee, per-month days
+    emp_monthly = defaultdict(lambda: [0] * 6)
+    for leave in leaves:
+        for mi, (_, _, first, last, _label) in enumerate(months):
+            overlap_start = max(leave.from_date, first)
+            overlap_end   = min(leave.to_date,   last)
+            if overlap_start <= overlap_end:
+                emp_monthly[leave.employee_id][mi] += (overlap_end - overlap_start).days + 1
+
+    month_totals = [
+        sum(emp_monthly[e.id][mi] for e in employees)
+        for mi in range(6)
+    ]
+
+    employees_data = [
+        {
+            "id":         emp.id,
+            "name":       emp.full_name,
+            "department": emp.department_rel.name if emp.department_rel else "Unassigned",
+            "monthly":    emp_monthly.get(emp.id, [0] * 6),
+            "total":      sum(emp_monthly.get(emp.id, [0] * 6)),
+        }
+        for emp in employees
+    ]
+
+    return {
+        "labels":       [m[4] for m in months],
+        "month_totals": month_totals,
+        "employees":    employees_data,
+    }
