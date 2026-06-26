@@ -6,6 +6,13 @@ import {
   Building2, IndianRupee,
 } from 'lucide-react';
 import StatCard from '../../components/StatCard';
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
+  BarElement, ArcElement, Title, Tooltip, Legend, Filler,
+} from 'chart.js';
+import { Bar, Doughnut } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
 
 const fmt = n => n >= 10_00_000
   ? `₹${(n / 10_00_000).toFixed(2)}L`
@@ -22,6 +29,23 @@ const PIPELINE_COLOR = {
   Hired:     { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
   Rejected:  { bg: 'bg-red-100 dark:bg-red-900/30',     text: 'text-red-700 dark:text-red-300' },
 };
+
+/* ── Brand palette ── */
+const B = {
+  navy:  '#0D1F4E',
+  blue:  '#1A6AB4',
+  teal:  '#3DC7B3',
+  green: '#2DB37A',
+  amber: '#F59E0B',
+  red:   '#EF4444',
+  cloud: '#F4F8FF',
+  mist:  '#E8EDF5',
+  steel: '#A0AABF',
+};
+
+const CHART_FONT = { family: "'Plus Jakarta Sans', sans-serif", size: 11 };
+const GRID_COLOR = 'rgba(13,31,78,0.06)';
+const TICK_COLOR = B.steel;
 
 function SectionHeader({ title, onViewAll, navKey }) {
   return (
@@ -47,6 +71,34 @@ function EmptyState({ icon: Icon, message }) {
         <Icon size={18} className="text-gray-400" />
       </div>
       <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+    </div>
+  );
+}
+
+function SectionCard({ title, subtitle, action, children, delay = 0 }) {
+  return (
+    <div style={{
+      background: '#fff',
+      borderRadius: 16,
+      border: `1px solid ${B.mist}`,
+      overflow: 'hidden',
+      boxShadow: '0 4px 18px rgba(13,31,78,0.10), 0 1px 3px rgba(13,31,78,0.06)',
+      animation: `dashFadeUp 0.3s cubic-bezier(0.23, 1, 0.32, 1) ${delay * 0.5}s both`,
+    }}>
+      {(title || action) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 20px 12px',
+          borderBottom: `1px solid ${B.mist}`,
+        }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: B.navy, letterSpacing: '0.01em' }}>{title}</div>
+            {subtitle && <div style={{ fontSize: 11, color: B.steel, marginTop: 2 }}>{subtitle}</div>}
+          </div>
+          {action}
+        </div>
+      )}
+      {children}
     </div>
   );
 }
@@ -384,8 +436,92 @@ export default function CeoDashboard({ toast, onNavigate }) {
     (s.pending_resignations || 0) +
     (s.pending_edit_requests || 0);
 
+  /* ── Chart helpers ── */
+  const hoverCursor = (event, elements) => {
+    if (event.native?.target) event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+  };
+  const baseOpts = (axis = true) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, backgroundColor: B.navy, titleFont: CHART_FONT, bodyFont: CHART_FONT, padding: 10, cornerRadius: 8 } },
+    onHover: hoverCursor,
+    scales: axis ? {
+      x: { grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, font: CHART_FONT } },
+      y: { grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, font: CHART_FONT, stepSize: 1 }, beginAtZero: true },
+    } : {},
+  });
+
+  /* Dept chart */
+  const deptChartColors = ['#1A6AB4','#3DC7B3','#2DB37A','#8B5CF6','#F59E0B','#EC4899','#F97316','#06B6D4'];
+  const deptsChartData = {
+    labels: depts.map(d => d.name),
+    datasets: [{
+      label: 'Employees',
+      data: depts.map(d => d.count),
+      backgroundColor: depts.map((_, i) => deptChartColors[i % deptChartColors.length] + '28'),
+      borderColor: depts.map((_, i) => deptChartColors[i % deptChartColors.length]),
+      borderWidth: 2,
+      borderRadius: 6,
+    }],
+  };
+  const deptsOpts = {
+    ...baseOpts(true),
+    onClick: (_, elements) => {
+      if (!elements.length) return;
+      const deptName = deptsChartData.labels[elements[0].index];
+      sessionStorage.setItem('nav-filter', JSON.stringify({ deptName }));
+      onNavigate('employees');
+    },
+  };
+
+  /* Recruitment pipeline chart */
+  const PIPELINE_CHART_COLORS = {
+    Applied: '#3b82f6', Screening: '#8b5cf6', Interview: '#f59e0b',
+    Offered: '#14b8a6', Hired: '#22c55e', Rejected: '#ef4444',
+  };
+  const pipelineLabels = PIPELINE_ORDER.filter(stage => pipeline[stage] > 0);
+  const pipelineChartData = {
+    labels: pipelineLabels,
+    datasets: [{
+      label: 'Applicants',
+      data: pipelineLabels.map(stage => pipeline[stage] || 0),
+      backgroundColor: pipelineLabels.map(stage => (PIPELINE_CHART_COLORS[stage] || '#94a3b8') + '28'),
+      borderColor: pipelineLabels.map(stage => PIPELINE_CHART_COLORS[stage] || '#94a3b8'),
+      borderWidth: 2,
+      borderRadius: 6,
+    }],
+  };
+  const pipelineOpts = { ...baseOpts(true) };
+
+  /* Appraisals doughnut */
+  const appraisalDoughnutData = {
+    labels: APPRAISAL_STAGES.map(st => st.key),
+    datasets: [{
+      data: APPRAISAL_STAGES.map(st => (appraisalByStage[st.key] || []).length),
+      backgroundColor: APPRAISAL_STAGES.map(st => st.color),
+      borderWidth: 0,
+      hoverOffset: 8,
+    }],
+  };
+  const appraisalDoughnutOpts = {
+    ...baseOpts(false),
+    cutout: '65%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { font: CHART_FONT, color: B.steel, padding: 12, boxWidth: 10, usePointStyle: true, pointStyleWidth: 10 },
+      },
+      tooltip: { backgroundColor: B.navy, padding: 10, cornerRadius: 8 },
+    },
+  };
+
   return (
-    <div className="flex-1 p-6 overflow-auto space-y-6">
+    <div className="flex-1 p-6 overflow-auto space-y-6" style={{ background: B.cloud }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        @keyframes dashFadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        .ceo-dash { font-family: 'Plus Jakarta Sans', sans-serif; }
+      `}</style>
 
       {/* ── Banner ── */}
       <div className="bg-gradient-to-r from-rose-600 to-rose-400 rounded-2xl p-6 text-white flex items-center justify-between">
@@ -470,71 +606,30 @@ export default function CeoDashboard({ toast, onNavigate }) {
         </div>
 
         {/* Department headcount */}
-        <div className="card">
-          <SectionHeader title="Department Headcount" onViewAll={onNavigate} navKey="employees" />
+        <SectionCard title="Department Headcount" subtitle="Click a bar to filter employees" delay={0.26}>
           {depts.length === 0 ? (
-            <EmptyState icon={Building2} message="No department data" />
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: B.steel, fontSize: 13 }}>No department data</div>
           ) : (
-            <div className="p-4 space-y-3">
-              {depts.slice(0, 7).map(d => (
-                <div
-                  key={d.name}
-                  className="flex items-center gap-3 group cursor-pointer rounded-lg px-1 -mx-1 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
-                  onClick={() => {
-                    sessionStorage.setItem('nav-filter', JSON.stringify({ deptName: d.name }));
-                    onNavigate('employees');
-                  }}
-                >
-                  <span className="text-xs text-gray-600 dark:text-gray-400 w-28 truncate flex-shrink-0 group-hover:text-[var(--accent)] transition-colors">{d.name}</span>
-                  <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-[width] duration-500 ease-out"
-                      style={{ width: `${(d.count / maxDept) * 100}%`, backgroundColor: 'var(--accent)', opacity: 0.75 }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 w-6 text-right flex-shrink-0">{d.count}</span>
-                </div>
-              ))}
+            <div style={{ padding: '16px 20px 20px', height: 220 }}>
+              <Bar data={deptsChartData} options={deptsOpts} />
             </div>
           )}
-        </div>
+        </SectionCard>
       </div>
 
       {/* ── Row: Recruitment pipeline + Open job posts ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Recruitment pipeline */}
-        <div className="card">
-          <SectionHeader title="Recruitment Pipeline" onViewAll={onNavigate} navKey="job-openings" />
+        <SectionCard title="Recruitment Pipeline" subtitle={`${totalPipelineApplicants} total applicant${totalPipelineApplicants !== 1 ? 's' : ''}`} delay={0.28}>
           {totalPipelineApplicants === 0 ? (
-            <EmptyState icon={Briefcase} message="No active applicants" />
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: B.steel, fontSize: 13 }}>No active applicants</div>
           ) : (
-            <div className="p-4 space-y-2.5">
-              {PIPELINE_ORDER.filter(stage => pipeline[stage]).map(stage => {
-                const count = pipeline[stage] || 0;
-                const pct   = Math.round((count / totalPipelineApplicants) * 100);
-                const { bg, text } = PIPELINE_COLOR[stage] || { bg: 'bg-gray-100', text: 'text-gray-600' };
-                return (
-                  <div key={stage} className="flex items-center gap-3">
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full w-20 text-center flex-shrink-0 ${bg} ${text}`}>
-                      {stage}
-                    </span>
-                    <div className="flex-1 h-4 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-[width] duration-500 ease-out ${bg.replace('bg-', 'bg-').replace('/30', '')}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 w-6 text-right flex-shrink-0">{count}</span>
-                  </div>
-                );
-              })}
-              <div className="pt-1 text-xs text-gray-400 dark:text-gray-500">
-                {totalPipelineApplicants} total applicant{totalPipelineApplicants !== 1 ? 's' : ''}
-              </div>
+            <div style={{ padding: '16px 20px 20px', height: 220 }}>
+              <Bar data={pipelineChartData} options={pipelineOpts} />
             </div>
           )}
-        </div>
+        </SectionCard>
 
         {/* Open job posts */}
         <div className="card">
@@ -663,61 +758,45 @@ export default function CeoDashboard({ toast, onNavigate }) {
 
       {/* ── Row: Recent hires ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="card-title">Appraisals</div>
-              {appraisalPeriod && <div className="text-xs text-gray-400 mt-0.5">{appraisalPeriod}</div>}
-            </div>
+        <SectionCard
+          title="Appraisals"
+          subtitle={appraisalPeriod || undefined}
+          action={
             <button onClick={() => onNavigate('appraisals')} className="text-xs flex items-center gap-0.5 hover:underline" style={{ color: 'var(--accent)' }}>
               View all <ChevronRight size={12} />
             </button>
-          </div>
-
+          }
+          delay={0.3}
+        >
           {appraisals.length === 0 ? (
-            <div className="text-center py-6 text-gray-400 text-sm">No appraisals yet</div>
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: B.steel, fontSize: 13 }}>No appraisals yet</div>
           ) : (
-            <>
-              {/* Stage pipeline */}
-              <div className="space-y-2 mb-4">
-                {APPRAISAL_STAGES.map(stage => {
-                  const list = appraisalByStage[stage.key] || [];
-                  const pct  = Math.round((list.length / appraisals.length) * 100);
-                  return (
-                    <div key={stage.key} className="flex items-center gap-2">
-                      <div className="w-36 text-xs text-gray-500 dark:text-gray-400 truncate">{stage.key}</div>
-                      <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: stage.color }} />
-                      </div>
-                      <div className="text-xs font-semibold w-5 text-right" style={{ color: stage.color }}>{list.length}</div>
-                    </div>
-                  );
-                })}
+            <div style={{ padding: '16px 20px 20px' }}>
+              <div style={{ height: 200 }}>
+                <Doughnut data={appraisalDoughnutData} options={appraisalDoughnutOpts} />
               </div>
-
-              {/* Active appraisals list */}
               {activeAppraisals.length > 0 && (
-                <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-2">
+                <div style={{ borderTop: `1px solid ${B.mist}`, marginTop: 16, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {activeAppraisals.map(a => {
-                    const st = APPRAISAL_STAGES.find(s => s.key === a.status);
+                    const st = APPRAISAL_STAGES.find(stg => stg.key === a.status);
                     return (
-                      <div key={a.id} className="flex items-center gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{a.employee_name}</div>
-                          <div className="text-[10px] text-gray-400">{a.department}</div>
+                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 500, color: B.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.employee_name}</div>
+                          <div style={{ fontSize: 10, color: B.steel }}>{a.department}</div>
                         </div>
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${st?.bg} ${st?.text} whitespace-nowrap`}>
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: (st?.color || '#94a3b8') + '20', color: st?.color || '#94a3b8', whiteSpace: 'nowrap', border: `1px solid ${(st?.color || '#94a3b8')}30` }}>
                           {a.status}
                         </span>
-                        <div className="text-[10px] text-gray-400 w-14 text-right">{a.created_at}</div>
+                        <div style={{ fontSize: 10, color: B.steel, width: 56, textAlign: 'right', flexShrink: 0 }}>{a.created_at}</div>
                       </div>
                     );
                   })}
                 </div>
               )}
-            </>
+            </div>
           )}
-        </div>
+        </SectionCard>
 
         {/* Recent hires */}
         <div className="card">
