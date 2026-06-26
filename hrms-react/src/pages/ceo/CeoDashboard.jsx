@@ -516,7 +516,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
   };
 
   return (
-    <div className="flex-1 p-6 overflow-auto space-y-6" style={{ background: B.cloud }}>
+    <div className="dash-root page-content space-y-6">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         @keyframes dashFadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
