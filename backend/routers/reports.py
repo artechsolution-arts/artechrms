@@ -54,6 +54,18 @@ class GenerateReportIn(BaseModel):
     report_type:  str        # "attendance_weekly" | "attendance_monthly"
 
 
+class EmployeeHoursItem(BaseModel):
+    employee_id:  int
+    actual_hours: float
+
+
+class HoursReminderIn(BaseModel):
+    period_label:   str
+    period_type:    str    # "week" | "month"
+    required_hours: float
+    employees:      List[EmployeeHoursItem]
+
+
 # ── Helpers ────────────────────────────────────────────────────
 def _date_range(start: date, end: date) -> List[date]:
     days = []
@@ -185,6 +197,82 @@ def generate_attendance_report(
         "rows":         rows,
         "days":         [{"date": str(d), "day": d.strftime("%a %d %b")} for d in days],
     }
+
+
+def _fmt_h(h: float) -> str:
+    if h <= 0:
+        return "0h"
+    hrs  = int(h)
+    mins = round((h - hrs) * 60)
+    return f"{hrs}h {mins}m" if mins else f"{hrs}h"
+
+
+def _hours_reminder_html(name: str, period: str, period_word: str,
+                         required_fmt: str, actual_fmt: str, shortage_fmt: str) -> str:
+    return f"""<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#1f2937;background:#f9fafb;">
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:32px;">
+  <h2 style="color:#dc2626;margin-top:0;font-size:18px;">Work Hours Incomplete – {period}</h2>
+  <p style="margin-bottom:6px;">Dear <strong>{name}</strong>,</p>
+  <p style="color:#4b5563;">Our records show that your {period_word} work hours for <strong>{period}</strong> are below the required target. Please review the details below and submit a reason to your HR manager.</p>
+  <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:14px;">
+    <tr style="background:#f1f5f9;">
+      <td style="padding:12px 16px;font-weight:600;color:#374151;">Required Hours</td>
+      <td style="padding:12px 16px;text-align:right;font-weight:700;color:#374151;">{required_fmt}</td>
+    </tr>
+    <tr style="background:#fff;">
+      <td style="padding:12px 16px;font-weight:600;color:#374151;">Your Logged Hours</td>
+      <td style="padding:12px 16px;text-align:right;font-weight:700;color:#374151;">{actual_fmt}</td>
+    </tr>
+    <tr style="background:#fef2f2;border-top:2px solid #fca5a5;">
+      <td style="padding:12px 16px;font-weight:700;color:#dc2626;">Shortage</td>
+      <td style="padding:12px 16px;text-align:right;font-weight:700;color:#dc2626;">{shortage_fmt}</td>
+    </tr>
+  </table>
+  <p style="color:#4b5563;">If you took any authorized early departures or were granted permission to leave early, kindly inform your HR manager with the details so your records can be updated accordingly.</p>
+  <p style="color:#9ca3af;font-size:12px;margin-top:28px;border-top:1px solid #e5e7eb;padding-top:16px;">This is an automated reminder from AR Peopliz HRMS. Please do not reply to this email.</p>
+</div>
+</body>
+</html>"""
+
+
+@router.post("/attendance/send-hours-reminder")
+def send_hours_reminder(data: HoursReminderIn, db: Session = Depends(get_db)):
+    from backend.models.employee import Employee
+    from backend.utils.email import send_email
+
+    period_word = "weekly" if data.period_type == "week" else "monthly"
+    sent    = 0
+    skipped = 0
+
+    for item in data.employees:
+        if item.actual_hours >= data.required_hours:
+            skipped += 1
+            continue
+
+        emp = db.query(Employee).filter(Employee.id == item.employee_id).first()
+        if not emp or not emp.email:
+            skipped += 1
+            continue
+
+        shortage = round(data.required_hours - item.actual_hours, 2)
+        html = _hours_reminder_html(
+            name         = emp.full_name,
+            period       = data.period_label,
+            period_word  = period_word,
+            required_fmt = _fmt_h(data.required_hours),
+            actual_fmt   = _fmt_h(item.actual_hours),
+            shortage_fmt = _fmt_h(shortage),
+        )
+        send_email(
+            to      = emp.email,
+            subject = f"Work Hours Reminder – {data.period_label}",
+            html    = html,
+        )
+        sent += 1
+
+    return {"sent": sent, "skipped": skipped, "total": len(data.employees)}
 
 
 @router.get("")

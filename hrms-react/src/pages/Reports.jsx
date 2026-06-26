@@ -1,11 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { BarChart2, Eye, EyeOff, Calendar, ChevronDown, FileSpreadsheet, RefreshCw, Clock, Users, CheckCircle2, TrendingUp } from 'lucide-react';
+import { BarChart2, Eye, EyeOff, Calendar, ChevronDown, FileSpreadsheet, RefreshCw, Clock, Users, CheckCircle2, TrendingUp, Pencil, Save, Mail, Target } from 'lucide-react';
 import { api } from '../api';
 import { useToast } from '../hooks/useToast';
 import * as XLSX from 'xlsx';
 
 // ── Date helpers (timezone-safe — use local date, never toISOString) ──
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS       = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function localISO(d) {
@@ -27,7 +27,6 @@ function getWeeksOfMonth(year, month) {
 
   while (start <= lastDay) {
     const end = new Date(start);
-    // advance to Sunday (day 0) or end of month
     const daysToSun = (7 - start.getDay()) % 7;
     end.setDate(end.getDate() + daysToSun);
     if (end > lastDay) end.setTime(lastDay.getTime());
@@ -68,7 +67,7 @@ const STATUS_COLOR = {
 };
 
 // ── Excel export ───────────────────────────────────────────────
-const DAY_ABBR = ['S', 'M', 'T', 'W', 'Th', 'F', 'St']; // Sun=0 … Sat=6
+const DAY_ABBR = ['S', 'M', 'T', 'W', 'Th', 'F', 'St'];
 
 function statusCode(status, dateStr) {
   const dow = new Date(dateStr + 'T00:00:00').getDay();
@@ -85,9 +84,14 @@ function fmtDuration(h) {
   return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
 }
 
-function exportToExcel(report) {
+function exportToExcel(report, editedHoursMap) {
   const { rows, days, period_label } = report;
   const wb = XLSX.utils.book_new();
+
+  const effHrs = (row) => {
+    const v = editedHoursMap[row.employee_id];
+    return v !== undefined ? (parseFloat(v) || 0) : row.total_hours;
+  };
 
   // ── Sheet 1: Summary ──────────────────────────────────────────
   const summaryAoa = [];
@@ -95,8 +99,6 @@ function exportToExcel(report) {
   summaryAoa.push([period_label]);
   summaryAoa.push(['Generated: ' + new Date().toLocaleString()]);
   summaryAoa.push([]);
-
-  // Headers
   summaryAoa.push([
     'Emp ID', 'Name', 'Department',
     'Present Days', 'Leave Days', 'Absent Days', 'Total Work Hrs', 'Status',
@@ -108,9 +110,9 @@ function exportToExcel(report) {
       row.employee_name,
       row.department,
       row.present_days,
-      row.in_probation ? '—' : row.leave_days,   // leave only for post-probation
-      row.in_probation ? row.absent_days + (row.leave_days || 0) : row.absent_days, // probation: all non-present = absent
-      fmtDuration(row.total_hours),
+      row.in_probation ? '—' : row.leave_days,
+      row.in_probation ? row.absent_days + (row.leave_days || 0) : row.absent_days,
+      fmtDuration(effHrs(row)),
       row.in_probation ? 'Probation' : 'Confirmed',
     ]);
   }
@@ -138,7 +140,7 @@ function exportToExcel(report) {
     detailAoa.push([row.employee_code, row.employee_name, row.department, 'Status',   ...row.days.map(d => statusCode(d.status, d.date)), '']);
     detailAoa.push(['', '', '', 'In Time',  ...row.days.map(d => (d.in_time  && d.in_time  !== '—') ? d.in_time  : ''), '']);
     detailAoa.push(['', '', '', 'Out Time', ...row.days.map(d => (d.out_time && d.out_time !== '—') ? d.out_time : ''), '']);
-    detailAoa.push(['', '', '', 'Duration', ...row.days.map(d => fmtDuration(d.hours)), fmtDuration(row.total_hours)]);
+    detailAoa.push(['', '', '', 'Duration', ...row.days.map(d => fmtDuration(d.hours)), fmtDuration(effHrs(row))]);
     detailAoa.push([]);
   }
 
@@ -169,7 +171,6 @@ function Sel({ label, value, onChange, options }) {
     <div className="flex flex-col gap-1.5" ref={ref}>
       <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{label}</label>
       <div className="relative">
-        {/* Trigger */}
         <button
           type="button"
           onClick={() => setOpen(o => !o)}
@@ -185,7 +186,6 @@ function Sel({ label, value, onChange, options }) {
           <ChevronDown size={15} strokeWidth={2.5} className={`flex-shrink-0 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180 text-accent' : ''}`} />
         </button>
 
-        {/* Dropdown panel */}
         {open && (
           <div className="absolute z-50 mt-1.5 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
             <div className="max-h-56 overflow-y-auto py-1">
@@ -212,12 +212,13 @@ function Sel({ label, value, onChange, options }) {
 }
 
 // ── Stat card ──────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({ icon: Icon, label, value, color, sub }) {
   const colors = {
     blue:   { bg: 'bg-blue-50 dark:bg-blue-900/20',   ic: 'text-blue-500' },
     green:  { bg: 'bg-green-50 dark:bg-green-900/20', ic: 'text-green-500' },
     purple: { bg: 'bg-purple-50 dark:bg-purple-900/20', ic: 'text-purple-500' },
     amber:  { bg: 'bg-amber-50 dark:bg-amber-900/20',  ic: 'text-amber-500' },
+    red:    { bg: 'bg-red-50 dark:bg-red-900/20',      ic: 'text-red-500' },
   };
   const c = colors[color] || colors.blue;
   return (
@@ -228,6 +229,7 @@ function StatCard({ icon: Icon, label, value, color }) {
       <div>
         <div className="text-[11px] text-gray-400 dark:text-gray-500">{label}</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">{value}</div>
+        {sub && <div className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">{sub}</div>}
       </div>
     </div>
   );
@@ -244,15 +246,40 @@ export default function Reports() {
   const [wWeek,  setWWeek]  = useState('');
   const [mYear,  setMYear]  = useState(now.getFullYear());
   const [mMonth, setMMonth] = useState(now.getMonth() + 1);
-  const [loading, setLoading] = useState(false);
-  const [report,  setReport]  = useState(null);
-  const [preview, setPreview] = useState(true);
+  const [loading,  setLoading]  = useState(false);
+  const [report,   setReport]   = useState(null);
+  const [preview,  setPreview]  = useState(true);
 
-  const weeks = useMemo(() => getWeeksOfMonth(wYear, wMonth), [wYear, wMonth]);
+  // Edit-hours state
+  const [editMode,    setEditMode]    = useState(false);
+  const [editedHours, setEditedHours] = useState({});   // { empId: string }
+  const [editsSaved,  setEditsSaved]  = useState(false);
+  const [sending,     setSending]     = useState(false);
+
+  // Required hours (computed after generate)
+  const [reqHours,   setReqHours]   = useState(null);  // number
+  const [periodHols, setPeriodHols] = useState([]);    // holiday objects in period
+
+  const weeks      = useMemo(() => getWeeksOfMonth(wYear, wMonth), [wYear, wMonth]);
   const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
 
+  // ── Effective hours (edited or original) ──────────────────────
+  const effectiveHours = (empId, orig) => {
+    const v = editedHours[empId];
+    return v !== undefined ? (parseFloat(v) || 0) : orig;
+  };
+
+  // ── Derived stats (respect edits) ─────────────────────────────
+  const totalPresent = report?.rows.reduce((s, r) => s + r.present_days, 0) ?? 0;
+  const totalHours   = report?.rows.reduce((s, r) => s + effectiveHours(r.employee_id, r.total_hours), 0) ?? 0;
+  const avgHours     = report?.rows.length ? totalHours / report.rows.length : 0;
+  const belowTarget  = reqHours !== null
+    ? (report?.rows.filter(r => effectiveHours(r.employee_id, r.total_hours) < reqHours).length ?? 0)
+    : 0;
+
+  // ── Generate report ───────────────────────────────────────────
   async function generate() {
-    let start, end, label, rtype;
+    let start, end, label, rtype, year;
     if (periodType === 'week') {
       if (!wWeek) return toast('Please select a week', 'warning');
       const w = weeks.find(w => w.start === wWeek);
@@ -260,17 +287,45 @@ export default function Reports() {
       start = w.start; end = w.end;
       label = `${w.label} ${wYear}`;
       rtype = 'attendance_weekly';
+      year  = wYear;
     } else {
       const r = monthRange(mYear, mMonth);
       start = r.start; end = r.end;
       label = `${MONTHS[mMonth - 1]} ${mYear}`;
       rtype = 'attendance_monthly';
+      year  = mYear;
     }
+
     setLoading(true);
     setReport(null);
+    setEditedHours({});
+    setEditMode(false);
+    setEditsSaved(false);
+    setReqHours(null);
+    setPeriodHols([]);
+
     try {
-      const res = await api('POST', '/api/reports/attendance', { start_date: start, end_date: end, period_label: label, report_type: rtype });
+      const [res, hols] = await Promise.all([
+        api('POST', '/api/reports/attendance', { start_date: start, end_date: end, period_label: label, report_type: rtype }),
+        api('GET', `/api/hrm/holidays?year=${year}`),
+      ]);
+
+      // Count weekday holidays in this exact period
+      const startD = new Date(start + 'T00:00:00');
+      const endD   = new Date(end   + 'T00:00:00');
+      const weekdayHols = (hols || []).filter(h => {
+        const hd  = new Date(h.date.slice(0, 10) + 'T00:00:00');
+        if (hd < startD || hd > endD) return false;
+        const dow = hd.getDay();
+        return dow !== 0 && dow !== 6;
+      });
+
+      const base = periodType === 'week' ? 45 : 180;
+      const req  = Math.max(0, base - weekdayHols.length * 9);
+
       setReport(res);
+      setPeriodHols(weekdayHols);
+      setReqHours(req);
       setPreview(true);
       toast(`Report ready — ${res.rows.length} employees`, 'success');
     } catch (e) {
@@ -280,9 +335,44 @@ export default function Reports() {
     }
   }
 
-  const totalPresent = report?.rows.reduce((s, r) => s + r.present_days, 0) ?? 0;
-  const totalHours   = report?.rows.reduce((s, r) => s + r.total_hours,  0) ?? 0;
-  const avgHours     = report?.rows.length ? totalHours / report.rows.length : 0;
+  // ── Save edits ────────────────────────────────────────────────
+  function handleSave() {
+    setEditMode(false);
+    setEditsSaved(true);
+    toast('Hours saved. Click Send Reminder to notify employees below target.', 'success');
+  }
+
+  function handleCancelEdit() {
+    setEditMode(false);
+    setEditedHours({});
+  }
+
+  // ── Send hours reminder emails ────────────────────────────────
+  async function handleSend() {
+    if (!report || reqHours === null) return;
+    setSending(true);
+    try {
+      const employees = report.rows.map(r => ({
+        employee_id:  r.employee_id,
+        actual_hours: effectiveHours(r.employee_id, r.total_hours),
+      }));
+      const res = await api('POST', '/api/reports/attendance/send-hours-reminder', {
+        period_label:   report.period_label,
+        period_type:    periodType,
+        required_hours: reqHours,
+        employees,
+      });
+      if (res.sent === 0) {
+        toast('All employees meet the hours target — no reminders needed.', 'success');
+      } else {
+        toast(`Reminder sent to ${res.sent} employee${res.sent !== 1 ? 's' : ''} below ${reqHours}h target.`, 'success');
+      }
+    } catch (e) {
+      toast(e?.message || 'Failed to send reminders', 'error');
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-full">
@@ -300,7 +390,7 @@ export default function Reports() {
           {[{ v: 'week', l: 'Weekly Report' }, { v: 'month', l: 'Monthly Report' }].map(t => (
             <button
               key={t.v}
-              onClick={() => { setPeriodType(t.v); setReport(null); }}
+              onClick={() => { setPeriodType(t.v); setReport(null); setReqHours(null); setEditsSaved(false); }}
               className={`px-5 py-3 text-sm font-medium transition-all border-b-2 -mb-px ${
                 periodType === t.v
                   ? 'border-accent text-accent dark:text-blue-400'
@@ -316,43 +406,18 @@ export default function Reports() {
         <div className="p-5 space-y-4">
           {periodType === 'week' ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Sel
-                label="Year"
-                value={wYear}
-                onChange={v => { setWYear(+v); setWWeek(''); setReport(null); }}
-                options={yearOptions.map(y => ({ value: y, label: String(y) }))}
-              />
-              <Sel
-                label="Month"
-                value={wMonth}
-                onChange={v => { setWMonth(+v); setWWeek(''); setReport(null); }}
-                options={MONTHS.map((m, i) => ({ value: i + 1, label: m }))}
-              />
-              <Sel
-                label="Select Week"
-                value={wWeek}
-                onChange={setWWeek}
-                options={[{ value: '', label: '— Choose a week —' }, ...weeks.map(w => ({ value: w.start, label: w.label }))]}
-              />
+              <Sel label="Year"        value={wYear}  onChange={v => { setWYear(+v);  setWWeek(''); setReport(null); }} options={yearOptions.map(y => ({ value: y, label: String(y) }))} />
+              <Sel label="Month"       value={wMonth} onChange={v => { setWMonth(+v); setWWeek(''); setReport(null); }} options={MONTHS.map((m, i) => ({ value: i + 1, label: m }))} />
+              <Sel label="Select Week" value={wWeek}  onChange={setWWeek}
+                options={[{ value: '', label: '— Choose a week —' }, ...weeks.map(w => ({ value: w.start, label: w.label }))]} />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Sel
-                label="Year"
-                value={mYear}
-                onChange={v => { setMYear(+v); setReport(null); }}
-                options={yearOptions.map(y => ({ value: y, label: String(y) }))}
-              />
-              <Sel
-                label="Month"
-                value={mMonth}
-                onChange={v => { setMMonth(+v); setReport(null); }}
-                options={MONTHS.map((m, i) => ({ value: i + 1, label: m }))}
-              />
+              <Sel label="Year"  value={mYear}  onChange={v => { setMYear(+v);  setReport(null); }} options={yearOptions.map(y => ({ value: y, label: String(y) }))} />
+              <Sel label="Month" value={mMonth} onChange={v => { setMMonth(+v); setReport(null); }} options={MONTHS.map((m, i) => ({ value: i + 1, label: m }))} />
             </div>
           )}
 
-          {/* Generate button — always on its own row, full-width on mobile */}
           <div className="flex justify-end pt-1">
             <button
               onClick={generate}
@@ -381,13 +446,53 @@ export default function Reports() {
           {/* Stats row */}
           <div className="flex flex-wrap gap-3 items-center justify-between">
             <div className="flex flex-wrap gap-3">
-              <StatCard icon={Users}        label="Employees"     value={report.rows.length}  color="blue" />
-              <StatCard icon={CheckCircle2} label="Present Days"  value={totalPresent}         color="green" />
-              <StatCard icon={Clock}        label="Total Hours"   value={fmtHours(totalHours)} color="purple" />
-              <StatCard icon={TrendingUp}   label="Avg / Employee" value={fmtHours(avgHours)}  color="amber" />
+              <StatCard icon={Users}        label="Employees"      value={report.rows.length}  color="blue" />
+              <StatCard icon={CheckCircle2} label="Present Days"   value={totalPresent}         color="green" />
+              <StatCard icon={Clock}        label="Total Hours"    value={fmtHours(totalHours)} color="purple" />
+              <StatCard icon={TrendingUp}   label="Avg / Employee" value={fmtHours(avgHours)}   color="amber" />
+              {reqHours !== null && (
+                <StatCard
+                  icon={Target}
+                  label="Target Hours"
+                  value={`${reqHours}h`}
+                  color={belowTarget > 0 ? 'red' : 'green'}
+                  sub={periodHols.length > 0
+                    ? `${periodHols.length} holiday${periodHols.length > 1 ? 's' : ''} deducted`
+                    : `${belowTarget > 0 ? `${belowTarget} below target` : 'All on track'}`}
+                />
+              )}
             </div>
 
-            <div className="flex gap-2 flex-shrink-0">
+            {/* Action buttons */}
+            <div className="flex gap-2 flex-shrink-0 flex-wrap">
+              {/* Edit / Save / Cancel */}
+              {!editMode ? (
+                <button
+                  onClick={() => setEditMode(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 border border-amber-300 dark:border-amber-700 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all"
+                >
+                  <Pencil size={13} />
+                  Edit Hours
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition-all shadow-sm"
+                  >
+                    <Save size={13} />
+                    Save
+                  </button>
+                </>
+              )}
+
+              {/* Hide/Preview */}
               <button
                 onClick={() => setPreview(p => !p)}
                 className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
@@ -395,22 +500,61 @@ export default function Reports() {
                 {preview ? <EyeOff size={13} /> : <Eye size={13} />}
                 {preview ? 'Hide' : 'Preview'}
               </button>
+
+              {/* Download */}
               <button
-                onClick={() => exportToExcel(report)}
+                onClick={() => exportToExcel(report, editedHours)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm"
               >
                 <FileSpreadsheet size={13} />
                 Download Excel
               </button>
+
+              {/* Send Reminder — only visible after save */}
+              {editsSaved && (
+                <button
+                  onClick={handleSend}
+                  disabled={sending}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm disabled:opacity-50"
+                >
+                  {sending
+                    ? <RefreshCw size={13} className="animate-spin" />
+                    : <Mail size={13} />}
+                  Send Reminder
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Period badge */}
-          <div className="flex items-center gap-2">
-            <Calendar size={13} className="text-gray-400" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {report.period_label} · {report.days.length} day{report.days.length !== 1 ? 's' : ''} · {report.rows.length} active employee{report.rows.length !== 1 ? 's' : ''}
-            </span>
+          {/* Edit mode notice */}
+          {editMode && (
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-400">
+              <Pencil size={13} />
+              <span>Edit mode — adjust total hours for employees who had permitted early departures. Click <strong>Save</strong> when done.</span>
+            </div>
+          )}
+
+          {/* Period + required hours badge */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Calendar size={13} className="text-gray-400" />
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {report.period_label} · {report.days.length} day{report.days.length !== 1 ? 's' : ''} · {report.rows.length} active employee{report.rows.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {reqHours !== null && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold">
+                  Target: {reqHours}h {periodType === 'week' ? '/ week' : '/ month'}
+                  {periodHols.length > 0 && ` (${periodHols.length} holiday${periodHols.length > 1 ? 's' : ''} × 9h deducted)`}
+                </span>
+                {belowTarget > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold">
+                    {belowTarget} below target
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Preview table */}
@@ -420,21 +564,19 @@ export default function Reports() {
                 <table className="min-w-full text-xs border-collapse">
                   <thead>
                     <tr>
-                      {/* Frozen cols */}
                       <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-r border-gray-200 dark:border-gray-700 whitespace-nowrap min-w-[180px]">
                         Employee
                       </th>
                       <th className="bg-gray-50 dark:bg-gray-800 px-3 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-r border-gray-200 dark:border-gray-700 whitespace-nowrap min-w-[120px]">
                         Department
                       </th>
-                      {/* Day columns */}
                       {report.days.map(d => (
                         <th key={d.date} className="bg-gray-50 dark:bg-gray-800 px-1 py-3 text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap min-w-[80px]">
                           {d.day}
                         </th>
                       ))}
                       <th className="bg-gray-50 dark:bg-gray-800 px-3 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-l border-gray-200 dark:border-gray-700 whitespace-nowrap">
-                        Total Hrs
+                        Total Hrs{editMode && <span className="ml-1 text-amber-400 normal-case tracking-normal">(edit)</span>}
                       </th>
                       <th className="bg-gray-50 dark:bg-gray-800 px-3 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
                         Days
@@ -442,61 +584,94 @@ export default function Reports() {
                     </tr>
                   </thead>
                   <tbody>
-                    {report.rows.map((row, ri) => (
-                      <tr
-                        key={row.employee_id}
-                        className={`${ri % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/40 dark:bg-gray-800/20'} hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors`}
-                      >
-                        {/* Employee name */}
-                        <td className={`sticky left-0 z-10 px-4 py-2.5 border-r border-b border-gray-100 dark:border-gray-800 ${ri % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/40 dark:bg-gray-800/20'}`}>
-                          <div className="font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{row.employee_name}</div>
-                          <div className="text-[10px] text-gray-400 mt-0.5">{row.employee_code}</div>
-                        </td>
-                        {/* Dept */}
-                        <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap border-r border-b border-gray-100 dark:border-gray-800">
-                          {row.department}
-                        </td>
-                        {/* Day cells */}
-                        {row.days.map(d => {
-                          const sc = STATUS_COLOR[d.status];
-                          return (
-                            <td key={d.date} className="px-1 py-2 text-center border-b border-gray-100 dark:border-gray-800 min-w-[80px]">
-                              {d.status === '—' ? (
-                                <span className="text-gray-200 dark:text-gray-700 text-[11px]">—</span>
-                              ) : (
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <span
-                                    className="inline-flex items-center justify-center rounded-md text-[10px] font-bold px-1.5 py-0.5 leading-none"
-                                    style={{ background: sc?.bg || '#f3f4f6', color: sc?.fg || '#6b7280' }}
-                                  >
-                                    {STATUS_SHORT[d.status] || d.status}
+                    {report.rows.map((row, ri) => {
+                      const effH      = effectiveHours(row.employee_id, row.total_hours);
+                      const belowReq  = reqHours !== null && effH < reqHours;
+                      const rowBg     = ri % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/40 dark:bg-gray-800/20';
+                      return (
+                        <tr
+                          key={row.employee_id}
+                          className={`${rowBg} hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors`}
+                        >
+                          {/* Employee name */}
+                          <td className={`sticky left-0 z-10 px-4 py-2.5 border-r border-b border-gray-100 dark:border-gray-800 ${rowBg}`}>
+                            <div className="font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{row.employee_name}</div>
+                            <div className="text-[10px] text-gray-400 mt-0.5">{row.employee_code}</div>
+                          </td>
+                          {/* Dept */}
+                          <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap border-r border-b border-gray-100 dark:border-gray-800">
+                            {row.department}
+                          </td>
+                          {/* Day cells */}
+                          {row.days.map(d => {
+                            const sc = STATUS_COLOR[d.status];
+                            return (
+                              <td key={d.date} className="px-1 py-2 text-center border-b border-gray-100 dark:border-gray-800 min-w-[80px]">
+                                {d.status === '—' ? (
+                                  <span className="text-gray-200 dark:text-gray-700 text-[11px]">—</span>
+                                ) : (
+                                  <div className="flex flex-col items-center gap-0.5">
+                                    <span
+                                      className="inline-flex items-center justify-center rounded-md text-[10px] font-bold px-1.5 py-0.5 leading-none"
+                                      style={{ background: sc?.bg || '#f3f4f6', color: sc?.fg || '#6b7280' }}
+                                    >
+                                      {STATUS_SHORT[d.status] || d.status}
+                                    </span>
+                                    {d.in_time !== '—' && (
+                                      <span className="text-[9px] text-gray-400 dark:text-gray-500 leading-tight tabular-nums">
+                                        {d.in_time}–{d.out_time}
+                                      </span>
+                                    )}
+                                    {d.hours > 0 && (
+                                      <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 tabular-nums">
+                                        {fmtHours(d.hours)}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                          {/* Total Hours — editable in edit mode */}
+                          <td className="px-3 py-2 text-right border-l border-b border-gray-100 dark:border-gray-800">
+                            {editMode ? (
+                              <input
+                                type="number"
+                                min="0"
+                                max="168"
+                                step="0.25"
+                                value={editedHours[row.employee_id] !== undefined
+                                  ? editedHours[row.employee_id]
+                                  : row.total_hours}
+                                onChange={e => setEditedHours(h => ({ ...h, [row.employee_id]: e.target.value }))}
+                                className="w-20 text-right bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded px-2 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-400"
+                              />
+                            ) : (
+                              <span className={`font-semibold tabular-nums whitespace-nowrap ${
+                                belowReq
+                                  ? 'text-red-500 dark:text-red-400'
+                                  : 'text-gray-700 dark:text-gray-200'
+                              }`}>
+                                {fmtHours(effH)}
+                                {belowReq && reqHours !== null && (
+                                  <span className="ml-1 text-[9px] font-normal text-red-400">
+                                    ({Math.round((reqHours - effH) * 10) / 10}h short)
                                   </span>
-                                  {d.in_time !== '—' && (
-                                    <span className="text-[9px] text-gray-400 dark:text-gray-500 leading-tight tabular-nums">
-                                      {d.in_time}–{d.out_time}
-                                    </span>
-                                  )}
-                                  {d.hours > 0 && (
-                                    <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 tabular-nums">
-                                      {fmtHours(d.hours)}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                          );
-                        })}
-                        {/* Totals */}
-                        <td className="px-3 py-2.5 text-right font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap border-l border-b border-gray-100 dark:border-gray-800 tabular-nums">
-                          {fmtHours(row.total_hours)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums border-b border-gray-100 dark:border-gray-800">
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[11px] font-semibold">
-                            {row.present_days}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                                )}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Days */}
+                          <td className="px-3 py-2.5 text-right tabular-nums border-b border-gray-100 dark:border-gray-800">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[11px] font-semibold">
+                              {row.present_days}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -505,7 +680,7 @@ export default function Reports() {
               <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <span className="text-[11px] text-gray-400">{report.rows.length} employees · {report.days.length} days</span>
                 <button
-                  onClick={() => exportToExcel(report)}
+                  onClick={() => exportToExcel(report, editedHours)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-semibold transition-all"
                 >
                   <FileSpreadsheet size={11} />
