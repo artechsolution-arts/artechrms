@@ -360,15 +360,26 @@ export default function Login({ onLogin }) {
         }
         .lp-right.revealed {
           width: 42%;
-          padding: 16px 24px;
           overflow-y: auto;
           height: 100vh;
-          justify-content: flex-start;
+          /* no justify-content here — centering is done by lp-right-inner */
+        }
+
+        /* Inner wrapper: min-height 100% so the card is always centered
+           even at low zoom, while still scrollable when content is taller */
+        .lp-right-inner {
+          display: flex;
+          flex-direction: column;
           align-items: center;
+          justify-content: center;
+          min-height: 100%;
+          padding: 24px;
+          width: 100%;
         }
 
         @media (max-width: 767px) {
-          .lp-right.revealed { width: 100%; padding: 24px 16px; }
+          .lp-right.revealed { width: 100%; }
+          .lp-right-inner { padding: 24px 16px; }
           .lp-card { padding: 28px 24px 24px; }
           .lp-input { padding: 12px 14px; font-size: 14px; }
           .lp-label { font-size: 11.5px; margin-bottom: 7px; }
@@ -754,6 +765,7 @@ export default function Login({ onLogin }) {
 
         {/* ══════════════════ RIGHT PANEL ══════════════════ */}
         <div ref={rightPanelRef} className={`lp-right${revealed ? ' revealed' : ''}`}>
+        <div className="lp-right-inner">
 
           <div ref={cardRef} className="lp-card">
 
@@ -942,6 +954,7 @@ export default function Login({ onLogin }) {
 
           </div>
 
+        </div>{/* lp-right-inner */}
         </div>
 
       </div>
