@@ -9,6 +9,7 @@ from backend.models.hrm import LeaveBalance
 from backend.approval_utils import require_approval_rights
 from backend.utils.email import send_email, leave_status_email
 from backend.services import notification_service as _notif
+from backend.utils.audit import log_activity
 
 router = APIRouter(prefix="/api/leaves", tags=["Leaves"])
 
@@ -260,6 +261,11 @@ def approve_leave(leave_id: int, request: Request, db: Session = Depends(get_db)
     ).first()
     if bal:
         bal.used = round(bal.used + leave.total_days, 2)
+    from backend.models.employee import Employee as _Emp
+    _leave_emp = db.query(_Emp).filter(_Emp.id == leave.employee_id).first()
+    log_activity(db, request, "APPROVE", "Leave",
+                 entity_id=leave.id,
+                 entity_name=f"{_leave_emp.full_name if _leave_emp else leave.employee_id} — {leave.from_date} to {leave.to_date}")
     db.commit()
     # Notify employee — FROM the HR user who approved
     _notify_leave_status(leave, "Approved", db, actioned_by_email=_requester_email(request, db))
@@ -275,6 +281,11 @@ def reject_leave(leave_id: int, request: Request, db: Session = Depends(get_db))
     require_approval_rights(request, db, leave.employee_id)
     leave.status = "Rejected"
     db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
+    from backend.models.employee import Employee as _Emp
+    _leave_emp = db.query(_Emp).filter(_Emp.id == leave.employee_id).first()
+    log_activity(db, request, "REJECT", "Leave",
+                 entity_id=leave.id,
+                 entity_name=f"{_leave_emp.full_name if _leave_emp else leave.employee_id} — {leave.from_date} to {leave.to_date}")
     db.commit()
     # Notify employee — FROM the HR user who rejected
     _notify_leave_status(leave, "Rejected", db, actioned_by_email=_requester_email(request, db))
@@ -420,10 +431,15 @@ def _notify_leave_status(leave, status: str, db: Session, actioned_by_email: str
 
 
 @router.delete("/{leave_id}")
-def delete_leave(leave_id: int, db: Session = Depends(get_db)):
+def delete_leave(leave_id: int, request: Request, db: Session = Depends(get_db)):
     leave = db.query(LeaveApplication).filter(LeaveApplication.id == leave_id).first()
     if not leave:
         raise HTTPException(404, "Leave not found")
+    from backend.models.employee import Employee as _Emp
+    _leave_emp = db.query(_Emp).filter(_Emp.id == leave.employee_id).first()
+    log_activity(db, request, "DELETE", "Leave",
+                 entity_id=leave.id,
+                 entity_name=f"{_leave_emp.full_name if _leave_emp else leave.employee_id} — {leave.from_date} to {leave.to_date}")
     db.delete(leave)
     db.commit()
     return {"ok": True}

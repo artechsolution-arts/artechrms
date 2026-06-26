@@ -13,6 +13,7 @@ from backend.models.auth import User
 from backend.models.permission import RolePermission, DEFAULT_PERMISSIONS, ALL_FEATURES
 from backend.models.employee import Employee
 from backend.auth_utils import get_password_hash
+from backend.utils.audit import log_activity
 
 router = APIRouter(prefix="/api/admin", tags=["SuperAdmin Panel"])
 
@@ -98,7 +99,7 @@ class ResetPasswordIn(BaseModel):
 
 
 @router.post("/users")
-def create_user(data: UserCreateIn, db: Session = Depends(get_db)):
+def create_user(data: UserCreateIn, request: Request, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(400, "Username already taken")
     if data.email and db.query(User).filter(User.email == data.email).first():
@@ -112,13 +113,15 @@ def create_user(data: UserCreateIn, db: Session = Depends(get_db)):
         is_active=True,
     )
     db.add(user)
+    log_activity(db, request, "CREATE", "User",
+                 entity_name=f"{data.username} ({data.role})")
     db.commit()
     db.refresh(user)
     return {"id": user.id, "username": user.username, "role": user.role}
 
 
 @router.put("/users/{user_id}")
-def update_user(user_id: int, data: UserUpdateIn, db: Session = Depends(get_db)):
+def update_user(user_id: int, data: UserUpdateIn, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
@@ -139,24 +142,32 @@ def update_user(user_id: int, data: UserUpdateIn, db: Session = Depends(get_db))
     if data.is_active is not None:
         user.is_active = data.is_active
     user.updated_at = datetime.utcnow()
+    changed = {k: v for k, v in data.model_dump(exclude_unset=True).items() if k != "is_active"}
+    if data.is_active is not None:
+        changed["is_active"] = data.is_active
+    log_activity(db, request, "UPDATE", "User",
+                 entity_id=user_id, entity_name=user.username,
+                 changes={"fields": list(changed.keys())})
     db.commit()
     return {"ok": True}
 
 
 @router.post("/users/{user_id}/reset-password")
-def reset_password(user_id: int, data: ResetPasswordIn, db: Session = Depends(get_db)):
+def reset_password(user_id: int, data: ResetPasswordIn, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
     if len(data.new_password) < 6:
         raise HTTPException(400, "Password must be at least 6 characters")
     user.hashed_password = get_password_hash(data.new_password)
+    log_activity(db, request, "RESET_PASSWORD", "User",
+                 entity_id=user_id, entity_name=user.username)
     db.commit()
     return {"ok": True}
 
 
 @router.delete("/users/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
@@ -165,6 +176,8 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
         count = db.query(User).filter(User.role == "SuperAdmin").count()
         if count <= 1:
             raise HTTPException(400, "Cannot delete the last SuperAdmin account")
+    log_activity(db, request, "DELETE", "User",
+                 entity_id=user_id, entity_name=f"{user.username} ({user.role})")
     db.delete(user)
     db.commit()
     return {"ok": True}
@@ -187,7 +200,7 @@ class PermissionsUpdateIn(BaseModel):
 
 
 @router.put("/permissions")
-def update_permissions(data: PermissionsUpdateIn, db: Session = Depends(get_db)):
+def update_permissions(data: PermissionsUpdateIn, request: Request, db: Session = Depends(get_db)):
     _ensure_permissions_seeded(db)
     for role, features in data.permissions.items():
         rp = db.query(RolePermission).filter(RolePermission.role == role).first()
@@ -195,8 +208,54 @@ def update_permissions(data: PermissionsUpdateIn, db: Session = Depends(get_db))
             rp.allowed_features = features
         else:
             db.add(RolePermission(role=role, allowed_features=features))
+    roles_changed = list(data.permissions.keys())
+    log_activity(db, request, "UPDATE", "Permissions",
+                 entity_name=f"Roles: {', '.join(roles_changed)}")
     db.commit()
     return {"ok": True}
+
+
+# ── Activity Log ───────────────────────────────────────────────
+
+
+@router.get("/activity-logs")
+def get_activity_logs(
+    actor: Optional[str] = None,
+    action: Optional[str] = None,
+    entity_type: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    from backend.models.activity_log import ActivityLog
+    from sqlalchemy import desc
+    q = db.query(ActivityLog).order_by(desc(ActivityLog.created_at))
+    if actor:
+        q = q.filter(ActivityLog.actor.ilike(f"%{actor}%"))
+    if action:
+        q = q.filter(ActivityLog.action == action)
+    if entity_type:
+        q = q.filter(ActivityLog.entity_type == entity_type)
+    total = q.count()
+    logs = q.offset(offset).limit(limit).all()
+    return {
+        "total": total,
+        "logs": [
+            {
+                "id":          l.id,
+                "actor":       l.actor,
+                "actor_role":  l.actor_role,
+                "action":      l.action,
+                "entity_type": l.entity_type,
+                "entity_id":   l.entity_id,
+                "entity_name": l.entity_name,
+                "changes":     l.changes,
+                "ip_address":  l.ip_address,
+                "created_at":  l.created_at.isoformat() if l.created_at else None,
+            }
+            for l in logs
+        ],
+    }
 
 
 @router.post("/permissions/{role}/reset")

@@ -65,6 +65,7 @@ import CompensationPlanner   from './pages/ceo/CompensationPlanner';
 import AdminOverview     from './pages/superadmin/AdminOverview';
 import UserManagement    from './pages/superadmin/UserManagement';
 import FeaturePermissions from './pages/superadmin/FeaturePermissions';
+import ActivityLog       from './pages/superadmin/ActivityLog';
 
 // ── Unified page map (all roles) ──────────────────────────────
 const PAGES = {
@@ -118,6 +119,7 @@ const PAGES = {
   'admin-overview':    AdminOverview,
   'admin-users':       UserManagement,
   'admin-permissions': FeaturePermissions,
+  'activity-log':      ActivityLog,
 };
 
 // Default landing page per role
@@ -188,7 +190,7 @@ export default function App() {
   }
 
   // SuperAdmin admin pages + shared management pages accessible to both SuperAdmin and HR
-  const SUPERADMIN_FEATURES = ['admin-overview', 'admin-users', 'admin-permissions', 'assets'];
+  const SUPERADMIN_FEATURES = ['admin-overview', 'admin-users', 'admin-permissions', 'assets', 'activity-log'];
   const isSuperAdmin = user?.role === 'SuperAdmin';
   const sidebarFeatures = isSuperAdmin ? SUPERADMIN_FEATURES : (allowed === '*' ? null : allowed);
 

@@ -292,6 +292,23 @@ with engine.connect() as _conn:
             extra        JSONB
         )""",
         "CREATE INDEX IF NOT EXISTS idx_del_log_type ON deletion_log(entity_type, deleted_at DESC)",
+        # Comprehensive activity / audit log
+        """CREATE TABLE IF NOT EXISTS activity_logs (
+            id          SERIAL PRIMARY KEY,
+            actor       VARCHAR(100),
+            actor_role  VARCHAR(50),
+            action      VARCHAR(50),
+            entity_type VARCHAR(100),
+            entity_id   VARCHAR(100),
+            entity_name VARCHAR(300),
+            changes     JSONB,
+            ip_address  VARCHAR(50),
+            created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_act_log_actor  ON activity_logs(actor)",
+        "CREATE INDEX IF NOT EXISTS idx_act_log_action ON activity_logs(action)",
+        "CREATE INDEX IF NOT EXISTS idx_act_log_entity ON activity_logs(entity_type)",
+        "CREATE INDEX IF NOT EXISTS idx_act_log_time   ON activity_logs(created_at DESC)",
     ]:
         try:
             _conn.execute(text(_stmt))

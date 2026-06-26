@@ -68,6 +68,17 @@ def login(
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
     token = create_access_token(user.username, role=user.role)
+
+    try:
+        from backend.models.activity_log import ActivityLog
+        ip = request.client.host if request.client else None
+        db.add(ActivityLog(actor=user.username, actor_role=user.role,
+                           action="LOGIN", entity_type="Auth",
+                           entity_name=user.full_name or user.username, ip_address=ip))
+        db.commit()
+    except Exception:
+        pass
+
     return {
         "access_token": token,
         "token_type": "bearer",

@@ -1,7 +1,7 @@
 import calendar
 from datetime import date as dt_date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -10,6 +10,7 @@ from backend.database import get_db
 from backend.models.payroll import SalaryComponent, SalaryStructure, SalarySlip, PayrollEntry, PayrollRules
 from backend.models.employee import Employee
 from backend.models.leave import Attendance, LeaveApplication, LeaveType
+from backend.utils.audit import log_activity
 
 router = APIRouter(prefix="/api/payroll", tags=["Payroll"])
 
@@ -330,7 +331,7 @@ def delete_component(comp_id: int, db: Session = Depends(get_db)):
 # ── Payroll Run ────────────────────────────────────────────────
 
 @router.post("/run")
-def run_payroll(data: PayrollRunIn, db: Session = Depends(get_db)):
+def run_payroll(data: PayrollRunIn, request: Request, db: Session = Depends(get_db)):
     rules = _load_rules(db)
 
     q = db.query(Employee).filter(Employee.status == "Active")
@@ -438,6 +439,11 @@ def run_payroll(data: PayrollRunIn, db: Session = Depends(get_db)):
         )
         db.add(entry)
 
+    import calendar as _cal
+    month_name = _cal.month_name[data.month]
+    log_activity(db, request, "RUN_PAYROLL", "Payroll",
+                 entity_name=f"{month_name} {data.year}",
+                 changes={"created": created, "skipped": skipped, "total_net": total_net})
     db.commit()
     return {
         "ok": True, "created": created, "skipped": skipped,

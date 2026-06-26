@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from datetime import date
 from backend.database import get_db
 from backend.models.employee import Employee, Department, Designation
+from backend.utils.audit import log_activity
 
 _SALARY_FIELDS = frozenset({
     "basic_salary", "hra_percent", "special_allowance",
@@ -266,7 +267,7 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("")
-def create_employee(data: EmployeeCreateIn, db: Session = Depends(get_db)):
+def create_employee(data: EmployeeCreateIn, request: Request, db: Session = Depends(get_db)):
     from sqlalchemy import func
     from backend.models.auth import User
     from backend.auth_utils import get_password_hash
@@ -322,6 +323,9 @@ def create_employee(data: EmployeeCreateIn, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(emp)
+    log_activity(db, request, "CREATE", "Employee",
+                 entity_id=emp.id, entity_name=f"{emp.full_name} ({emp.employee_id})")
+    db.commit()
     return {"id": emp.id, "employee_id": emp.employee_id, "full_name": emp.full_name}
 
 
@@ -377,6 +381,10 @@ def update_employee(emp_id: int, data: EmployeeIn, request: Request, db: Session
                 non_salary["esi_applicable"] = 1 if non_salary["esi_applicable"] else 0
             for k, v in non_salary.items():
                 setattr(emp, k, v)
+            log_activity(db, request, "UPDATE", "Employee",
+                         entity_id=emp.id, entity_name=emp.full_name,
+                         changes={"salary_change": "pending CEO approval",
+                                  "other_fields": list(non_salary.keys())})
             emp.full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
             db.commit()
 
@@ -397,12 +405,15 @@ def update_employee(emp_id: int, data: EmployeeIn, request: Request, db: Session
     for k, v in dump.items():
         setattr(emp, k, v)
     emp.full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
+    log_activity(db, request, "UPDATE", "Employee",
+                 entity_id=emp.id, entity_name=emp.full_name,
+                 changes={"fields": list(dump.keys())})
     db.commit()
     return {"ok": True}
 
 
 @router.delete("/{emp_id}")
-def delete_employee(emp_id: int, db: Session = Depends(get_db)):
+def delete_employee(emp_id: int, request: Request, db: Session = Depends(get_db)):
     from sqlalchemy import text
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
@@ -415,8 +426,12 @@ def delete_employee(emp_id: int, db: Session = Depends(get_db)):
         "employee_history", "document_requests",
         "status_entries", "work_mode_entries",
     ]
+    emp_name = emp.full_name
+    emp_code = emp.employee_id
     for tbl in tables:
         db.execute(text(f"DELETE FROM {tbl} WHERE employee_id = :eid"), {"eid": emp.id})
+    log_activity(db, request, "DELETE", "Employee",
+                 entity_id=emp_id, entity_name=f"{emp_name} ({emp_code})")
     db.delete(emp)
     db.commit()
     return {"ok": True}

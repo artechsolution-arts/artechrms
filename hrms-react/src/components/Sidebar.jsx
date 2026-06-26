@@ -6,7 +6,7 @@ import {
   Monitor, BookOpen, FileDown, UserCircle, Receipt, Wallet, ClipboardList, CalendarCheck2,
   ChevronDown, ChevronRight, FilePenLine, UserMinus, FolderOpen, ClipboardCheck,
   ShieldCheck, Key, Crown, Settings as SettingsIcon, ChevronRight as ChevronRightIcon,
-  BarChart2,
+  BarChart2, Activity,
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -27,6 +27,7 @@ const NAV = [
   { key: 'admin-overview',    label: 'Overview',                  icon: LayoutDashboard, section: 'Admin' },
   { key: 'admin-users',       label: 'User Accounts',             icon: Users,           section: 'Admin' },
   { key: 'admin-permissions', label: 'Feature Permissions',       icon: Key,             section: 'Admin' },
+  { key: 'activity-log',      label: 'Activity Log',              icon: Activity,        section: 'Admin' },
   // ── CEO ─────────────────────────────────────────────────
   { key: 'ceo-dashboard',          label: 'Dashboard',            icon: Crown,      section: 'CEO' },
   { key: 'compensation-planner',   label: 'Compensation Planner', icon: BarChart2,   section: 'CEO' },

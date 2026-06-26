@@ -13,6 +13,7 @@ from backend.database import get_db
 from backend.models.auth import User
 from backend.models.employee import Employee
 from backend.models.leave import LeaveType
+from backend.utils.audit import log_activity
 from backend.models.hrm import (
     Announcement,
     EmergencyContact,
@@ -602,10 +603,12 @@ def list_assets(
 
 
 @router.post("/assets", status_code=201)
-def create_asset(data: AssetIn, db: Session = Depends(get_db)):
-    _employee_or_404(data.employee_id, db)
+def create_asset(data: AssetIn, request: Request, db: Session = Depends(get_db)):
+    emp = _employee_or_404(data.employee_id, db)
     asset = EmployeeAsset(**data.model_dump())
     db.add(asset)
+    log_activity(db, request, "CREATE", "Asset",
+                 entity_name=f"{data.asset_name} → {emp.full_name}")
     db.commit()
     db.refresh(asset)
     return {"id": asset.id, "ok": True}
@@ -613,7 +616,7 @@ def create_asset(data: AssetIn, db: Session = Depends(get_db)):
 
 @router.put("/assets/{asset_id}/return")
 def return_asset(
-    asset_id: int, data: AssetReturnIn, db: Session = Depends(get_db)
+    asset_id: int, data: AssetReturnIn, request: Request, db: Session = Depends(get_db)
 ):
     asset = db.query(EmployeeAsset).filter(EmployeeAsset.id == asset_id).first()
     if not asset:
@@ -622,15 +625,19 @@ def return_asset(
     asset.condition = data.condition
     asset.notes = data.notes
     asset.status = "Returned"
+    log_activity(db, request, "RETURN", "Asset",
+                 entity_id=asset_id, entity_name=asset.asset_name)
     db.commit()
     return {"ok": True}
 
 
 @router.delete("/assets/{asset_id}")
-def delete_asset(asset_id: int, db: Session = Depends(get_db)):
+def delete_asset(asset_id: int, request: Request, db: Session = Depends(get_db)):
     asset = db.query(EmployeeAsset).filter(EmployeeAsset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
+    log_activity(db, request, "DELETE", "Asset",
+                 entity_id=asset_id, entity_name=asset.asset_name)
     db.delete(asset)
     db.commit()
     return {"ok": True}
