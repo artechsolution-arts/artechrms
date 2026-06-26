@@ -237,13 +237,6 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
   return (
     <>
       <header className="glass-topbar sidebar-desktop h-11 items-center px-4 gap-3 flex-shrink-0 z-20">
-        <button
-          onClick={onToggleSidebar}
-          className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
-          title="Toggle sidebar"
-        >
-          <img src="/logo.svg" alt="Toggle sidebar" style={{ width: 26, height: 26 }} />
-        </button>
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1 text-sm text-gray-500 min-w-0">
