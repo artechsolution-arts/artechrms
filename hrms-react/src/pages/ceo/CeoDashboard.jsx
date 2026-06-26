@@ -6,6 +6,7 @@ import {
   Building2, IndianRupee, TrendingUp as HikeIcon, Info,
 } from 'lucide-react';
 import StatCard from '../../components/StatCard';
+import Select from '../../components/Select';
 
 const fmt = n => n >= 10_00_000
   ? `₹${(n / 10_00_000).toFixed(2)}L`
@@ -155,26 +156,27 @@ function HikeCalculator() {
             </div>
             <div className="flex-shrink-0">
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Department</label>
-              <select
+              <Select
                 value={filterDept}
-                onChange={e => setFilterDept(e.target.value)}
-                className="form-select text-sm"
-              >
-                {depts.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
+                onChange={v => setFilterDept(v)}
+                options={depts.map(d => ({ value: d, label: d }))}
+                size="sm"
+                className="w-44"
+              />
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 border-b border-gray-100 dark:border-gray-800">
+          {/* Tabs — same pattern as Leave Applications */}
+          <div className="flex flex-wrap gap-2">
             {TABS.map(t => (
               <button
                 key={t.key}
                 onClick={() => setHikeTab(t.key)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-t-md transition-colors
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
                   ${hikeTab === t.key
-                    ? 'border-b-2 text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-50)]'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                    ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
               >
                 {t.label}
               </button>
