@@ -198,7 +198,9 @@ export default function CompensationPlanner({ toast }) {
 
                 {/* ── Summary tab ── */}
                 {tab === 'summary' && (
-                  <div className="p-5 space-y-5">
+                  <div className="p-5 space-y-6">
+
+                    {/* Stat cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       {[
                         { label: 'Employees Affected', value: result.count,             sub: filterDept === 'All' ? 'All departments' : filterDept, color: 'text-blue-600 dark:text-blue-400',  bg: 'bg-blue-50 dark:bg-blue-900/20' },
@@ -214,30 +216,127 @@ export default function CompensationPlanner({ toast }) {
                       ))}
                     </div>
 
-                    {result.depts.length > 1 && (
-                      <div>
-                        <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Department Overview</div>
-                        <div className="space-y-2.5">
-                          {result.depts.map(d => (
-                            <div key={d.name} className="flex items-center gap-3">
-                              <span className="text-xs text-gray-600 dark:text-gray-400 w-32 truncate flex-shrink-0">{d.name}</span>
-                              <div className="flex-1 h-6 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative">
-                                <div
-                                  className="h-full rounded-lg transition-[width] duration-300 ease-out"
-                                  style={{ width: `${result.hikeAmount > 0 ? (d.increase / result.hikeAmount) * 100 : 0}%`, backgroundColor: 'var(--accent)', opacity: 0.75 }}
-                                />
-                                <span className="absolute inset-0 flex items-center px-2 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
-                                  +{fmt(d.increase)}/mo &nbsp;·&nbsp; {d.count} emp
-                                </span>
+                    {/* Charts row */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+                      {/* ── Department chart ── */}
+                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                            Hike Impact by Department
+                          </span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500">Monthly extra cost</span>
+                        </div>
+                        <div className="space-y-3">
+                          {result.depts.map((d, i) => {
+                            const maxIncrease = result.depts[0]?.increase || 1;
+                            const pct = maxIncrease > 0 ? (d.increase / maxIncrease) * 100 : 0;
+                            const sharePct = result.hikeAmount > 0 ? ((d.increase / result.hikeAmount) * 100).toFixed(1) : '0.0';
+                            const BAR_COLORS = [
+                              'var(--accent)',
+                              '#f59e0b', '#10b981', '#8b5cf6', '#ef4444',
+                              '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6366f1',
+                            ];
+                            const barColor = BAR_COLORS[i % BAR_COLORS.length];
+                            return (
+                              <div key={d.name}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: barColor }} />
+                                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate max-w-[140px]">{d.name}</span>
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+                                      {d.count} emp
+                                    </span>
+                                  </div>
+                                  <div className="text-right flex-shrink-0">
+                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{fmt(d.increase)}</span>
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1">({sharePct}%)</span>
+                                  </div>
+                                </div>
+                                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-[width] duration-500 ease-out flex items-center justify-end pr-2"
+                                    style={{
+                                      width: `${Math.max(pct, pct > 0 ? 2 : 0)}%`,
+                                      backgroundColor: barColor,
+                                      opacity: 0.85,
+                                      minWidth: d.increase > 0 ? '6px' : '0',
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex justify-between mt-0.5">
+                                  <span className="text-[10px] text-gray-400">+{fmt(d.increase * 12)}/yr</span>
+                                  <span className="text-[10px] text-gray-400">
+                                    avg {d.count > 0 ? fmt(d.increase / d.count) : '—'}/emp
+                                  </span>
+                                </div>
                               </div>
-                              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-16 text-right flex-shrink-0">
-                                +{fmt(d.increase * 12)}/yr
-                              </span>
-                            </div>
-                          ))}
+                            );
+                          })}
+                          {result.depts.length === 0 && (
+                            <p className="text-xs text-gray-400 text-center py-4">No department data</p>
+                          )}
                         </div>
                       </div>
-                    )}
+
+                      {/* ── Employee chart (top 10) ── */}
+                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                            Top Employees by Hike
+                          </span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500">Annual extra cost</span>
+                        </div>
+                        <div className="space-y-3">
+                          {result.empRows.slice(0, 10).map((e, i) => {
+                            const maxExtra = result.empRows[0]?.annualExtra || 1;
+                            const pct = maxExtra > 0 ? (e.annualExtra / maxExtra) * 100 : 0;
+                            return (
+                              <div key={e.id}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
+                                      style={{ backgroundColor: 'var(--accent)', opacity: 0.7 + i * 0.03 * -1 }}>
+                                      {i + 1}
+                                    </span>
+                                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate max-w-[110px]">{e.name}</span>
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[70px]">{e.department}</span>
+                                  </div>
+                                  <div className="text-right flex-shrink-0 ml-2">
+                                    <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">+{fmt(e.annualExtra)}</span>
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1">/ yr</span>
+                                  </div>
+                                </div>
+                                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-[width] duration-500 ease-out"
+                                    style={{
+                                      width: `${Math.max(pct, pct > 0 ? 2 : 0)}%`,
+                                      background: `linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, #f59e0b) 100%)`,
+                                      opacity: 0.75,
+                                      minWidth: e.annualExtra > 0 ? '6px' : '0',
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex justify-between mt-0.5">
+                                  <span className="text-[10px] text-gray-400">{fmt(e.hikeAmt)}/mo</span>
+                                  <span className="text-[10px] text-gray-400">{e.pct}% hike</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {result.empRows.length === 0 && (
+                            <p className="text-xs text-gray-400 text-center py-4">No employee data</p>
+                          )}
+                          {result.empRows.length > 10 && (
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center pt-1">
+                              + {result.empRows.length - 10} more — see Employee-wise tab
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
                   </div>
                 )}
 
