@@ -56,6 +56,7 @@ function HikeCalculator() {
   const [hikePct, setHikePct] = useState(10);
   const [filterDept, setFilterDept] = useState('All');
   const [loadingHike, setLoadingHike] = useState(true);
+  const [hikeTab, setHikeTab] = useState('summary');
 
   useEffect(() => {
     api('GET', '/api/dashboard/hike-snapshot')
@@ -90,12 +91,28 @@ function HikeCalculator() {
       }))
       .sort((a, b) => b.increase - a.increase);
 
-    return { currentMonthly, newMonthly, hikeAmount, annualImpact, depts, count: emps.length };
+    // Employee-wise rows
+    const empRows = emps
+      .map(e => ({
+        ...e,
+        hikeAmt: e.gross_salary * (hikePct / 100),
+        newGross: e.gross_salary + e.gross_salary * (hikePct / 100),
+        annualExtra: e.gross_salary * (hikePct / 100) * 12,
+      }))
+      .sort((a, b) => b.annualExtra - a.annualExtra);
+
+    return { currentMonthly, newMonthly, hikeAmount, annualImpact, depts, count: emps.length, empRows };
   }, [hikeData, hikePct, filterDept]);
 
   const depts = hikeData
     ? ['All', ...new Set(hikeData.employees.map(e => e.department))]
     : ['All'];
+
+  const TABS = [
+    { key: 'summary',     label: 'Summary' },
+    { key: 'employees',   label: 'Employee-wise' },
+    { key: 'departments', label: 'Department-wise' },
+  ];
 
   return (
     <div className="card">
@@ -118,8 +135,8 @@ function HikeCalculator() {
       ) : !hikeData || hikeData.employees.length === 0 ? (
         <EmptyState icon={IndianRupee} message="No salary data available yet" />
       ) : (
-        <div className="p-5 space-y-5">
-          {/* Controls */}
+        <div className="p-5 space-y-4">
+          {/* Controls row */}
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex-1 min-w-[220px]">
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
@@ -141,58 +158,146 @@ function HikeCalculator() {
               <select
                 value={filterDept}
                 onChange={e => setFilterDept(e.target.value)}
-                className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none"
-                style={{ '--tw-ring-color': 'var(--accent)' }}
+                className="form-select text-sm"
               >
                 {depts.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
           </div>
 
+          {/* Tabs */}
+          <div className="flex gap-1 border-b border-gray-100 dark:border-gray-800">
+            {TABS.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setHikeTab(t.key)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-t-md transition-colors
+                  ${hikeTab === t.key
+                    ? 'border-b-2 text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-50)]'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           {result && (
             <>
-              {/* Impact summary cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { label: 'Employees Affected', value: result.count, sub: filterDept === 'All' ? 'All departments' : filterDept, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
-                  { label: 'Monthly Hike Cost', value: fmt(result.hikeAmount), sub: `+${hikePct}% on gross`, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-                  { label: 'New Monthly Total', value: fmt(result.newMonthly), sub: `Was ${fmt(result.currentMonthly)}`, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20' },
-                  { label: 'Annual Extra Cost', value: fmt(result.annualImpact), sub: 'Additional per year', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-900/20' },
-                ].map(({ label, value, sub, color, bg }) => (
-                  <div key={label} className={`rounded-xl p-3.5 ${bg}`}>
-                    <div className={`text-xl font-bold ${color} leading-tight`}>{value}</div>
-                    <div className="text-xs font-semibold text-gray-600 dark:text-gray-300 mt-0.5">{label}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{sub}</div>
-                  </div>
-                ))}
-              </div>
+              {/* ── Summary tab ── */}
+              {hikeTab === 'summary' && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Employees Affected', value: result.count, sub: filterDept === 'All' ? 'All departments' : filterDept, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+                    { label: 'Monthly Hike Cost',  value: fmt(result.hikeAmount), sub: `+${hikePct}% on gross`, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+                    { label: 'New Monthly Total',  value: fmt(result.newMonthly), sub: `Was ${fmt(result.currentMonthly)}`, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20' },
+                    { label: 'Annual Extra Cost',  value: fmt(result.annualImpact), sub: 'Additional per year', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-900/20' },
+                  ].map(({ label, value, sub, color, bg }) => (
+                    <div key={label} className={`rounded-xl p-3.5 ${bg}`}>
+                      <div className={`text-xl font-bold ${color} leading-tight`}>{value}</div>
+                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-300 mt-0.5">{label}</div>
+                      <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{sub}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-              {/* Department breakdown */}
-              {result.depts.length > 1 && (
-                <div>
-                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Department Breakdown</div>
-                  <div className="space-y-2">
-                    {result.depts.map(d => (
-                      <div key={d.name} className="flex items-center gap-3 text-sm">
-                        <span className="text-gray-600 dark:text-gray-400 w-32 truncate text-xs flex-shrink-0">{d.name}</span>
-                        <div className="flex-1 h-6 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative">
-                          <div
-                            className="h-full rounded-lg transition-[width] duration-300 ease-out"
-                            style={{
-                              width: `${(d.increase / result.hikeAmount) * 100}%`,
-                              backgroundColor: 'var(--accent)',
-                              opacity: 0.7,
-                            }}
-                          />
-                          <span className="absolute inset-0 flex items-center px-2 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
-                            +{fmt(d.increase)}/mo &nbsp;·&nbsp; {d.count} emp
-                          </span>
-                        </div>
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-14 text-right flex-shrink-0">
-                          +{fmt(d.increase * 12)}/yr
-                        </span>
+              {/* ── Employee-wise tab ── */}
+              {hikeTab === 'employees' && (
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Department</th>
+                        <th>Designation</th>
+                        <th className="text-right">Current Gross/mo</th>
+                        <th className="text-right">Hike ({hikePct}%)</th>
+                        <th className="text-right">New Gross/mo</th>
+                        <th className="text-right">Annual Extra</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.empRows.map(e => (
+                        <tr key={e.id}>
+                          <td className="font-medium">{e.name}</td>
+                          <td className="text-gray-500 dark:text-gray-400">{e.department}</td>
+                          <td className="text-gray-500 dark:text-gray-400">{e.designation || '—'}</td>
+                          <td className="text-right font-mono">{e.gross_salary > 0 ? fmt(e.gross_salary) : <span className="text-gray-300">—</span>}</td>
+                          <td className="text-right font-mono text-amber-600 dark:text-amber-400">+{fmt(e.hikeAmt)}</td>
+                          <td className="text-right font-mono text-green-600 dark:text-green-400 font-semibold">{e.newGross > 0 ? fmt(e.newGross) : '—'}</td>
+                          <td className="text-right font-mono text-rose-600 dark:text-rose-400">+{fmt(e.annualExtra)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-gray-200 dark:border-gray-600">
+                        <td colSpan={3} className="font-semibold text-gray-700 dark:text-gray-300 px-4 py-2.5">
+                          Total ({result.count} employees)
+                        </td>
+                        <td className="text-right font-mono font-semibold px-4 py-2.5">{fmt(result.currentMonthly)}</td>
+                        <td className="text-right font-mono font-semibold text-amber-600 dark:text-amber-400 px-4 py-2.5">+{fmt(result.hikeAmount)}</td>
+                        <td className="text-right font-mono font-semibold text-green-600 dark:text-green-400 px-4 py-2.5">{fmt(result.newMonthly)}</td>
+                        <td className="text-right font-mono font-semibold text-rose-600 dark:text-rose-400 px-4 py-2.5">+{fmt(result.annualImpact)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+
+              {/* ── Department-wise tab ── */}
+              {hikeTab === 'departments' && (
+                <div className="space-y-3">
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-1">
+                    {[
+                      { label: 'Employees', value: result.count, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+                      { label: 'Monthly Hike', value: fmt(result.hikeAmount), color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+                      { label: 'New Monthly Total', value: fmt(result.newMonthly), color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20' },
+                      { label: 'Annual Extra', value: fmt(result.annualImpact), color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-900/20' },
+                    ].map(({ label, value, color, bg }) => (
+                      <div key={label} className={`rounded-xl p-3 ${bg}`}>
+                        <div className={`text-lg font-bold ${color}`}>{value}</div>
+                        <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{label}</div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Department table */}
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Department</th>
+                          <th className="text-right">Employees</th>
+                          <th className="text-right">Current Monthly</th>
+                          <th className="text-right">Monthly Hike</th>
+                          <th className="text-right">New Monthly</th>
+                          <th className="text-right">Annual Extra</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {result.depts.map(d => (
+                          <tr key={d.name}>
+                            <td className="font-medium">{d.name}</td>
+                            <td className="text-right">{d.count}</td>
+                            <td className="text-right font-mono">{d.current > 0 ? fmt(d.current) : '—'}</td>
+                            <td className="text-right font-mono text-amber-600 dark:text-amber-400">+{fmt(d.increase)}</td>
+                            <td className="text-right font-mono text-green-600 dark:text-green-400 font-semibold">{fmt(d.current + d.increase)}</td>
+                            <td className="text-right font-mono text-rose-600 dark:text-rose-400">+{fmt(d.increase * 12)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 border-gray-200 dark:border-gray-600">
+                          <td className="font-semibold text-gray-700 dark:text-gray-300 px-4 py-2.5">Total</td>
+                          <td className="text-right font-semibold px-4 py-2.5">{result.count}</td>
+                          <td className="text-right font-mono font-semibold px-4 py-2.5">{fmt(result.currentMonthly)}</td>
+                          <td className="text-right font-mono font-semibold text-amber-600 dark:text-amber-400 px-4 py-2.5">+{fmt(result.hikeAmount)}</td>
+                          <td className="text-right font-mono font-semibold text-green-600 dark:text-green-400 px-4 py-2.5">{fmt(result.newMonthly)}</td>
+                          <td className="text-right font-mono font-semibold text-rose-600 dark:text-rose-400 px-4 py-2.5">+{fmt(result.annualImpact)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
                 </div>
               )}
@@ -281,7 +386,12 @@ export default function CeoDashboard({ toast, onNavigate }) {
 
       {/* ── Second row stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="New Hires This Month" value={s.new_hires_this_month} icon={UserPlus}      gradient="blue"  delay={0.04} onClick={() => onNavigate('employees')} />
+        <StatCard label="New Hires This Month" value={s.new_hires_this_month} icon={UserPlus}      gradient="blue"  delay={0.04} onClick={() => {
+          const now = new Date();
+          const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          sessionStorage.setItem('nav-filter', JSON.stringify({ joinedMonth: ym, joinedLabel: 'This Month' }));
+          onNavigate('employees');
+        }} />
         <StatCard label="Open Positions"       value={s.open_positions}       icon={Briefcase}     gradient="purple" delay={0.08} onClick={() => onNavigate('job-openings')} />
         <StatCard label="Pending Resignations" value={s.pending_resignations} icon={FileText}      gradient="orange" delay={0.12} onClick={() => onNavigate('leaves')} />
         <StatCard
@@ -299,7 +409,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
 
         {/* Pending leave approvals — quick actions */}
         <div className="card">
-          <SectionHeader title="Leave Approvals" onViewAll={onNavigate} navKey="ceo-leaves" />
+          <SectionHeader title="Leave Approvals" onViewAll={onNavigate} navKey="leaves" />
           {pending.length === 0 ? (
             <EmptyState icon={CheckCircle} message="All caught up — no pending leaves" />
           ) : (
@@ -338,7 +448,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
 
         {/* Department headcount */}
         <div className="card">
-          <SectionHeader title="Department Headcount" onViewAll={onNavigate} navKey="ceo-employees" />
+          <SectionHeader title="Department Headcount" onViewAll={onNavigate} navKey="employees" />
           {depts.length === 0 ? (
             <EmptyState icon={Building2} message="No department data" />
           ) : (
@@ -460,7 +570,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
 
         {/* Recent hires */}
         <div className="card">
-          <SectionHeader title="Recent Hires" onViewAll={onNavigate} navKey="ceo-employees" />
+          <SectionHeader title="Recent Hires" onViewAll={onNavigate} navKey="employees" />
           {recentHires.length === 0 ? (
             <EmptyState icon={UserPlus} message="No recent hires" />
           ) : (
