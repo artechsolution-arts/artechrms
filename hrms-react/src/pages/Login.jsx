@@ -379,10 +379,10 @@ export default function Login({ onLogin }) {
           display: flex;
           gap: 16px;
         }
-        /* Row 2 shifts right by half a column width to create the honeycomb offset.
-           Each row also shifts ±33px so the pair is visually centered. */
-        .hex-row-1 { transform: translateX(-33px); }
-        .hex-row-2 { transform: translateX(33px); margin-top: 14px; }
+        /* Row 2 shifts right by (hex_w+gap)/2 = (126+16)/2 = 71px.
+           Each row shifts ±35px so the pair is visually centered. */
+        .hex-row-1 { transform: translateX(-35px); }
+        .hex-row-2 { transform: translateX(36px); margin-top: 14px; }
 
         /* motion.div wrapper — receives framer-motion transforms */
         .hex-wrap {
@@ -394,18 +394,17 @@ export default function Login({ onLogin }) {
           filter: drop-shadow(0 0 28px rgba(45,212,191,0.38));
         }
 
-        /* outer div: border + icon container */
+        /* wrapper: just the hex shape, no external label */
         .hex-item-wrap {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 10px;
         }
 
         /* border layer */
         .hex-outer {
-          width: 116px;
-          height: 134px;
+          width: 126px;
+          height: 146px;
           position: relative;
           clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
           background: rgba(255,255,255,0.08);
@@ -420,21 +419,25 @@ export default function Login({ onLogin }) {
           clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
           background: rgba(255,255,255,0.04);
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
+          gap: 7px;
+          padding: 14px 10px;
           transition: background 0.3s ease;
         }
         .hex-wrap:hover .hex-inner { background: rgba(45,212,191,0.12); }
 
-        /* label sits below the hexagon */
+        /* label inside the hexagon, below the icon */
         .hex-label {
-          font-size: 11px;
-          font-weight: 600;
-          letter-spacing: 0.02em;
-          color: rgba(255,255,255,0.82);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.88);
           text-align: center;
           line-height: 1.3;
-          width: 116px;
+          max-width: 82px;
         }
 
         /* per-hex float variants */
@@ -856,10 +859,10 @@ export default function Login({ onLogin }) {
                         <div className="hex-item-wrap">
                           <div className={`hex-outer ${floatClass}`} style={{ animationDelay: `${featIdx * 0.22}s` }}>
                             <div className="hex-inner">
-                              <Icon size={24} color="#2DD4BF" strokeWidth={1.5} />
+                              <Icon size={26} color="#2DD4BF" strokeWidth={2.2} />
+                              <span className="hex-label">{title}</span>
                             </div>
                           </div>
-                          <span className="hex-label">{title}</span>
                         </div>
                       </motion.div>
                     );
