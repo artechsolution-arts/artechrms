@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, Home, ChevronRight, X, CheckCheck, Calendar, CalendarX, Edit3, Receipt, FileText, LogOut, UserCog, UserPlus, Megaphone, Info, AlertTriangle, CheckCircle, Clock, ClipboardList } from 'lucide-react';
+import { Bell, Home, ChevronRight, X, CheckCheck, Calendar, CalendarX, Edit3, Receipt, FileText, LogOut, UserCog, UserPlus, Megaphone, Info, AlertTriangle, CheckCircle, Clock, ClipboardList, Cake, Award } from 'lucide-react';
 import { NAV } from './Sidebar';
 import { EMP_NAV } from './EmployeeSidebar';
 import { CEO_NAV } from './CeoSidebar';
@@ -157,6 +157,127 @@ function NotifIcon({ type, size = 16, color }) {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Reminders Bell — birthdays & work anniversaries (HR/CEO/Admin)
+───────────────────────────────────────────────────────────── */
+function RemindersBell({ onNavigate }) {
+  const [open, setOpen]         = useState(false);
+  const [reminders, setReminders] = useState([]);
+  const [loaded, setLoaded]     = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    api('GET', '/api/hrm/reminders').then(r => { setReminders(r || []); setLoaded(true); }).catch(() => setLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const todayItems   = reminders.filter(r => r.days_until === 0);
+  const upcomingItems = reminders.filter(r => r.days_until > 0);
+
+  const fmtDay = days => days === 1 ? 'Tomorrow' : `In ${days} days`;
+  const fmtDate = d => { const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        title="Reminders"
+        className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 relative"
+      >
+        <Calendar size={16} />
+        {loaded && todayItems.length > 0 && (
+          <span
+            className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
+            style={{ backgroundColor: '#f59e0b' }}
+          >
+            {todayItems.length}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 w-[320px] rounded-2xl shadow-2xl z-50 overflow-hidden border border-gray-200/70 dark:border-gray-700/60">
+          {/* Header */}
+          <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #92400e 0%, #f59e0b 100%)' }}>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                <Cake size={14} className="text-white" />
+              </div>
+              <span className="text-sm font-bold text-white">Reminders</span>
+              {reminders.length > 0 && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/20 text-white border border-white/25">{reminders.length}</span>
+              )}
+            </div>
+            <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-white/15 text-white/60 hover:text-white transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="max-h-[380px] overflow-y-auto bg-white dark:bg-gray-900">
+            {!loaded ? (
+              <div className="py-8 flex items-center justify-center"><div className="w-6 h-6 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" /></div>
+            ) : reminders.length === 0 ? (
+              <div className="py-10 text-center">
+                <Cake size={28} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No upcoming reminders</p>
+              </div>
+            ) : (
+              <>
+                {todayItems.length > 0 && (
+                  <div>
+                    <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10">Today 🎉</div>
+                    {todayItems.map(r => <ReminderRow key={r.id} r={r} onNavigate={onNavigate} onClose={() => setOpen(false)} label="Today" />)}
+                  </div>
+                )}
+                {upcomingItems.length > 0 && (
+                  <div>
+                    <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 dark:bg-gray-800/40">Upcoming</div>
+                    {upcomingItems.map(r => <ReminderRow key={r.id} r={r} onNavigate={onNavigate} onClose={() => setOpen(false)} label={fmtDay(r.days_until)} fmtDate={fmtDate} />)}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReminderRow({ r, onNavigate, onClose, label, fmtDate }) {
+  const isBirthday = r.type === 'birthday';
+  return (
+    <button
+      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors text-left"
+      onClick={() => {
+        sessionStorage.setItem('nav-filter', JSON.stringify({ employeeId: r.employee_id }));
+        onNavigate('employees');
+        onClose();
+      }}
+    >
+      <div
+        className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-sm"
+        style={{ background: isBirthday ? '#fef3c720' : '#ede9fe20', border: `1.5px solid ${isBirthday ? '#f59e0b' : '#8b5cf6'}33` }}
+      >
+        {isBirthday ? <Cake size={15} style={{ color: '#f59e0b' }} /> : <Award size={15} style={{ color: '#8b5cf6' }} />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[12px] font-semibold text-gray-800 dark:text-gray-200 truncate">{r.name}</div>
+        <div className="text-[11px] text-gray-400 truncate">{r.detail} · {r.department}</div>
+      </div>
+      <div className="text-right flex-shrink-0">
+        <div className="text-[10px] font-semibold" style={{ color: r.days_until === 0 ? '#f59e0b' : '#6b7280' }}>{label}</div>
+        {fmtDate && <div className="text-[10px] text-gray-400">{fmtDate(r.date)}</div>}
+      </div>
+    </button>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
    Topbar
 ───────────────────────────────────────────────────────────── */
 export default function Topbar({ current, onNavigate, onToggleSidebar }) {
@@ -267,6 +388,9 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
+
+          {/* Reminders — birthdays & anniversaries (HR/CEO/Admin only) */}
+          {!isEmployee && <RemindersBell onNavigate={onNavigate} />}
 
           {/* Bell button */}
           <div className="relative" ref={bellRef}>

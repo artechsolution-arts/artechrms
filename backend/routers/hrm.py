@@ -1885,3 +1885,53 @@ def preview_letterhead_template(db: Session = Depends(get_db)):
         media_type="application/pdf",
         headers={"Content-Disposition": 'inline; filename="template-preview.pdf"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# Reminders — upcoming birthdays & work anniversaries (next 7 days)
+# ---------------------------------------------------------------------------
+
+@router.get("/reminders")
+def get_reminders(db: Session = Depends(get_db)):
+    """Return upcoming employee birthdays and work anniversaries (today + 7 days)."""
+    today = date.today()
+    employees = db.query(Employee).filter(Employee.status == "Active").all()
+
+    reminders = []
+    for days_offset in range(8):
+        check = today + timedelta(days=days_offset)
+        for emp in employees:
+            # Birthday
+            if emp.date_of_birth and emp.date_of_birth.month == check.month and emp.date_of_birth.day == check.day:
+                age = check.year - emp.date_of_birth.year
+                reminders.append({
+                    "id": f"bday-{emp.id}",
+                    "type": "birthday",
+                    "employee_id": emp.id,
+                    "name": emp.full_name,
+                    "department": emp.department_rel.name if emp.department_rel else "",
+                    "profile_photo": emp.profile_photo,
+                    "date": str(check),
+                    "days_until": days_offset,
+                    "detail": f"Turns {age}",
+                })
+            # Work anniversary (only after at least 1 year)
+            if (emp.date_of_joining
+                    and emp.date_of_joining.month == check.month
+                    and emp.date_of_joining.day == check.day):
+                years = check.year - emp.date_of_joining.year
+                if years >= 1:
+                    reminders.append({
+                        "id": f"anniv-{emp.id}",
+                        "type": "anniversary",
+                        "employee_id": emp.id,
+                        "name": emp.full_name,
+                        "department": emp.department_rel.name if emp.department_rel else "",
+                        "profile_photo": emp.profile_photo,
+                        "date": str(check),
+                        "days_until": days_offset,
+                        "detail": f"{years} year{'s' if years != 1 else ''} at company",
+                    })
+
+    reminders.sort(key=lambda r: r["days_until"])
+    return reminders
