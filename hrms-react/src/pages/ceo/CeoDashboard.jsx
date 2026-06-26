@@ -682,7 +682,14 @@ export default function CeoDashboard({ toast, onNavigate }) {
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
               {recentHires.map((emp, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3">
+                <div
+                  key={i}
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
+                  onClick={() => {
+                    sessionStorage.setItem('nav-filter', JSON.stringify({ employeeId: emp.id }));
+                    onNavigate('employees');
+                  }}
+                >
                   {emp.profile_photo ? (
                     <img src={emp.profile_photo} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                   ) : (
@@ -691,7 +698,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{emp.name}</div>
+                    <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate group-hover:text-[var(--accent)] transition-colors">{emp.name}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                       {emp.designation}{emp.department ? ` · ${emp.department}` : ''}
                     </div>

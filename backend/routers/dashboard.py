@@ -124,6 +124,7 @@ def get_dashboard(db: Session = Depends(get_db)):
         ],
         "recent_hires": [
             {
+                "id": e.id,
                 "name": e.full_name,
                 "profile_photo": e.profile_photo,
                 "department": e.department_rel.name if e.department_rel else "",

@@ -707,6 +707,11 @@ export default function Employees({ toast }) {
                 return;
               }
             }
+            if (f.employeeId) {
+              await load();
+              openDetail(f.employeeId);
+              return;
+            }
           }
         } catch {}
         load();
