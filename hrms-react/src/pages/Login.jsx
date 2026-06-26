@@ -352,8 +352,8 @@ export default function Login({ onLogin }) {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
           text-align: center;
-          min-height: 100%;
           padding: 36px 48px 28px;
           opacity: 0;
           pointer-events: none;
@@ -366,14 +366,11 @@ export default function Login({ onLogin }) {
 
         /* ── Hexagon grid — 3+3 honeycomb ── */
         .hex-grid {
-          flex: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
           position: relative;
           z-index: 1;
-          gap: 0;
         }
         .hex-row {
           display: flex;
@@ -792,7 +789,7 @@ export default function Login({ onLogin }) {
 
             {/* Logo — centered */}
             <motion.div
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16, position: 'relative', zIndex: 1, width: '100%' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 10, position: 'relative', zIndex: 1, width: '100%' }}
               initial={{ opacity: 0, y: 20 }}
               animate={revealed ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.58, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
@@ -813,7 +810,7 @@ export default function Login({ onLogin }) {
 
             {/* Tagline — centered */}
             <motion.div
-              style={{ marginBottom: 22, position: 'relative', zIndex: 1 }}
+              style={{ marginBottom: 16, position: 'relative', zIndex: 1 }}
               initial={{ opacity: 0, y: 20 }}
               animate={revealed ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.64, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
