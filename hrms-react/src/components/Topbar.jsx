@@ -9,6 +9,19 @@ import { api } from '../api';
 const TOKEN_KEY = 'artech_hrms_token';
 const SLIDE_DURATION = 5500;
 
+// Persistent notif entity types where entity_id is the employee ID
+const EMPLOYEE_ENTITY_TYPES = new Set(['work_hours', 'salary_change', 'new_joiner']);
+
+function _notifNavigate(notif, onNavigate) {
+  const empId = notif.employee_id
+    ?? (EMPLOYEE_ENTITY_TYPES.has(notif.entity_type) ? notif.entity_id : null);
+  const action = notif.action;
+  if (!action) return;
+  // Always attach employeeId when available — each page reads nav-filter and deep-links
+  if (empId) sessionStorage.setItem('nav-filter', JSON.stringify({ employeeId: empId }));
+  onNavigate(action);
+}
+
 /* ─────────────────────────────────────────────────────────────
    Teams-style toast: enters from bottom (slides up),
    exits to the right (left-to-right swipe dismiss)
@@ -44,7 +57,7 @@ function SlideNotif({ notif, onClose, onNavigate }) {
     <div
       style={{ transform, opacity: phase === 'show' ? 1 : 0, transition }}
       className="w-[340px] rounded-2xl overflow-hidden cursor-pointer select-none"
-      onClick={() => { if (notif.action) onNavigate(notif.action); dismiss(); }}
+      onClick={() => { _notifNavigate(notif, onNavigate); dismiss(); }}
     >
       <div className="bg-white/96 dark:bg-gray-900/96 backdrop-blur-2xl border border-gray-200/70 dark:border-gray-700/60 shadow-2xl rounded-2xl overflow-hidden">
         {/* Top accent gradient */}
@@ -230,7 +243,7 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
   };
 
   const handleNotifClick = notif => {
-    if (notif.action) onNavigate(notif.action);
+    _notifNavigate(notif, onNavigate);
     setBellOpen(false);
   };
 

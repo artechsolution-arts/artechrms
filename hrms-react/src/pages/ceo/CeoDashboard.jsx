@@ -317,16 +317,19 @@ export default function CeoDashboard({ toast, onNavigate }) {
   const [loading, setLoading]     = useState(true);
   const [leaveMonths, setLeaveMonths] = useState(null);
   const [selMonth, setSelMonth]   = useState(5); // default = latest month
+  const [appraisals, setAppraisals] = useState([]);
 
   useEffect(() => {
     Promise.all([
       api('GET', '/api/dashboard'),
       api('GET', '/api/leaves?status=Pending').catch(() => []),
       api('GET', '/api/dashboard/monthly-leaves').catch(() => null),
-    ]).then(([d, p, lm]) => {
+      api('GET', '/api/appraisals').catch(() => []),
+    ]).then(([d, p, lm, ap]) => {
       setData(d);
       setPending(Array.isArray(p) ? p.slice(0, 6) : []);
       setLeaveMonths(lm);
+      setAppraisals(Array.isArray(ap) ? ap : []);
     }).catch(e => toast(e.message, 'error'))
       .finally(() => setLoading(false));
   }, []);
@@ -360,6 +363,20 @@ export default function CeoDashboard({ toast, onNavigate }) {
   const openJobs    = data.open_jobs || [];
   const pipeline    = data.recruitment_pipeline || {};
   const totalPipelineApplicants = Object.values(pipeline).reduce((a, b) => a + b, 0);
+
+  const APPRAISAL_STAGES = [
+    { key: 'Goals Set',           color: '#6b7280', bg: 'bg-gray-100 dark:bg-gray-700/40',     text: 'text-gray-600 dark:text-gray-300' },
+    { key: 'Self Evaluated',      color: '#3b82f6', bg: 'bg-blue-50 dark:bg-blue-900/20',      text: 'text-blue-600 dark:text-blue-400' },
+    { key: 'Manager Evaluated',   color: '#8b5cf6', bg: 'bg-purple-50 dark:bg-purple-900/20', text: 'text-purple-600 dark:text-purple-400' },
+    { key: 'Business Evaluated',  color: '#f59e0b', bg: 'bg-amber-50 dark:bg-amber-900/20',   text: 'text-amber-600 dark:text-amber-400' },
+    { key: 'Completed',           color: '#22c55e', bg: 'bg-green-50 dark:bg-green-900/20',   text: 'text-green-600 dark:text-green-400' },
+  ];
+  const appraisalPeriod = appraisals.length > 0 ? appraisals[0].period : null;
+  const appraisalByStage = APPRAISAL_STAGES.reduce((acc, s) => {
+    acc[s.key] = appraisals.filter(a => a.status === s.key);
+    return acc;
+  }, {});
+  const activeAppraisals = appraisals.filter(a => a.status !== 'Completed').slice(0, 6);
 
   const totalPendingApprovals =
     (s.pending_leaves || 0) +
@@ -648,30 +665,58 @@ export default function CeoDashboard({ toast, onNavigate }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
-            <div className="card-title">Leave Status</div>
-            <button onClick={() => onNavigate('leaves')} className="text-xs flex items-center gap-0.5 hover:underline" style={{ color: 'var(--accent)' }}>
+            <div>
+              <div className="card-title">Appraisals</div>
+              {appraisalPeriod && <div className="text-xs text-gray-400 mt-0.5">{appraisalPeriod}</div>}
+            </div>
+            <button onClick={() => onNavigate('appraisals')} className="text-xs flex items-center gap-0.5 hover:underline" style={{ color: 'var(--accent)' }}>
               View all <ChevronRight size={12} />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Pending',               value: ls.pending,               color: 'text-amber-600 dark:text-amber-400',   bar: 'bg-amber-400' },
-              { label: 'Approved',              value: ls.approved,              color: 'text-green-600 dark:text-green-400',   bar: 'bg-green-400' },
-              { label: 'Cancellation Requests', value: ls.cancellation_requests, color: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400' },
-              { label: 'Rejected',              value: ls.rejected,              color: 'text-red-500 dark:text-red-400',       bar: 'bg-red-400' },
-            ].map(({ label, value, color, bar }) => {
-              const total = (ls.pending || 0) + (ls.approved || 0) + (ls.rejected || 0) + (ls.cancellation_requests || 0) || 1;
-              return (
-                <div key={label} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 text-center">
-                  <div className={`text-2xl font-bold ${color} mb-0.5`}>{value || 0}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{label}</div>
-                  <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${bar}`} style={{ width: `${((value || 0) / total) * 100}%` }} />
-                  </div>
+
+          {appraisals.length === 0 ? (
+            <div className="text-center py-6 text-gray-400 text-sm">No appraisals yet</div>
+          ) : (
+            <>
+              {/* Stage pipeline */}
+              <div className="space-y-2 mb-4">
+                {APPRAISAL_STAGES.map(stage => {
+                  const list = appraisalByStage[stage.key] || [];
+                  const pct  = Math.round((list.length / appraisals.length) * 100);
+                  return (
+                    <div key={stage.key} className="flex items-center gap-2">
+                      <div className="w-36 text-xs text-gray-500 dark:text-gray-400 truncate">{stage.key}</div>
+                      <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: stage.color }} />
+                      </div>
+                      <div className="text-xs font-semibold w-5 text-right" style={{ color: stage.color }}>{list.length}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Active appraisals list */}
+              {activeAppraisals.length > 0 && (
+                <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-2">
+                  {activeAppraisals.map(a => {
+                    const st = APPRAISAL_STAGES.find(s => s.key === a.status);
+                    return (
+                      <div key={a.id} className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{a.employee_name}</div>
+                          <div className="text-[10px] text-gray-400">{a.department}</div>
+                        </div>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${st?.bg} ${st?.text} whitespace-nowrap`}>
+                          {a.status}
+                        </span>
+                        <div className="text-[10px] text-gray-400 w-14 text-right">{a.created_at}</div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Recent hires */}

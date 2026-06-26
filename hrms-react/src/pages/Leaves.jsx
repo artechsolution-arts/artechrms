@@ -32,6 +32,7 @@ export default function Leaves({ toast }) {
   const [types, setTypes] = useState([]);
   const [emps, setEmps] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
+  const [empFilter, setEmpFilter] = useState(null);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({});
@@ -56,6 +57,7 @@ export default function Leaves({ toast }) {
         sessionStorage.removeItem('nav-filter');
         const f = JSON.parse(pending);
         if (f.leaveStatus) { initStatus = f.leaveStatus; setStatusFilter(f.leaveStatus); }
+        if (f.employeeId)  setEmpFilter(f.employeeId);
       }
     } catch {}
     Promise.all([api('GET', '/api/leaves/types'), api('GET', '/api/employees?all=true')])
@@ -127,14 +129,17 @@ export default function Leaves({ toast }) {
   const editCount   = allRows.filter(r => r.status === 'Edit Requested').length;
   const pendingCount = allRows.filter(r => r.status === 'Pending').length;
 
-  // Apply tab filter; cancellation and edit requests float to top
+  // Apply tab + optional employee filter; cancellation and edit requests float to top
   const rows = (() => {
-    const filtered = statusFilter ? allRows.filter(r => r.status === statusFilter) : allRows;
+    let filtered = statusFilter ? allRows.filter(r => r.status === statusFilter) : allRows;
+    if (empFilter) filtered = filtered.filter(r => r.employee_id === empFilter);
     return [...filtered].sort((a, b) => {
       const priority = s => s === 'Cancellation Requested' ? 0 : s === 'Edit Requested' ? 1 : s === 'Pending' ? 2 : 3;
       return priority(a.status) - priority(b.status);
     });
   })();
+
+  const empFilterName = empFilter ? (emps.find(e => e.id === empFilter)?.full_name || `ID ${empFilter}`) : null;
 
   return (
     <>
@@ -147,6 +152,12 @@ export default function Leaves({ toast }) {
       </div>
 
       <div className="page-content">
+        {empFilterName && (
+          <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+            <span>Showing leaves for <strong>{empFilterName}</strong></span>
+            <button onClick={() => setEmpFilter(null)} className="ml-auto text-xs underline opacity-70 hover:opacity-100">Clear filter</button>
+          </div>
+        )}
         {/* Status tabs */}
         <div className="flex items-center gap-1 mb-4 flex-wrap">
           {STATUS_TABS.map(tab => {

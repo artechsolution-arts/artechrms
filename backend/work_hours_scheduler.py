@@ -88,7 +88,7 @@ def _run_weekly_check(week_label: str) -> int:
                     title=f"Low Hours Alert — {emp.full_name}",
                     message=f"{emp.full_name} logged only {total:.1f}h last week (min {_WEEKLY_MIN:.0f}h).",
                     notif_type="alert",
-                    action="attendance",
+                    action="employees",
                     priority="low",
                     is_cc=True,
                 )
@@ -171,7 +171,7 @@ def _run_monthly_check(month_label: str) -> int:
                     title=f"Monthly Low Hours — {emp.full_name}",
                     message=f"{emp.full_name} logged only {total:.1f}h in {period} (min {_MONTHLY_MIN:.0f}h).",
                     notif_type="alert",
-                    action="attendance",
+                    action="employees",
                     priority="medium",
                     is_cc=True,
                 )

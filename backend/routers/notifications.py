@@ -110,6 +110,7 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "title": "Leave Request Pending",
                 "message": f"{emp_name} applied for {days} day{'s' if days > 1 else ''} leave",
                 "action": "leaves",
+                "employee_id": leave.employee_id,
                 "time": str(leave.created_at)[:10] if leave.created_at else "",
                 "priority": "high",
             })
@@ -122,6 +123,7 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "title": "Leave Cancellation Request",
                 "message": f"{emp_name} wants to cancel {days} day{'s' if days > 1 else ''} leave",
                 "action": "leaves",
+                "employee_id": leave.employee_id,
                 "time": str(leave.created_at)[:10] if leave.created_at else "",
                 "priority": "high",
             })
@@ -133,6 +135,7 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "title": "Leave Date Change Request",
                 "message": f"{emp_name} wants to change approved leave dates",
                 "action": "leaves",
+                "employee_id": leave.employee_id,
                 "time": str(leave.created_at)[:10] if leave.created_at else "",
                 "priority": "high",
             })
@@ -144,6 +147,7 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "title": "Expense Claim Pending",
                 "message": f"{emp_name} submitted ₹{int(exp.amount):,} for {exp.expense_type}",
                 "action": "expenses",
+                "employee_id": exp.employee_id,
                 "time": str(exp.created_at)[:10] if exp.created_at else "",
                 "priority": "medium",
             })
@@ -155,6 +159,7 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "title": "Document Request",
                 "message": f"{emp_name} requested {doc.doc_type}",
                 "action": "document-requests",
+                "employee_id": doc.employee_id,
                 "time": str(doc.requested_at)[:10] if doc.requested_at else "",
                 "priority": "medium",
             })
@@ -167,6 +172,7 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "title": "Resignation Submitted",
                 "message": f"{emp_name} has submitted a resignation{lwd}",
                 "action": "resignations",
+                "employee_id": res.employee_id,
                 "time": str(res.created_at)[:10] if res.created_at else "",
                 "priority": "high",
             })
@@ -179,6 +185,7 @@ def _compute_notifications(user: User, db: Session) -> list:
                 "title": "Profile Updated",
                 "message": f"{emp_name} updated their {fields}",
                 "action": "employees",
+                "employee_id": pu.employee_id,
                 "time": str(pu.changed_at)[:10] if pu.changed_at else "",
                 "priority": "medium",
             })

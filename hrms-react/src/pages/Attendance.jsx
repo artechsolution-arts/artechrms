@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api';
 import { fmtDate } from '../utils/date';
 import DatePicker from '../components/DatePicker';
@@ -84,6 +84,22 @@ export default function Attendance({ toast }) {
     } catch (e) { toast(e.message, 'error'); }
     finally { setLoadingEmps(false); }
   }, []);
+
+  const autoOpenId = useRef(null);
+  useEffect(() => {
+    const pending = sessionStorage.getItem('nav-filter');
+    if (!pending) return;
+    sessionStorage.removeItem('nav-filter');
+    try { const f = JSON.parse(pending); if (f.employeeId) autoOpenId.current = f.employeeId; } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (autoOpenId.current && emps.length > 0) {
+      const emp = emps.find(e => e.id === autoOpenId.current);
+      autoOpenId.current = null;
+      if (emp) openPopup(emp);
+    }
+  }, [emps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadSummaries(calYear, calMonth); }, [calYear, calMonth, loadSummaries]);
   useRefreshOnFocus(() => loadSummaries(calYear, calMonth));
