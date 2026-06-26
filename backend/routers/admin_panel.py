@@ -199,6 +199,21 @@ def update_permissions(data: PermissionsUpdateIn, db: Session = Depends(get_db))
     return {"ok": True}
 
 
+@router.post("/permissions/{role}/reset")
+def reset_role_permissions(role: str, db: Session = Depends(get_db)):
+    """Reset a role's permissions to code defaults."""
+    defaults = DEFAULT_PERMISSIONS.get(role)
+    if defaults is None:
+        raise HTTPException(400, f"No default permissions defined for role '{role}'")
+    rp = db.query(RolePermission).filter(RolePermission.role == role).first()
+    if rp:
+        rp.allowed_features = defaults
+    else:
+        db.add(RolePermission(role=role, allowed_features=defaults))
+    db.commit()
+    return {"ok": True, "role": role, "allowed_features": defaults}
+
+
 @router.get("/permissions/{role}")
 def get_role_permissions(role: str, db: Session = Depends(get_db)):
     _ensure_permissions_seeded(db)

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import { _permissionsCache } from '../../hooks/usePermissions';
-import { ShieldCheck, Save, RotateCcw } from 'lucide-react';
+import { ShieldCheck, Save, RotateCcw, RefreshCw } from 'lucide-react';
 
 const ROLE_META = {
   CEO:      { label: 'CEO',      color: 'bg-rose-100 text-rose-700',   ring: 'ring-rose-400' },
@@ -171,6 +171,18 @@ export default function FeaturePermissions({ toast }) {
     setPermissions(JSON.parse(JSON.stringify(original)));
   }
 
+  async function resetToDefaults(role) {
+    try {
+      const data = await api('POST', `/api/admin/permissions/${role}/reset`);
+      setPermissions(prev => ({ ...prev, [role]: data.allowed_features }));
+      setOriginal(prev => ({ ...prev, [role]: data.allowed_features }));
+      Object.keys(_permissionsCache).forEach(k => delete _permissionsCache[k]);
+      toast(`${role} permissions reset to defaults`, 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
   async function save() {
     setSaving(true);
     try {
@@ -260,6 +272,11 @@ export default function FeaturePermissions({ toast }) {
                               None
                             </button>
                           </div>
+                          <button onClick={() => resetToDefaults(role)}
+                            title="Reset to system defaults"
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-violet-500 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors">
+                            <RefreshCw size={9} /> Defaults
+                          </button>
                           <div className="text-xs text-gray-400 font-normal">{perms.length}/{ALL_FEATURE_KEYS.length}</div>
                         </div>
                       </th>

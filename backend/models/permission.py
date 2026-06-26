@@ -32,9 +32,11 @@ ALL_FEATURES = sorted(set(HR_FEATURES + EMP_FEATURES + ["ceo-dashboard"]))
 DEFAULT_PERMISSIONS = {
     "HR": HR_FEATURES,
     "CEO": [
-        "ceo-dashboard", "employees", "leaves", "work-mode-sheet",
+        "ceo-dashboard", "employees", "departments", "leaves", "work-mode-sheet",
         "attendance", "holidays", "announcements", "onboarding",
         "document-requests", "appraisals", "status-sheets", "company-docs",
+        "job-openings", "applicants", "payroll-entry", "salary-slips", "resignations",
+        "edit-requests",
     ] + PORTAL_FEATURES,
     "Employee": EMP_FEATURES,
 }

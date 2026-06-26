@@ -120,24 +120,24 @@ export default function CeoDashboard({ toast, onNavigate }) {
 
       {/* ── Top stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Active Employees"    value={s.total_employees}      icon={Users}         gradient="navy"  delay={0.04} onClick={() => onNavigate('ceo-employees')} />
-        <StatCard label="Present Today"       value={s.present_today}        icon={Clock}         gradient="green" delay={0.08} onClick={() => onNavigate('ceo-attendance')} />
-        <StatCard label="On Leave Today"      value={s.on_leave_today}       icon={CalendarDays}  gradient="amber" delay={0.12} onClick={() => onNavigate('ceo-leaves')} />
-        <StatCard label="Pending Approvals"   value={totalPendingApprovals}  icon={AlertCircle}   gradient="rose"  delay={0.16} onClick={() => onNavigate('ceo-leaves')} />
+        <StatCard label="Active Employees"    value={s.total_employees}      icon={Users}         gradient="navy"  delay={0.04} onClick={() => onNavigate('employees')} />
+        <StatCard label="Present Today"       value={s.present_today}        icon={Clock}         gradient="green" delay={0.08} onClick={() => onNavigate('attendance')} />
+        <StatCard label="On Leave Today"      value={s.on_leave_today}       icon={CalendarDays}  gradient="amber" delay={0.12} onClick={() => onNavigate('leaves')} />
+        <StatCard label="Pending Approvals"   value={totalPendingApprovals}  icon={AlertCircle}   gradient="rose"  delay={0.16} onClick={() => onNavigate('leaves')} />
       </div>
 
       {/* ── Second row stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="New Hires This Month" value={s.new_hires_this_month} icon={UserPlus}      gradient="blue"  delay={0.04} onClick={() => onNavigate('ceo-employees')} />
-        <StatCard label="Open Positions"       value={s.open_positions}       icon={Briefcase}     gradient="purple" delay={0.08} onClick={() => onNavigate('recruitment')} />
-        <StatCard label="Pending Resignations" value={s.pending_resignations} icon={FileText}      gradient="orange" delay={0.12} onClick={() => onNavigate('ceo-leaves')} />
+        <StatCard label="New Hires This Month" value={s.new_hires_this_month} icon={UserPlus}      gradient="blue"  delay={0.04} onClick={() => onNavigate('employees')} />
+        <StatCard label="Open Positions"       value={s.open_positions}       icon={Briefcase}     gradient="purple" delay={0.08} onClick={() => onNavigate('job-openings')} />
+        <StatCard label="Pending Resignations" value={s.pending_resignations} icon={FileText}      gradient="orange" delay={0.12} onClick={() => onNavigate('leaves')} />
         <StatCard
           label="This Month Payroll"
           value={s.monthly_payroll > 0 ? fmt(s.monthly_payroll) : '—'}
           icon={IndianRupee}
           gradient="teal"
           delay={0.16}
-          onClick={() => onNavigate('payroll')}
+          onClick={() => onNavigate('payroll-entry')}
         />
       </div>
 
@@ -212,7 +212,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
 
         {/* Recruitment pipeline */}
         <div className="card">
-          <SectionHeader title="Recruitment Pipeline" onViewAll={onNavigate} navKey="recruitment" />
+          <SectionHeader title="Recruitment Pipeline" onViewAll={onNavigate} navKey="job-openings" />
           {totalPipelineApplicants === 0 ? (
             <EmptyState icon={Briefcase} message="No active applicants" />
           ) : (
@@ -245,7 +245,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
 
         {/* Open job posts */}
         <div className="card">
-          <SectionHeader title="Open Job Posts" onViewAll={onNavigate} navKey="recruitment" />
+          <SectionHeader title="Open Job Posts" onViewAll={onNavigate} navKey="job-openings" />
           {openJobs.length === 0 ? (
             <EmptyState icon={Briefcase} message="No open positions right now" />
           ) : (
@@ -280,7 +280,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="card-title">Leave Summary</div>
-            <button onClick={() => onNavigate('ceo-leaves')} className="text-xs flex items-center gap-0.5 hover:underline" style={{ color: 'var(--accent)' }}>
+            <button onClick={() => onNavigate('leaves')} className="text-xs flex items-center gap-0.5 hover:underline" style={{ color: 'var(--accent)' }}>
               View all <ChevronRight size={12} />
             </button>
           </div>
