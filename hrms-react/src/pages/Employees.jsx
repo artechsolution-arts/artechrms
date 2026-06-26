@@ -708,8 +708,7 @@ export default function Employees({ toast }) {
               }
             }
             if (f.employeeId) {
-              await load();
-              openDetail(f.employeeId);
+              load().then(() => openDetail(f.employeeId));
               return;
             }
           }
