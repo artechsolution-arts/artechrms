@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Menu, Bell, Home, ChevronRight, X, CheckCheck, Calendar, CalendarX, Edit3, Receipt, FileText, LogOut, UserCog, UserPlus, Megaphone, Info, AlertTriangle, CheckCircle, Clock, ClipboardList } from 'lucide-react';
+import { Bell, Home, ChevronRight, X, CheckCheck, Calendar, CalendarX, Edit3, Receipt, FileText, LogOut, UserCog, UserPlus, Megaphone, Info, AlertTriangle, CheckCircle, Clock, ClipboardList } from 'lucide-react';
 import { NAV } from './Sidebar';
 import { EMP_NAV } from './EmployeeSidebar';
 import { CEO_NAV } from './CeoSidebar';
@@ -239,9 +239,10 @@ export default function Topbar({ current, onNavigate, onToggleSidebar }) {
       <header className="glass-topbar sidebar-desktop h-11 items-center px-4 gap-3 flex-shrink-0 z-20">
         <button
           onClick={onToggleSidebar}
-          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
+          className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
+          title="Toggle sidebar"
         >
-          <Menu size={18} />
+          <img src="/logo.svg" alt="Toggle sidebar" style={{ width: 26, height: 26 }} />
         </button>
 
         {/* Breadcrumb */}

@@ -6,7 +6,7 @@ import {
   Monitor, BookOpen, FileDown, UserCircle, Receipt, Wallet, ClipboardList, CalendarCheck2,
   ChevronDown, ChevronRight, FilePenLine, UserMinus, FolderOpen, ClipboardCheck,
   ShieldCheck, Key, Crown, Settings as SettingsIcon, ChevronRight as ChevronRightIcon,
-  PanelLeftClose, PanelLeftOpen, BarChart2,
+  BarChart2,
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -140,37 +140,21 @@ function SidebarContent({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
-      {/* Brand */}
+      {/* Brand — clicking logo toggles rail (desktop) or closes drawer (mobile) */}
       <div style={{ padding: rail ? '14px 0 12px' : '14px 16px 12px', borderBottom: '1px solid var(--sidebar-border, rgba(255,255,255,0.08))', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: rail ? 'center' : 'flex-start' }}>
+        <button
+          onClick={onToggleRail || onClose}
+          title={rail ? 'Expand sidebar' : 'Collapse sidebar'}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: rail ? 'center' : 'flex-start', background: 'none', border: 'none', cursor: 'pointer', width: '100%', padding: 0, borderRadius: 8, transition: 'opacity 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
           <img src="/logo.svg" alt="Artech" style={{ width: 28, height: 28, flexShrink: 0 }} />
           <div style={{ overflow: 'hidden', opacity: rail ? 0 : 1, maxWidth: rail ? 0 : 200, transition: 'opacity 0.12s ease, max-width 0.18s cubic-bezier(0.23,1,0.32,1)' }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--sidebar-fg-strong, #fff)', lineHeight: '1.2', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>AR Peopliz</div>
             <div style={{ fontSize: 11, color: 'var(--sidebar-fg-label, rgba(255,255,255,0.38))', marginTop: 1, whiteSpace: 'nowrap' }}>Human Resources</div>
           </div>
-          {!rail && onToggleRail && (
-            <button onClick={onToggleRail} title="Collapse sidebar"
-              className="rail-toggle-desktop"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sidebar-fg-label, rgba(255,255,255,0.4))', padding: 4, borderRadius: 5, display: 'flex', marginLeft: 'auto', flexShrink: 0, transition: 'color 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.color = 'var(--sidebar-fg, rgba(255,255,255,0.85))'}
-              onMouseLeave={e => e.currentTarget.style.color = 'var(--sidebar-fg-label, rgba(255,255,255,0.4))'}>
-              <PanelLeftClose size={16} />
-            </button>
-          )}
-          <button onClick={onClose}
-            className="lg:hidden"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sidebar-fg-label, rgba(255,255,255,0.35))', padding: 4, borderRadius: 5, display: rail ? 'none' : 'flex', marginLeft: rail ? 0 : 4, flexShrink: 0 }}>
-            <X size={15} />
-          </button>
-        </div>
-        {rail && onToggleRail && (
-          <button onClick={onToggleRail} title="Expand sidebar"
-            style={{ background: 'var(--sidebar-hover-bg, rgba(255,255,255,0.06))', border: 'none', cursor: 'pointer', color: 'var(--sidebar-fg-muted, rgba(255,255,255,0.6))', padding: 6, borderRadius: 7, display: 'flex', margin: '10px auto 0', transition: 'background 0.15s, color 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--sidebar-user-btn-active, rgba(255,255,255,0.12))'; e.currentTarget.style.color = 'var(--sidebar-fg-strong, #fff)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--sidebar-hover-bg, rgba(255,255,255,0.06))'; e.currentTarget.style.color = 'var(--sidebar-fg-muted, rgba(255,255,255,0.6))'; }}>
-            <PanelLeftOpen size={16} />
-          </button>
-        )}
+        </button>
       </div>
 
       {/* Nav — scroll position is preserved because this component never unmounts */}
