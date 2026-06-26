@@ -510,19 +510,18 @@ export default function Reports() {
                 Download Excel
               </button>
 
-              {/* Send Reminder — only visible after save */}
-              {editsSaved && (
-                <button
-                  onClick={handleSend}
-                  disabled={sending}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm disabled:opacity-50"
-                >
-                  {sending
-                    ? <RefreshCw size={13} className="animate-spin" />
-                    : <Mail size={13} />}
-                  Send Reminder
-                </button>
-              )}
+              {/* Send Reminder — visible whenever report exists */}
+              <button
+                onClick={handleSend}
+                disabled={sending || editMode}
+                title={editMode ? 'Save edits first before sending' : ''}
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm disabled:opacity-50"
+              >
+                {sending
+                  ? <RefreshCw size={13} className="animate-spin" />
+                  : <Mail size={13} />}
+                Send Reminder
+              </button>
             </div>
           </div>
 
