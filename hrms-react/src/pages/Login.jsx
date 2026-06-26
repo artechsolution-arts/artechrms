@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from 'react';
-import { Loader2, Eye, EyeOff, ArrowRight, Users, CalendarDays, Clock, TrendingUp, DollarSign, BarChart3, X, Mail, Phone, CheckCircle2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Loader2, Eye, EyeOff, ArrowRight, UserRound, CalendarDays, Clock3, TrendingUp, Wallet, BarChart3, X, Mail, Phone, CheckCircle2 } from 'lucide-react';
 
 /* ── Artech brand palette ── */
 const C = {
@@ -13,13 +14,16 @@ const C = {
 };
 
 const FEATURES = [
-  { icon: Users,        num: '01', title: 'Employee Management',  desc: 'Onboard and manage your workforce'       },
-  { icon: CalendarDays, num: '02', title: 'Leave Management',     desc: 'Approvals, balances and calendars'       },
-  { icon: Clock,        num: '03', title: 'Attendance Tracking',  desc: 'Track hours and working patterns'        },
-  { icon: TrendingUp,   num: '04', title: 'Performance Reviews',  desc: 'Goals, appraisals, and growth cycles'    },
-  { icon: DollarSign,   num: '05', title: 'Payroll Processing',   desc: 'Accurate payslips and compliance'        },
-  { icon: BarChart3,    num: '06', title: 'Reports & Analytics',  desc: 'Insights that drive HR decisions'        },
+  { icon: UserRound,    title: 'Employee Management'  },
+  { icon: CalendarDays, title: 'Leave Management'      },
+  { icon: Clock3,       title: 'Attendance Tracking'  },
+  { icon: TrendingUp,   title: 'Performance Reviews'  },
+  { icon: Wallet,       title: 'Payroll Processing'   },
+  { icon: BarChart3,    title: 'Reports & Analytics'  },
 ];
+
+/* hexagon arrangement: row → feature indices */
+const HEX_ROWS = [[0], [1, 2], [3, 4], [5]];
 
 export default function Login({ onLogin }) {
   const [mode, setMode]               = useState('checking');
@@ -35,6 +39,7 @@ export default function Login({ onLogin }) {
   const [supportOpen, setSupportOpen] = useState(false);
   const rightPanelRef = useRef(null);
   const cardRef = useRef(null);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     // Handle Microsoft SSO callback — token passed as query param
@@ -73,6 +78,57 @@ export default function Login({ onLogin }) {
       }, 980);
       return () => clearTimeout(t);
     }
+  }, [revealed]);
+
+  /* ── Canvas: flowing particles + connection lines ── */
+  useEffect(() => {
+    if (!revealed) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    canvas.width  = parent.offsetWidth;
+    canvas.height = parent.offsetHeight;
+    const ctx = canvas.getContext('2d');
+    const N = 38;
+    const pts = Array.from({ length: N }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.38,
+      vy: (Math.random() - 0.5) * 0.38,
+      r: Math.random() * 1.4 + 0.7,
+      a: Math.random() * 0.35 + 0.25,
+    }));
+    const DIST = 105;
+    let raf;
+    function tick() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+          const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < DIST) {
+            ctx.beginPath();
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[j].x, pts[j].y);
+            ctx.strokeStyle = `rgba(61,199,179,${0.13 * (1 - d / DIST)})`;
+            ctx.lineWidth = 0.55;
+            ctx.stroke();
+          }
+        }
+      }
+      for (const p of pts) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(61,199,179,${p.a})`;
+        ctx.fill();
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > canvas.width)  p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      }
+      raf = requestAnimationFrame(tick);
+    }
+    tick();
+    return () => cancelAnimationFrame(raf);
   }, [revealed]);
 
   const f = v => setForm(prev => ({ ...prev, ...v }));
@@ -162,6 +218,9 @@ export default function Login({ onLogin }) {
           0%,100% { box-shadow: 0 0 0 0 rgba(61,199,179,0); }
           50%     { box-shadow: 0 0 32px 8px rgba(61,199,179,0.35); }
         }
+        @keyframes hexFloatA  { 0%,100% { transform: translateY(0px); }   50% { transform: translateY(-9px); }  }
+        @keyframes hexFloatB  { 0%,100% { transform: translateY(0px); }   50% { transform: translateY(7px);  }  }
+        @keyframes hexFloatC  { 0%,100% { transform: translateY(0px); }   50% { transform: translateY(-6px); }  }
 
         /* ══ LEFT PANEL ══ */
         .lp-left {
@@ -303,46 +362,73 @@ export default function Login({ onLogin }) {
           pointer-events: auto;
         }
 
-        /* stat cards */
-        .lp-stat {
+        /* ── Hexagon grid ── */
+        .hex-grid {
           flex: 1;
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 12px;
-          padding: 14px 12px;
-          text-align: center;
-          animation: countUp 0.5s ease-out both;
-          backdrop-filter: blur(8px);
-          transition: transform 0.22s cubic-bezier(0.23,1,0.32,1), background 0.2s, border-color 0.2s;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          z-index: 1;
         }
-        .lp-stat:hover {
-          transform: translateY(-3px) scale(1.02);
-          background: rgba(61,199,179,0.12);
-          border-color: rgba(61,199,179,0.3);
+        .hex-row {
+          display: flex;
+          gap: 18px;
+        }
+        .hex-row + .hex-row { margin-top: -44px; }
+
+        /* motion.div wrapper — receives framer-motion transforms */
+        .hex-wrap {
+          filter: drop-shadow(0 0 10px rgba(20,211,195,0.10));
+          transition: filter 0.3s ease;
+          cursor: default;
+        }
+        .hex-wrap:hover {
+          filter: drop-shadow(0 0 28px rgba(45,212,191,0.38));
         }
 
-        /* feature grid - 2 columns */
-        .lp-feat-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
-          flex: 1;
+        /* border layer — the clip-path hexagon */
+        .hex-outer {
+          width: 150px;
+          height: 170px;
+          position: relative;
+          clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+          background: rgba(255,255,255,0.08);
+          transition: background 0.3s ease;
         }
-        .lp-feat {
-          display: flex; align-items: flex-start; gap: 10px;
-          padding: 12px 12px;
-          animation: slideRight 0.5s ease-out both;
-          border-radius: 10px;
-          border: 1px solid rgba(255,255,255,0.07);
+        .hex-wrap:hover .hex-outer { background: rgba(45,212,191,0.50); }
+
+        /* fill layer — sits 1.5px inset */
+        .hex-inner {
+          position: absolute;
+          inset: 1.5px;
+          clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
           background: rgba(255,255,255,0.04);
-          transition: background 0.2s, transform 0.22s cubic-bezier(0.23,1,0.32,1), border-color 0.2s;
-          backdrop-filter: blur(4px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+          padding: 10px;
+          transition: background 0.3s ease;
         }
-        .lp-feat:hover {
-          background: rgba(61,199,179,0.09);
-          transform: translateY(-2px);
-          border-color: rgba(61,199,179,0.2);
+        .hex-wrap:hover .hex-inner { background: rgba(45,212,191,0.12); }
+
+        .hex-label {
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.85);
+          text-align: center;
+          line-height: 1.35;
         }
+
+        /* per-hex float variants (applied to hex-outer so they don't conflict with framer transform) */
+        .hf-a { animation: hexFloatA 3.2s ease-in-out infinite; }
+        .hf-b { animation: hexFloatB 3.8s ease-in-out infinite; }
+        .hf-c { animation: hexFloatC 3.5s ease-in-out infinite; }
 
         /* ══ RIGHT PANEL ══ */
         .lp-right {
@@ -686,67 +772,102 @@ export default function Login({ onLogin }) {
           {/* ── PHASE 2: Features panel ── */}
           <div className={`lp-left-inner${revealed ? ' visible' : ''}`}>
 
+            {/* Canvas: particles + connection lines */}
+            <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} />
+
             {/* Logo */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40, animation: revealed ? 'fadeUp 0.5s ease-out 0.6s both' : 'none' }}>
+            <motion.div
+              style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, position: 'relative', zIndex: 1 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={revealed ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.58, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+            >
               <div style={{
                 width: 42, height: 42, borderRadius: 12,
                 background: 'linear-gradient(135deg, rgba(61,199,179,0.2), rgba(26,106,180,0.3))',
                 border: '1px solid rgba(61,199,179,0.3)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
                 <img src="/logo.svg" alt="Artech" style={{ width: 26, height: 26 }} />
               </div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 20, color: '#fff', letterSpacing: '0.01em' }}>AR Peopliz</div>
-                <div style={{ fontSize: 11, color: C.teal, opacity: 0.8, marginTop: 1, letterSpacing: '0.04em', fontWeight: 500 }}>Human Resource Management</div>
+                <div style={{ fontSize: 11, color: C.teal, opacity: 0.85, marginTop: 1, letterSpacing: '0.04em', fontWeight: 500 }}>Human Resource Management</div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Tagline */}
-            <div style={{ marginBottom: 28, animation: revealed ? 'fadeUp 0.5s ease-out 0.65s both' : 'none' }}>
+            <motion.div
+              style={{ marginBottom: 18, position: 'relative', zIndex: 1 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={revealed ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.64, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+            >
               <h2 style={{
                 fontFamily: "'DM Serif Display', serif",
-                fontSize: '1.5rem',
+                fontSize: 'clamp(1.55rem, 2.2vw, 2rem)',
                 color: '#fff',
-                marginBottom: 6,
-                letterSpacing: '-0.01em',
-                lineHeight: 1.3,
+                letterSpacing: '-0.02em',
+                lineHeight: 1.25,
               }}>
                 Everything you need<br />
-                <span style={{ fontStyle: 'italic', color: C.teal }}>in one place</span>
+                <span style={{
+                  fontStyle: 'italic',
+                  background: 'linear-gradient(90deg, #2DD4BF, #14B8A6)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}>in one place</span>
               </h2>
-            </div>
+            </motion.div>
 
-            {/* Feature rows — 2 column grid */}
-            <div className="lp-feat-grid">
-              {FEATURES.map(({ icon: Icon, num, title, desc }, i) => (
-                <div key={num} className="lp-feat" style={{ animationDelay: revealed ? `${0.68 + i * 0.06}s` : '0s', flexDirection: 'column', gap: 8 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                    background: i % 2 === 0
-                      ? 'linear-gradient(135deg, rgba(61,199,179,0.2), rgba(26,106,180,0.15))'
-                      : 'linear-gradient(135deg, rgba(26,106,180,0.2), rgba(61,199,179,0.15))',
-                    border: `1px solid ${i % 2 === 0 ? 'rgba(61,199,179,0.25)' : 'rgba(26,106,180,0.25)'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <Icon size={14} color={i % 2 === 0 ? C.teal : '#6EB5E8'} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,0.9)', lineHeight: 1.3 }}>{title}</div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2, fontWeight: 400, lineHeight: 1.4 }}>{desc}</div>
-                  </div>
+            {/* Hexagon grid */}
+            <div className="hex-grid">
+              {HEX_ROWS.map((row, rowIdx) => (
+                <div
+                  key={rowIdx}
+                  className="hex-row"
+                  style={{ zIndex: HEX_ROWS.length - rowIdx }}
+                >
+                  {row.map((featIdx) => {
+                    const { icon: Icon, title } = FEATURES[featIdx];
+                    const floatClass = ['hf-a', 'hf-b', 'hf-c'][featIdx % 3];
+                    const floatDelay = `${featIdx * 0.22}s`;
+                    return (
+                      <motion.div
+                        key={title}
+                        className="hex-wrap"
+                        initial={{ opacity: 0, y: 38, scale: 0.78 }}
+                        animate={revealed ? { opacity: 1, y: 0, scale: 1 } : {}}
+                        transition={{ delay: 0.72 + featIdx * 0.1, duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
+                        whileHover={{ y: -10, scale: 1.06, transition: { duration: 0.22, ease: [0.23, 1, 0.32, 1] } }}
+                      >
+                        <div className={`hex-outer ${floatClass}`} style={{ animationDelay: floatDelay }}>
+                          <div className="hex-inner">
+                            <Icon size={22} color="#2DD4BF" strokeWidth={1.6} />
+                            <span className="hex-label">{title}</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
 
             {/* Footer */}
-            <div style={{
-              paddingTop: 18,
-              borderTop: '1px solid rgba(255,255,255,0.07)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              animation: revealed ? 'fadeIn 0.5s ease-out 1.1s both' : 'none',
-            }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>
+            <motion.div
+              style={{
+                paddingTop: 14, marginTop: 12,
+                borderTop: '1px solid rgba(255,255,255,0.07)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                position: 'relative', zIndex: 1,
+              }}
+              initial={{ opacity: 0 }}
+              animate={revealed ? { opacity: 1 } : {}}
+              transition={{ delay: 1.5, duration: 0.5 }}
+            >
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 400 }}>
                 © {new Date().getFullYear()} Artech Solutions. All rights reserved.
               </span>
               <div style={{
@@ -757,7 +878,7 @@ export default function Login({ onLogin }) {
               }}>
                 SECURE · COMPLIANT
               </div>
-            </div>
+            </motion.div>
 
           </div>
 
