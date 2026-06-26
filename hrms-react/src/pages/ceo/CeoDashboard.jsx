@@ -456,8 +456,15 @@ export default function CeoDashboard({ toast, onNavigate }) {
           ) : (
             <div className="p-4 space-y-3">
               {depts.slice(0, 7).map(d => (
-                <div key={d.name} className="flex items-center gap-3">
-                  <span className="text-xs text-gray-600 dark:text-gray-400 w-28 truncate flex-shrink-0">{d.name}</span>
+                <div
+                  key={d.name}
+                  className="flex items-center gap-3 group cursor-pointer rounded-lg px-1 -mx-1 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+                  onClick={() => {
+                    sessionStorage.setItem('nav-filter', JSON.stringify({ deptName: d.name }));
+                    onNavigate('employees');
+                  }}
+                >
+                  <span className="text-xs text-gray-600 dark:text-gray-400 w-28 truncate flex-shrink-0 group-hover:text-[var(--accent)] transition-colors">{d.name}</span>
                   <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-[width] duration-500 ease-out"
