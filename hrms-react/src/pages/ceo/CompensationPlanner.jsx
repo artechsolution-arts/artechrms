@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { api } from '../../api';
-import { TrendingUp, Info, IndianRupee } from 'lucide-react';
+import { Info, IndianRupee, RotateCcw } from 'lucide-react';
 import Select from '../../components/Select';
+import { useEffect } from 'react';
 
 const fmt = n => n >= 10_00_000
   ? `₹${(n / 10_00_000).toFixed(2)}L`
   : n >= 1_000
   ? `₹${(n / 1_000).toFixed(1)}K`
-  : `₹${n}`;
+  : `₹${Math.round(n)}`;
 
 const TABS = [
   { key: 'summary',     label: 'Summary' },
@@ -16,11 +17,12 @@ const TABS = [
 ];
 
 export default function CompensationPlanner({ toast }) {
-  const [hikeData, setHikeData] = useState(null);
-  const [hikePct, setHikePct]   = useState(10);
+  const [hikeData, setHikeData]     = useState(null);
+  const [hikePct, setHikePct]       = useState(10);
   const [filterDept, setFilterDept] = useState('All');
-  const [loading, setLoading]   = useState(true);
-  const [tab, setTab]           = useState('summary');
+  const [loading, setLoading]       = useState(true);
+  const [tab, setTab]               = useState('summary');
+  const [empHikes, setEmpHikes]     = useState({});   // { [empId]: pct }
 
   useEffect(() => {
     api('GET', '/api/dashboard/hike-snapshot')
@@ -29,6 +31,25 @@ export default function CompensationPlanner({ toast }) {
       .finally(() => setLoading(false));
   }, []);
 
+  function getHike(id) { return empHikes[id] ?? hikePct; }
+
+  function setEmpHike(id, raw) {
+    const val = Math.min(100, Math.max(0, Number(raw) || 0));
+    setEmpHikes(prev => ({ ...prev, [id]: val }));
+  }
+
+  function resetEmpHike(id) {
+    setEmpHikes(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  function resetAllHikes() { setEmpHikes({}); }
+
+  const overrideCount = Object.keys(empHikes).length;
+
   const result = useMemo(() => {
     if (!hikeData) return null;
     const emps = filterDept === 'All'
@@ -36,34 +57,40 @@ export default function CompensationPlanner({ toast }) {
       : hikeData.employees.filter(e => e.department === filterDept);
 
     const currentMonthly = emps.reduce((s, e) => s + e.gross_salary, 0);
-    const hikeAmount     = currentMonthly * (hikePct / 100);
+    const hikeAmount     = emps.reduce((s, e) => s + e.gross_salary * (getHike(e.id) / 100), 0);
     const newMonthly     = currentMonthly + hikeAmount;
     const annualImpact   = hikeAmount * 12;
 
     const deptMap = {};
     emps.forEach(e => {
-      if (!deptMap[e.department]) deptMap[e.department] = { current: 0, count: 0 };
-      deptMap[e.department].current += e.gross_salary;
-      deptMap[e.department].count   += 1;
+      const pct = getHike(e.id);
+      if (!deptMap[e.department]) deptMap[e.department] = { current: 0, count: 0, hikeTotal: 0 };
+      deptMap[e.department].current   += e.gross_salary;
+      deptMap[e.department].hikeTotal += e.gross_salary * (pct / 100);
+      deptMap[e.department].count     += 1;
     });
     const depts = Object.entries(deptMap)
-      .map(([name, { current, count }]) => ({
-        name, count, current,
-        increase: current * (hikePct / 100),
+      .map(([name, { current, count, hikeTotal }]) => ({
+        name, count, current, increase: hikeTotal,
       }))
       .sort((a, b) => b.increase - a.increase);
 
     const empRows = emps
-      .map(e => ({
-        ...e,
-        hikeAmt:     e.gross_salary * (hikePct / 100),
-        newGross:    e.gross_salary + e.gross_salary * (hikePct / 100),
-        annualExtra: e.gross_salary * (hikePct / 100) * 12,
-      }))
+      .map(e => {
+        const pct = getHike(e.id);
+        return {
+          ...e,
+          customPct:   empHikes[e.id] !== undefined,
+          pct,
+          hikeAmt:     e.gross_salary * (pct / 100),
+          newGross:    e.gross_salary + e.gross_salary * (pct / 100),
+          annualExtra: e.gross_salary * (pct / 100) * 12,
+        };
+      })
       .sort((a, b) => b.annualExtra - a.annualExtra);
 
     return { currentMonthly, newMonthly, hikeAmount, annualImpact, depts, count: emps.length, empRows };
-  }, [hikeData, hikePct, filterDept]);
+  }, [hikeData, hikePct, filterDept, empHikes]);
 
   const deptOptions = hikeData
     ? ['All', ...new Set(hikeData.employees.map(e => e.department))].map(d => ({ value: d, label: d }))
@@ -102,8 +129,13 @@ export default function CompensationPlanner({ toast }) {
               <div className="flex flex-wrap items-end gap-6">
                 <div className="flex-1 min-w-[240px]">
                   <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
-                    Hike Percentage —{' '}
+                    Default Hike —{' '}
                     <span style={{ color: 'var(--accent)' }} className="text-base font-bold">{hikePct}%</span>
+                    {overrideCount > 0 && (
+                      <span className="ml-2 text-[11px] text-amber-500 dark:text-amber-400 font-normal">
+                        ({overrideCount} custom override{overrideCount > 1 ? 's' : ''})
+                      </span>
+                    )}
                   </label>
                   <input
                     type="range" min="1" max="50" step="1"
@@ -116,15 +148,25 @@ export default function CompensationPlanner({ toast }) {
                     <span>1%</span><span>10%</span><span>20%</span><span>30%</span><span>40%</span><span>50%</span>
                   </div>
                 </div>
-                <div className="flex-shrink-0">
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Department</label>
-                  <Select
-                    value={filterDept}
-                    onChange={v => setFilterDept(v)}
-                    options={deptOptions}
-                    size="sm"
-                    className="w-48"
-                  />
+                <div className="flex items-end gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Department</label>
+                    <Select
+                      value={filterDept}
+                      onChange={v => setFilterDept(v)}
+                      options={deptOptions}
+                      size="sm"
+                      className="w-48"
+                    />
+                  </div>
+                  {overrideCount > 0 && (
+                    <button
+                      onClick={resetAllHikes}
+                      className="flex items-center gap-1.5 px-3 py-[7px] rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                    >
+                      <RotateCcw size={12} /> Reset all to default
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -160,9 +202,9 @@ export default function CompensationPlanner({ toast }) {
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       {[
                         { label: 'Employees Affected', value: result.count,             sub: filterDept === 'All' ? 'All departments' : filterDept, color: 'text-blue-600 dark:text-blue-400',  bg: 'bg-blue-50 dark:bg-blue-900/20' },
-                        { label: 'Monthly Hike Cost',  value: fmt(result.hikeAmount),   sub: `+${hikePct}% on gross`,             color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+                        { label: 'Monthly Hike Cost',  value: fmt(result.hikeAmount),   sub: overrideCount > 0 ? `Blended (${overrideCount} custom)` : `+${hikePct}% on gross`, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
                         { label: 'New Monthly Total',  value: fmt(result.newMonthly),   sub: `Current: ${fmt(result.currentMonthly)}`, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20' },
-                        { label: 'Annual Extra Cost',  value: fmt(result.annualImpact), sub: 'Additional per year',                color: 'text-rose-600 dark:text-rose-400',   bg: 'bg-rose-50 dark:bg-rose-900/20' },
+                        { label: 'Annual Extra Cost',  value: fmt(result.annualImpact), sub: 'Additional per year', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-900/20' },
                       ].map(({ label, value, sub, color, bg }) => (
                         <div key={label} className={`rounded-xl p-4 ${bg}`}>
                           <div className={`text-2xl font-bold ${color} leading-tight`}>{value}</div>
@@ -172,7 +214,6 @@ export default function CompensationPlanner({ toast }) {
                       ))}
                     </div>
 
-                    {/* Quick dept bars */}
                     {result.depts.length > 1 && (
                       <div>
                         <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Department Overview</div>
@@ -183,7 +224,7 @@ export default function CompensationPlanner({ toast }) {
                               <div className="flex-1 h-6 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative">
                                 <div
                                   className="h-full rounded-lg transition-[width] duration-300 ease-out"
-                                  style={{ width: `${(d.increase / result.hikeAmount) * 100}%`, backgroundColor: 'var(--accent)', opacity: 0.75 }}
+                                  style={{ width: `${result.hikeAmount > 0 ? (d.increase / result.hikeAmount) * 100 : 0}%`, backgroundColor: 'var(--accent)', opacity: 0.75 }}
                                 />
                                 <span className="absolute inset-0 flex items-center px-2 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
                                   +{fmt(d.increase)}/mo &nbsp;·&nbsp; {d.count} emp
@@ -210,7 +251,8 @@ export default function CompensationPlanner({ toast }) {
                           <th>Department</th>
                           <th>Designation</th>
                           <th className="text-right">Current Gross / mo</th>
-                          <th className="text-right">Hike ({hikePct}%)</th>
+                          <th className="text-center">Hike %</th>
+                          <th className="text-right">Hike Amount</th>
                           <th className="text-right">New Gross / mo</th>
                           <th className="text-right">Annual Extra</th>
                         </tr>
@@ -221,10 +263,43 @@ export default function CompensationPlanner({ toast }) {
                             <td className="font-medium">{e.name}</td>
                             <td>{e.department}</td>
                             <td>{e.designation || '—'}</td>
-                            <td className="text-right font-mono">{e.gross_salary > 0 ? fmt(e.gross_salary) : <span className="text-gray-300">—</span>}</td>
-                            <td className="text-right font-mono text-amber-600 dark:text-amber-400">+{fmt(e.hikeAmt)}</td>
-                            <td className="text-right font-mono text-green-600 dark:text-green-400 font-semibold">{e.newGross > 0 ? fmt(e.newGross) : '—'}</td>
-                            <td className="text-right font-mono text-rose-600 dark:text-rose-400">+{fmt(e.annualExtra)}</td>
+                            <td className="text-right font-mono">
+                              {e.gross_salary > 0 ? fmt(e.gross_salary) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                            </td>
+                            <td className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0" max="100" step="1"
+                                  value={e.pct}
+                                  onChange={ev => setEmpHike(e.id, ev.target.value)}
+                                  className={`form-input text-center text-xs py-1 w-16 ${
+                                    e.customPct
+                                      ? 'border-amber-400 dark:border-amber-600 text-amber-700 dark:text-amber-400 font-semibold'
+                                      : ''
+                                  }`}
+                                />
+                                <span className="text-xs text-gray-400">%</span>
+                                {e.customPct && (
+                                  <button
+                                    onClick={() => resetEmpHike(e.id)}
+                                    title="Reset to default"
+                                    className="text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                                  >
+                                    <RotateCcw size={11} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="text-right font-mono text-amber-600 dark:text-amber-400">
+                              {e.gross_salary > 0 ? `+${fmt(e.hikeAmt)}` : '—'}
+                            </td>
+                            <td className="text-right font-mono text-green-600 dark:text-green-400 font-semibold">
+                              {e.newGross > 0 ? fmt(e.newGross) : '—'}
+                            </td>
+                            <td className="text-right font-mono text-rose-600 dark:text-rose-400">
+                              {e.gross_salary > 0 ? `+${fmt(e.annualExtra)}` : '—'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -234,6 +309,7 @@ export default function CompensationPlanner({ toast }) {
                             Total — {result.count} employees
                           </td>
                           <td className="text-right font-mono px-4 py-2.5">{fmt(result.currentMonthly)}</td>
+                          <td className="px-4 py-2.5" />
                           <td className="text-right font-mono text-amber-600 dark:text-amber-400 px-4 py-2.5">+{fmt(result.hikeAmount)}</td>
                           <td className="text-right font-mono text-green-600 dark:text-green-400 px-4 py-2.5">{fmt(result.newMonthly)}</td>
                           <td className="text-right font-mono text-rose-600 dark:text-rose-400 px-4 py-2.5">+{fmt(result.annualImpact)}</td>
