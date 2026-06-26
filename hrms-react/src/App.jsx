@@ -187,8 +187,8 @@ export default function App() {
     );
   }
 
-  // SuperAdmin sees only the 3 admin pages — nothing else
-  const SUPERADMIN_FEATURES = ['admin-overview', 'admin-users', 'admin-permissions'];
+  // SuperAdmin admin pages + shared management pages accessible to both SuperAdmin and HR
+  const SUPERADMIN_FEATURES = ['admin-overview', 'admin-users', 'admin-permissions', 'assets'];
   const isSuperAdmin = user?.role === 'SuperAdmin';
   const sidebarFeatures = isSuperAdmin ? SUPERADMIN_FEATURES : (allowed === '*' ? null : allowed);
 
