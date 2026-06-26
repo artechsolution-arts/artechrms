@@ -43,8 +43,26 @@ export default function EmpAttendance({ toast }) {
   const absent  = records.filter(r => r.status === 'Absent').length;
   const wfh     = records.filter(r => r.status === 'WFH').length;
   const onLeave = records.filter(r => r.status === 'On Leave').length;
+
   const daysInMonth = new Date(year, month, 0).getDate();
-  const rate = daysInMonth ? Math.round((present + wfh) / daysInMonth * 100) : 0;
+
+  // Working days = weekdays minus public holidays in this month
+  const holidaySet = new Set(
+    holidays
+      .map(h => h.date.slice(0, 10))
+      .filter(d => {
+        const [hy, hm] = d.split('-').map(Number);
+        return hy === year && hm === month;
+      })
+  );
+  let workingDays = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = new Date(year, month - 1, d).getDay();
+    const ds  = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (dow !== 0 && dow !== 6 && !holidaySet.has(ds)) workingDays++;
+  }
+
+  const rate = workingDays ? Math.round((present + wfh) / workingDays * 100) : 0;
 
   return (
     <>
@@ -83,7 +101,7 @@ export default function EmpAttendance({ toast }) {
             </div>
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>0%</span>
-              <span className="text-green-600">Target: 90%</span>
+              <span className="text-green-600">Target: 90% &nbsp;·&nbsp; {workingDays} working days</span>
               <span>100%</span>
             </div>
           </div>
