@@ -2,14 +2,16 @@
 import {
   LayoutDashboard, Users, CalendarDays, Clock,
   ClipboardList, CalendarCheck2, X, LogOut, ChevronDown, ChevronRight,
+  Briefcase, IndianRupee, UserCheck,
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
 
 const CEO_PRIMARY = [
-  { key: 'ceo-dashboard', label: 'Home',   icon: LayoutDashboard },
-  { key: 'ceo-leaves',    label: 'Leaves', icon: CalendarDays },
-  { key: 'ceo-employees', label: 'People', icon: Users },
+  { key: 'ceo-dashboard', label: 'Home',        icon: LayoutDashboard },
+  { key: 'ceo-leaves',    label: 'Leaves',      icon: CalendarDays },
+  { key: 'ceo-employees', label: 'People',      icon: Users },
+  { key: 'recruitment',   label: 'Recruitment', icon: Briefcase },
 ];
 
 export const CEO_NAV = [
@@ -17,11 +19,15 @@ export const CEO_NAV = [
   { key: 'ceo-employees',     label: 'Employees',        icon: Users,           section: 'People' },
   { key: 'ceo-leaves',        label: 'Leave Approvals',  icon: CalendarDays,    section: 'Approvals' },
   { key: 'ceo-work-mode',     label: 'Team Calendar',    icon: CalendarCheck2,  section: 'Approvals' },
+  { key: 'recruitment',       label: 'Job Openings',     icon: Briefcase,       section: 'Recruitment' },
+  { key: 'applicants',        label: 'Applicants',       icon: UserCheck,       section: 'Recruitment' },
+  { key: 'payroll',           label: 'Payroll',          icon: IndianRupee,     section: 'Finance' },
+  { key: 'salary-slips',      label: 'Salary Slips',     icon: ClipboardList,   section: 'Finance' },
   { key: 'ceo-status-sheets', label: 'Status Sheets',    icon: ClipboardList,   section: 'Reports' },
   { key: 'ceo-attendance',    label: 'Attendance',       icon: Clock,           section: 'Reports' },
 ];
 
-const ALL_SECTIONS = ['People', 'Approvals', 'Reports'];
+const ALL_SECTIONS = ['People', 'Approvals', 'Recruitment', 'Finance', 'Reports'];
 
 function loadCollapsed() {
   try { return JSON.parse(localStorage.getItem('ceo-sidebar-collapsed') || '{}'); }

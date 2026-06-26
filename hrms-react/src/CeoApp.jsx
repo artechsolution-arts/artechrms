@@ -12,6 +12,10 @@ import Employees     from './pages/Employees';
 import HRStatusSheet from './pages/HRStatusSheet';
 import Attendance    from './pages/Attendance';
 import HRWorkMode    from './pages/HRWorkMode';
+import JobOpenings   from './pages/JobOpenings';
+import Applicants    from './pages/Applicants';
+import PayrollEntry  from './pages/PayrollEntry';
+import SalarySlips   from './pages/SalarySlips';
 
 const CEO_PAGES = {
   'ceo-dashboard':     CeoDashboard,
@@ -20,6 +24,10 @@ const CEO_PAGES = {
   'ceo-status-sheets': HRStatusSheet,
   'ceo-attendance':    Attendance,
   'ceo-work-mode':     HRWorkMode,
+  'recruitment':       JobOpenings,
+  'applicants':        Applicants,
+  'payroll':           PayrollEntry,
+  'salary-slips':      SalarySlips,
 };
 
 export default function CeoApp({ user, logout }) {

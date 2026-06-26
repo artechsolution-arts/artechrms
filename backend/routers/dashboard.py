@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from backend.database import get_db
 from backend.models.employee import Employee
 from backend.models.leave import LeaveApplication, Attendance
 from backend.models.payroll import SalarySlip
 from backend.models.recruitment import JobOpening, JobApplicant
+from backend.models.resignation import Resignation
+from backend.models.edit_request import EditRequest
 from datetime import date, timedelta
 from collections import defaultdict
 
@@ -14,6 +17,8 @@ router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 @router.get("")
 def get_dashboard(db: Session = Depends(get_db)):
     today = date.today()
+    first_day_month = today.replace(day=1)
+
     total_employees = db.query(Employee).filter(Employee.status == "Active").count()
     pending_leaves = db.query(LeaveApplication).filter(LeaveApplication.status == "Pending").count()
     cancellation_requests = db.query(LeaveApplication).filter(LeaveApplication.status == "Cancellation Requested").count()
@@ -24,6 +29,18 @@ def get_dashboard(db: Session = Depends(get_db)):
         Attendance.date == today,
         Attendance.status == "Present",
     ).count()
+    on_leave_today = db.query(LeaveApplication).filter(
+        LeaveApplication.status == "Approved",
+        LeaveApplication.from_date <= today,
+        LeaveApplication.to_date >= today,
+    ).count()
+    new_hires_this_month = db.query(Employee).filter(
+        Employee.date_of_joining >= first_day_month,
+    ).count()
+
+    # pending resignations & edit requests (CEO approvals)
+    pending_resignations = db.query(Resignation).filter(Resignation.status == "Pending").count()
+    pending_edit_requests = db.query(EditRequest).filter(EditRequest.status == "Pending").count()
 
     # recent hires
     recent_hires = db.query(Employee).order_by(Employee.date_of_joining.desc()).limit(5).all()
@@ -59,19 +76,37 @@ def get_dashboard(db: Session = Depends(get_db)):
         month_data.append(monthly_hires.get(label, 0))
 
     # attendance this month
-    first_day = today.replace(day=1)
-    att_rows = db.query(Attendance).filter(Attendance.date >= first_day).all()
+    att_rows = db.query(Attendance).filter(Attendance.date >= first_day_month).all()
     att_status = defaultdict(int)
     for a in att_rows:
         att_status[a.status] += 1
 
+    # this month's payroll expense (submitted slips only)
+    payroll_result = db.query(func.sum(SalarySlip.net_pay)).filter(
+        SalarySlip.month == today.month,
+        SalarySlip.year == today.year,
+    ).scalar()
+    monthly_payroll = float(payroll_result or 0)
+
+    # recruitment pipeline — counts per applicant status
+    applicant_rows = db.query(JobApplicant.status, func.count(JobApplicant.id)).group_by(JobApplicant.status).all()
+    recruitment_pipeline = {row[0]: row[1] for row in applicant_rows}
+
+    # open job openings (latest 5)
+    open_jobs = db.query(JobOpening).filter(JobOpening.status == "Open").order_by(JobOpening.id.desc()).limit(5).all()
+
     return {
         "stats": {
-            "total_employees": total_employees,
-            "pending_leaves": pending_leaves,
+            "total_employees":      total_employees,
+            "pending_leaves":       pending_leaves,
             "cancellation_requests": cancellation_requests,
-            "open_positions": open_positions,
-            "present_today": present_today,
+            "open_positions":       open_positions,
+            "present_today":        present_today,
+            "on_leave_today":       on_leave_today,
+            "new_hires_this_month": new_hires_this_month,
+            "pending_resignations": pending_resignations,
+            "pending_edit_requests": pending_edit_requests,
+            "monthly_payroll":      monthly_payroll,
         },
         "leave_stats": {
             "pending": pending_leaves,
@@ -96,5 +131,16 @@ def get_dashboard(db: Session = Depends(get_db)):
                 "joined": str(e.date_of_joining),
             }
             for e in recent_hires
+        ],
+        "monthly_payroll": monthly_payroll,
+        "recruitment_pipeline": recruitment_pipeline,
+        "open_jobs": [
+            {
+                "id": j.id,
+                "title": j.title,
+                "positions": j.no_of_positions or 1,
+                "closes_on": str(j.closes_on) if j.closes_on else "",
+            }
+            for j in open_jobs
         ],
     }
