@@ -527,7 +527,6 @@ export default function CeoDashboard({ toast, onNavigate }) {
       <div
         className="rounded-2xl p-6 flex items-center justify-between overflow-hidden relative"
         style={{
-          backgroundColor: '#0a1a3d',
           backgroundImage: 'var(--ceo-banner-bg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
