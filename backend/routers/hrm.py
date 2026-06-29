@@ -1190,8 +1190,22 @@ from backend.utils.email import send_email, document_ready_email
 GENERATED_DOCS_DIR = "/app/generated_docs"
 
 
+def _get_actor_email(request, db) -> str:
+    """Return the logged-in HR user's email for use as the Graph sender."""
+    try:
+        username = getattr(request.state, "username", None)
+        if not username:
+            return ""
+        from backend.models.auth import User as _User
+        u = db.query(_User).filter(_User.username == username).first()
+        return (u.email or "") if u else ""
+    except Exception:
+        return ""
+
+
 def _send_letter_email(pdf_bytes: bytes, filename: str, fields: dict,
-                       letter_type: str, company_name: str) -> None:
+                       letter_type: str, company_name: str,
+                       from_email: str = "") -> None:
     """Fire-and-forget: email the generated letter PDF to the recipient if email is set."""
     recipient_email = (
         fields.get("email") or fields.get("work_email") or ""
@@ -1206,6 +1220,7 @@ def _send_letter_email(pdf_bytes: bytes, filename: str, fields: dict,
         to=recipient_email,
         subject=subject,
         html=html,
+        from_email=from_email,
         attachments=[(filename, pdf_bytes, "application/pdf")],
     )
 
@@ -1280,6 +1295,7 @@ def _auto_fill_fields(emp, tpl_cfg: dict, user_fields: dict) -> dict:
 
 @router.post("/letters/generate")
 def generate_employee_letter(
+    request: Request,
     body: LetterGenerateRequest,
     db: Session = Depends(get_db),
 ):
@@ -1328,8 +1344,10 @@ def generate_employee_letter(
         db.commit()
 
     # Email the letter if a recipient email is available
+    _actor_email = _get_actor_email(request, db)
     _send_letter_email(pdf_bytes, filename, fields, body.letter_type,
-                       tpl_cfg.get("company_name") or "AR Tech Solutions")
+                       tpl_cfg.get("company_name") or "AR Tech Solutions",
+                       from_email=_actor_email)
 
     return _Response(
         content=pdf_bytes,
@@ -1416,6 +1434,7 @@ def delete_doc_template(tpl_id: int, db: Session = Depends(get_db)):
 @router.post("/doc-templates/{tpl_id}/generate")
 def generate_from_doc_template(
     tpl_id: int,
+    request: Request,
     body: _DocTplGenerateReq,
     db: Session = Depends(get_db),
 ):
@@ -1460,8 +1479,10 @@ def generate_from_doc_template(
         db.commit()
 
     # Email the letter if a recipient email is available
+    _actor_email = _get_actor_email(request, db)
     _send_letter_email(pdf_bytes, filename, fields, tpl.name,
-                       tpl_cfg.get("company_name") or "AR Tech Solutions")
+                       tpl_cfg.get("company_name") or "AR Tech Solutions",
+                       from_email=_actor_email)
 
     return _Response(
         content=pdf_bytes,
