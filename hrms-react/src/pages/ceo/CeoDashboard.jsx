@@ -524,15 +524,26 @@ export default function CeoDashboard({ toast, onNavigate }) {
       `}</style>
 
       {/* ── Banner ── */}
-      <div className="bg-gradient-to-r from-rose-600 to-rose-400 rounded-2xl p-6 text-white flex items-center justify-between">
-        <div>
-          <div className="text-lg font-bold mb-0.5">CEO Overview</div>
-          <div className="text-white/70 text-sm">Organisation-wide workforce snapshot</div>
-          <div className="text-white/50 text-xs mt-1">
+      <div
+        className="rounded-2xl p-6 flex items-center justify-between overflow-hidden relative"
+        style={{
+          backgroundImage: 'var(--ceo-banner-bg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="relative z-10">
+          <div className="text-lg font-bold mb-0.5 text-gray-800 dark:text-white">CEO Overview</div>
+          <div className="text-sm text-gray-500 dark:text-white/70">Organisation-wide workforce snapshot</div>
+          <div className="text-xs mt-1 text-gray-400 dark:text-white/50">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
         </div>
-        <TrendingUp size={48} className="text-white/30 flex-shrink-0" />
+        <TrendingUp size={48} className="text-gray-300 dark:text-white/30 flex-shrink-0 relative z-10" />
+        <style>{`
+          :root { --ceo-banner-bg: url('/ceo-banner-light.png'); }
+          .dark { --ceo-banner-bg: url('/ceo-banner-dark.png'); }
+        `}</style>
       </div>
 
       {/* ── Top stat cards ── */}
