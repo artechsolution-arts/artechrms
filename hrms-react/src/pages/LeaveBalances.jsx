@@ -141,7 +141,8 @@ function EmployeeCard({ empId, name, photo, balances, leaveTypes, colorIdx, year
     const init = {};
     leaveTypes.forEach(lt => {
       const b = balances.find(x => x.leave_type_id === lt.id);
-      init[lt.id] = b ? String(b.allocated) : '0';
+      init[`alloc_${lt.id}`] = b ? String(b.allocated) : '0';
+      init[`used_${lt.id}`]  = b ? String(b.used ?? 0)  : '0';
     });
     setEditVals(init);
     setEditing(true);
@@ -151,13 +152,23 @@ function EmployeeCard({ empId, name, photo, balances, leaveTypes, colorIdx, year
     setSaving(true);
     try {
       for (const lt of leaveTypes) {
-        const allocated = parseFloat(editVals[lt.id]) || 0;
+        const b = balances.find(x => x.leave_type_id === lt.id);
+        const allocated = parseFloat(editVals[`alloc_${lt.id}`]) || 0;
+        const used      = parseFloat(editVals[`used_${lt.id}`])  || 0;
         await api('POST', '/api/hrm/leave-balances/allocate', {
           employee_id: parseInt(empId),
           leave_type_id: lt.id,
           year,
           allocated,
         });
+        if (b) {
+          await api('POST', '/api/hrm/leave-balances/set-used', {
+            employee_id: parseInt(empId),
+            leave_type_id: lt.id,
+            year,
+            used,
+          });
+        }
       }
       toast('Leave balances updated', 'success');
       setEditing(false);
@@ -203,14 +214,25 @@ function EmployeeCard({ empId, name, photo, balances, leaveTypes, colorIdx, year
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-gray-600 dark:text-gray-400 truncate pr-2">{lt.name}</span>
                 {editing ? (
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <input
-                      type="number" min={0} step={0.5}
-                      className="w-16 text-xs text-center border border-gray-200 dark:border-gray-600 rounded-md px-1.5 py-0.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                      value={editVals[lt.id] ?? (b ? b.allocated : 0)}
-                      onChange={e => setEditVals(prev => ({ ...prev, [lt.id]: e.target.value }))}
-                    />
-                    <span className="text-[10px] text-gray-400">days</span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <input
+                        type="number" min={0} step={0.5}
+                        className="w-14 text-xs text-center border border-amber-300 dark:border-amber-700 rounded-md px-1 py-0.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        value={editVals[`used_${lt.id}`] ?? (b ? b.used : 0)}
+                        onChange={e => setEditVals(prev => ({ ...prev, [`used_${lt.id}`]: e.target.value }))}
+                      />
+                      <span className="text-[9px] text-amber-500">taken</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                      <input
+                        type="number" min={0} step={0.5}
+                        className="w-14 text-xs text-center border border-gray-200 dark:border-gray-600 rounded-md px-1 py-0.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                        value={editVals[`alloc_${lt.id}`] ?? (b ? b.allocated : 0)}
+                        onChange={e => setEditVals(prev => ({ ...prev, [`alloc_${lt.id}`]: e.target.value }))}
+                      />
+                      <span className="text-[9px] text-gray-400">total</span>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2.5 flex-shrink-0">

@@ -243,6 +243,13 @@ class LeaveBalanceAllocateIn(BaseModel):
     allocated: float
 
 
+class LeaveBalanceSetUsedIn(BaseModel):
+    employee_id: int
+    leave_type_id: int
+    year: int
+    used: float
+
+
 class AllocateAllIn(BaseModel):
     year: int
 
@@ -293,6 +300,25 @@ def allocate_leave_balance(data: LeaveBalanceAllocateIn, db: Session = Depends(g
     else:
         balance = LeaveBalance(**data.model_dump())
         db.add(balance)
+    db.commit()
+    db.refresh(balance)
+    return {"id": balance.id, "ok": True}
+
+
+@router.post("/leave-balances/set-used", status_code=200)
+def set_leave_balance_used(data: LeaveBalanceSetUsedIn, db: Session = Depends(get_db)):
+    balance = (
+        db.query(LeaveBalance)
+        .filter(
+            LeaveBalance.employee_id == data.employee_id,
+            LeaveBalance.leave_type_id == data.leave_type_id,
+            LeaveBalance.year == data.year,
+        )
+        .first()
+    )
+    if not balance:
+        raise HTTPException(status_code=404, detail="Leave balance record not found")
+    balance.used = data.used
     db.commit()
     db.refresh(balance)
     return {"id": balance.id, "ok": True}
