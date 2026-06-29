@@ -35,10 +35,10 @@ DEFAULT_PERMISSIONS = {
         "ceo-dashboard", "compensation-planner",
         "employees", "departments", "leaves", "work-mode-sheet",
         "attendance", "holidays", "announcements", "onboarding",
-        "document-requests", "appraisals", "status-sheets", "company-docs",
+        "document-requests", "appraisals", "status-sheets",
         "job-openings", "applicants", "payroll-entry", "salary-slips", "resignations",
         "edit-requests",
-    ] + PORTAL_FEATURES,
+    ],
     "Employee": EMP_FEATURES,
 }
 
