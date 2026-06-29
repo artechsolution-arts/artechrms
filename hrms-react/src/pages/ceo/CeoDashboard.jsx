@@ -528,7 +528,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
         className="rounded-2xl p-6 flex items-center justify-between overflow-hidden relative"
         style={{
           backgroundImage: 'var(--ceo-banner-bg)',
-          backgroundSize: 'cover',
+          backgroundSize: 'var(--ceo-banner-size, cover)',
           backgroundPosition: 'center',
         }}
       >
@@ -541,8 +541,8 @@ export default function CeoDashboard({ toast, onNavigate }) {
         </div>
         <TrendingUp size={48} className="text-gray-300 dark:text-white/30 flex-shrink-0 relative z-10" />
         <style>{`
-          :root { --ceo-banner-bg: url('/ceo-banner-light.png'); }
-          .dark { --ceo-banner-bg: url('/ceo-banner-dark.png'); }
+          :root { --ceo-banner-bg: url('/ceo-banner-light.png'); --ceo-banner-size: cover; }
+          .dark { --ceo-banner-bg: url('/ceo-banner-dark.jpg'); --ceo-banner-size: 120% 120%; }
         `}</style>
       </div>
 
