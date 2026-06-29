@@ -86,7 +86,7 @@ function DetailSection({ title, children }) {
 
 const EVENT_TYPES = [
   'Joining', 'Probation Completed', 'Salary Hike', 'Promotion', 'Demotion',
-  'Department Change', 'Transfer', 'Role Change', 'Notice Served', 'Resignation', 'Status Change',
+  'Department Change', 'Transfer', 'Role Change', 'Assignment', 'Notice Served', 'Resignation', 'Status Change',
 ];
 
 const EVENT_META = {
