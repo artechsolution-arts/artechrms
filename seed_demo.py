@@ -1,0 +1,422 @@
+"""
+Demo seed script for Jeevan client demo.
+
+Usage:
+    DATABASE_URL=postgresql://... python seed_demo.py          # seed fresh DB
+    DATABASE_URL=postgresql://... python seed_demo.py --reset  # wipe + re-seed
+    DATABASE_URL=postgresql://... python seed_demo.py --wipe   # wipe only
+
+Without DATABASE_URL it falls back to the local default in database.py.
+"""
+
+import sys
+import os
+import calendar as _cal
+import random
+from datetime import date, timedelta
+
+sys.path.insert(0, os.path.dirname(__file__))
+
+# Register all models before create_all
+from backend.database import engine, SessionLocal, Base
+import backend.models  # noqa: F401
+from backend.models.activity_log import ActivityLog  # noqa: F401
+
+from backend.models.auth import User
+from backend.models.employee import Employee, Department, Designation
+from backend.models.leave import LeaveType, LeaveApplication, Attendance
+from backend.models.hrm import LeaveBalance, Holiday, EmployeeAsset, Announcement
+from backend.models.payroll import SalarySlip, PayrollRules
+from backend.models.permission import RolePermission, DEFAULT_PERMISSIONS
+from backend.auth_utils import get_password_hash
+
+
+# ── Constants ─────────────────────────────────────────────────
+
+TODAY = date.today()
+YEAR  = TODAY.year
+MONTH = TODAY.month
+
+random.seed(42)
+
+# ── Wipe ──────────────────────────────────────────────────────
+
+WIPE_TABLES = [
+    "activity_logs",
+    "salary_slips",
+    "payroll_entries",
+    "employee_assets",
+    "leave_balances",
+    "leave_applications",
+    "attendance",
+    "employees",
+    "departments",
+    "designations",
+    "leave_types",
+    "holidays",
+    "announcements",
+    "users",
+    "role_permissions",
+    "payroll_rules",
+]
+
+
+def wipe(db):
+    print("Wiping demo data...")
+    from sqlalchemy import text
+    for t in WIPE_TABLES:
+        try:
+            db.execute(text(f"TRUNCATE TABLE {t} RESTART IDENTITY CASCADE"))
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"  skip {t}: {e}")
+    print("  Done.\n")
+
+
+# ── Helpers ───────────────────────────────────────────────────
+
+def _month_ago(n=0):
+    """First day of month N months ago."""
+    m, y = MONTH - n, YEAR
+    while m <= 0:
+        m += 12
+        y -= 1
+    return date(y, m, 1)
+
+
+def _month_end(d: date) -> date:
+    return date(d.year, d.month, _cal.monthrange(d.year, d.month)[1])
+
+
+# ── Seed ──────────────────────────────────────────────────────
+
+def seed(db):
+    print("Seeding demo data for Jeevan Solutions…\n")
+
+    # ── 1. Departments ────────────────────────────────────────
+    dept_names = ["Engineering", "Human Resources", "Finance", "Operations", "Sales"]
+    depts = {}
+    for name in dept_names:
+        d = Department(name=name)
+        db.add(d)
+        depts[name] = d
+    db.flush()
+
+    # ── 2. Designations ───────────────────────────────────────
+    desig_names = [
+        "Software Engineer", "Senior Software Engineer", "Team Lead",
+        "HR Manager", "HR Executive",
+        "Accounts Manager",
+        "Operations Manager", "Operations Executive",
+        "Sales Manager", "Sales Executive",
+    ]
+    desigs = {}
+    for name in desig_names:
+        d = Designation(name=name)
+        db.add(d)
+        desigs[name] = d
+    db.flush()
+
+    # ── 3. Users ──────────────────────────────────────────────
+    #   (username, full_name, email, password, role)
+    users_spec = [
+        ("superadmin", "Super Admin",   "superadmin@jeevan.demo", "Admin@123",  "SuperAdmin"),
+        ("hr_priya",   "Priya Sharma",  "priya@jeevan.demo",      "Hr@123",     "HR"),
+        ("ceo_vivek",  "Vivek Jeevan",  "vivek@jeevan.demo",      "Ceo@123",    "CEO"),
+        ("emp_arjun",  "Arjun Mehta",   "arjun@jeevan.demo",      "Emp@123",    "Employee"),
+        ("emp_neha",   "Neha Reddy",    "neha@jeevan.demo",       "Emp@123",    "Employee"),
+        ("emp_rohan",  "Rohan Das",     "rohan@jeevan.demo",      "Emp@123",    "Employee"),
+        ("emp_kavya",  "Kavya Nair",    "kavya@jeevan.demo",      "Emp@123",    "Employee"),
+        ("emp_suresh", "Suresh Pillai", "suresh@jeevan.demo",     "Emp@123",    "Employee"),
+    ]
+    user_objs = {}
+    for uname, full, email, pwd, role in users_spec:
+        u = User(
+            username=uname, full_name=full, email=email,
+            hashed_password=get_password_hash(pwd),
+            role=role, is_active=True,
+        )
+        db.add(u)
+        user_objs[uname] = u
+    db.flush()
+
+    # ── 4. Employees ──────────────────────────────────────────
+    #   (username, emp_code, dept, desig, join_date, basic, mobile, gender, dob)
+    emp_spec = [
+        ("emp_arjun",  "JVN-0001", "Engineering",    "Senior Software Engineer", date(2022, 3, 15), 55000, "9876543210", "Male",   date(1993, 6, 20)),
+        ("emp_neha",   "JVN-0002", "Human Resources","HR Executive",             date(2023, 1, 10), 38000, "9876543211", "Female", date(1996, 9, 14)),
+        ("emp_rohan",  "JVN-0003", "Engineering",    "Software Engineer",        date(2023, 7,  1), 42000, "9876543212", "Male",   date(1997, 4, 25)),
+        ("emp_kavya",  "JVN-0004", "Sales",          "Sales Manager",            date(2021,11, 20), 60000, "9876543213", "Female", date(1991,12,  3)),
+        ("emp_suresh", "JVN-0005", "Operations",     "Operations Executive",     date(2022, 8,  5), 35000, "9876543214", "Male",   date(1994, 2, 18)),
+    ]
+    emp_objs = {}
+    for uname, code, dept_name, desig_name, join, basic, mobile, gender, dob in emp_spec:
+        u = user_objs[uname]
+        emp = Employee(
+            user_id           = u.id,
+            employee_id       = code,
+            full_name         = u.full_name,
+            first_name        = u.full_name.split()[0],
+            last_name         = " ".join(u.full_name.split()[1:]),
+            email             = u.email,
+            mobile            = mobile,
+            gender            = gender,
+            date_of_birth     = dob,
+            date_of_joining   = join,
+            department_id     = depts[dept_name].id,
+            designation_id    = desigs[desig_name].id,
+            status            = "Active",
+            basic_salary      = float(basic),
+            hra_percent       = 40.0,
+            special_allowance = round(basic * 0.10),
+            pf_applicable     = 1,
+            esi_applicable    = 1 if basic <= 21000 else 0,
+            pt_state          = "Karnataka",
+            employment_type   = "Full-time",
+            probation_period_days = 90,
+        )
+        db.add(emp)
+        emp_objs[uname] = emp
+    db.flush()
+
+    # ── 5. Leave Types ────────────────────────────────────────
+    #   (name, max_leaves, is_carry_forward, is_paid)
+    lt_spec = [
+        ("Casual Leave",    12, False, True),
+        ("Sick Leave",      12, False, True),
+        ("Earned Leave",    15, True,  True),
+        ("Maternity Leave", 26*5, False, True),
+        ("Paternity Leave",  5*5, False, True),
+        ("Loss of Pay",      0,  False, False),
+    ]
+    lt_objs = {}
+    for name, max_l, carry, paid in lt_spec:
+        lt = LeaveType(name=name, max_leaves=float(max_l), is_carry_forward=carry, is_paid=paid)
+        db.add(lt)
+        lt_objs[name] = lt
+    db.flush()
+
+    # ── 6. Leave Balances ─────────────────────────────────────
+    for emp in emp_objs.values():
+        for name, max_l, _, _ in lt_spec:
+            if max_l == 0:
+                continue
+            db.add(LeaveBalance(
+                employee_id   = emp.id,
+                leave_type_id = lt_objs[name].id,
+                year          = YEAR,
+                allocated     = float(max_l),
+                used          = 0.0,
+                carried_forward = 0.0,
+            ))
+    db.flush()
+
+    # ── 7. Holidays ───────────────────────────────────────────
+    holiday_list = [
+        (date(YEAR, 1, 26), "Republic Day",          "National"),
+        (date(YEAR, 3, 25), "Holi",                  "National"),
+        (date(YEAR, 4, 14), "Dr. Ambedkar Jayanti",  "National"),
+        (date(YEAR, 8, 15), "Independence Day",       "National"),
+        (date(YEAR, 10, 2), "Gandhi Jayanti",         "National"),
+        (date(YEAR, 11,12), "Diwali",                 "National"),
+        (date(YEAR, 12,25), "Christmas",              "National"),
+    ]
+    holiday_dates = {h[0] for h in holiday_list}
+    for h_date, h_name, h_type in holiday_list:
+        db.add(Holiday(date=h_date, name=h_name, holiday_type=h_type))
+    db.flush()
+
+    # ── 8. Attendance — last 2 full months + current partial ──
+    statuses_pool = (
+        ["Present"] * 7 + ["WFH"] * 1 + ["Half Day"] * 1
+    )
+
+    for emp in emp_objs.values():
+        for mo_offset in [2, 1, 0]:
+            m_start = _month_ago(mo_offset)
+            m_end   = _month_end(m_start) if mo_offset > 0 else TODAY
+            d = m_start
+            while d <= m_end:
+                if d.weekday() >= 5 or d in holiday_dates:
+                    d += timedelta(days=1)
+                    continue
+                st = random.choice(statuses_pool)
+                if st == "Half Day":
+                    wh, in_t, out_t = round(random.uniform(3.5, 5.0), 2), "09:30", "14:00"
+                elif st == "WFH":
+                    wh, in_t, out_t = round(random.uniform(7.5, 9.0), 2), "09:00", "18:00"
+                else:
+                    wh, in_t, out_t = round(random.uniform(8.0, 9.5), 2), "09:00", "18:30"
+                db.add(Attendance(
+                    employee_id   = emp.id,
+                    date          = d,
+                    status        = st,
+                    in_time       = in_t,
+                    out_time      = out_t,
+                    working_hours = wh,
+                ))
+                d += timedelta(days=1)
+    db.flush()
+
+    # ── 9. Leave Applications ─────────────────────────────────
+    arjun  = emp_objs["emp_arjun"]
+    neha   = emp_objs["emp_neha"]
+    rohan  = emp_objs["emp_rohan"]
+    kavya  = emp_objs["emp_kavya"]
+    suresh = emp_objs["emp_suresh"]
+
+    prev = _month_ago(1)
+
+    def _leave(emp, lt_name, from_d, to_d, status, reason):
+        days = sum(
+            1 for i in range((to_d - from_d).days + 1)
+            if (from_d + timedelta(days=i)).weekday() < 5
+               and (from_d + timedelta(days=i)) not in holiday_dates
+        )
+        db.add(LeaveApplication(
+            employee_id   = emp.id,
+            leave_type_id = lt_objs[lt_name].id,
+            from_date     = from_d,
+            to_date       = to_d,
+            total_days    = float(days),
+            reason        = reason,
+            status        = status,
+        ))
+
+    _leave(arjun,  "Casual Leave", prev + timedelta(3),  prev + timedelta(4),  "Approved", "Family function")
+    _leave(neha,   "Sick Leave",   prev + timedelta(7),  prev + timedelta(7),  "Approved", "Fever — doctor visit")
+    _leave(rohan,  "Casual Leave", prev + timedelta(10), prev + timedelta(11), "Approved", "Personal work")
+    _leave(suresh, "Sick Leave",   TODAY - timedelta(5), TODAY - timedelta(5), "Pending",  "Medical appointment")
+    _leave(kavya,  "Earned Leave", TODAY + timedelta(7), TODAY + timedelta(11),"Pending",  "Annual family vacation")
+    _leave(arjun,  "Casual Leave", TODAY + timedelta(3), TODAY + timedelta(3), "Pending",  "Personal errand")
+    db.flush()
+
+    # ── 10. Salary Slips — last 2 months ─────────────────────
+    import uuid
+
+    def _slip(emp, yr, mo):
+        basic   = emp.basic_salary or 0
+        hra     = round(basic * (emp.hra_percent or 40) / 100)
+        special = emp.special_allowance or 0
+        gross   = basic + hra + special
+        pf      = min(round(basic * 0.12), 1800)
+        esi     = round(gross * 0.0075) if emp.esi_applicable else 0
+        pt      = 200 if gross >= 15000 else 0
+        total_ded = pf + esi + pt
+        net     = gross - total_ded
+        return SalarySlip(
+            slip_id        = f"JVN-{yr}{mo:02d}-{emp.employee_id}",
+            employee_id    = emp.id,
+            month          = mo,
+            year           = yr,
+            start_date     = date(yr, mo, 1),
+            end_date       = date(yr, mo, _cal.monthrange(yr, mo)[1]),
+            gross_pay      = gross,
+            total_deduction= total_ded,
+            net_pay        = net,
+            earnings       = {"Basic Salary": basic, "HRA": hra, "Special Allowance": special},
+            deductions     = {"Provident Fund": pf, "ESI": esi, "Professional Tax": pt},
+            status         = "Generated",
+        )
+
+    for emp in emp_objs.values():
+        for mo_offset in [2, 1]:
+            m = _month_ago(mo_offset)
+            db.add(_slip(emp, m.year, m.month))
+    db.flush()
+
+    # ── 11. Employee Assets ───────────────────────────────────
+    asset_data = [
+        (arjun,  "MacBook Pro 14\"",  "Laptop",    "MPB-2023-001", arjun.date_of_joining),
+        (arjun,  "USB-C Hub",         "Other",     "HUB-001",      arjun.date_of_joining),
+        (neha,   "Dell Monitor 24\"", "Other",     "MON-001",      neha.date_of_joining),
+        (rohan,  "MacBook Air M2",    "Laptop",    "MBA-2023-002", rohan.date_of_joining),
+        (kavya,  "iPhone 13",         "Mobile",    "IPH-001",      kavya.date_of_joining),
+        (suresh, "HP EliteBook",      "Laptop",    "HPL-001",      suresh.date_of_joining),
+    ]
+    for emp, name, a_type, serial, alloc_date in asset_data:
+        db.add(EmployeeAsset(
+            employee_id    = emp.id,
+            asset_name     = name,
+            asset_type     = a_type,
+            serial_number  = serial,
+            allocated_date = alloc_date,
+            condition      = "Good",
+            status         = "Allocated",
+        ))
+    db.flush()
+
+    # ── 12. Announcements ─────────────────────────────────────
+    db.add(Announcement(
+        title    = "Welcome to Jeevan Solutions HRMS!",
+        content  = "We have launched our new HR Management System. All employees can now apply for leaves, view salary slips, and track attendance online. Please complete your profile setup by this Friday.",
+        priority = "High",
+        is_active= True,
+    ))
+    db.add(Announcement(
+        title    = "Q2 Performance Reviews — July 15",
+        content  = "Performance appraisals for Q2 will begin on July 15. Managers should submit their team ratings by July 10. Employees can view their appraisal history under My Appraisals.",
+        priority = "Medium",
+        is_active= True,
+    ))
+    db.flush()
+
+    # ── 13. Payroll Rules (singleton) ─────────────────────────
+    if not db.query(PayrollRules).first():
+        db.add(PayrollRules(
+            pf_enabled        = True,
+            esi_enabled       = True,
+            hra_enabled       = True,
+            pf_employee_rate  = 12.0,
+            pf_employee_cap   = 1800.0,
+            pf_employer_rate  = 12.0,
+            pf_employer_cap   = 1800.0,
+            esi_employee_rate = 0.75,
+            esi_employer_rate = 3.25,
+            esi_wage_ceiling  = 21000.0,
+        ))
+    db.flush()
+
+    # ── 14. Feature Permissions ───────────────────────────────
+    for role, features in DEFAULT_PERMISSIONS.items():
+        db.add(RolePermission(role=role, allowed_features=features))
+    db.flush()
+
+    db.commit()
+
+    # ── Print credentials ─────────────────────────────────────
+    print("✓ Done!\n")
+    print("Login credentials:")
+    print(f"  {'Role':<12} {'Username':<14} {'Password':<12} Email")
+    print(f"  {'─'*12} {'─'*14} {'─'*12} {'─'*26}")
+    for uname, full, email, pwd, role in users_spec:
+        print(f"  {role:<12} {uname:<14} {pwd:<12} {email}")
+    print()
+    print("App URL: set DATABASE_URL to your Railway demo DB and deploy.")
+    print()
+
+
+# ── Entry point ───────────────────────────────────────────────
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+
+    print("Creating tables if missing...")
+    Base.metadata.create_all(bind=engine)
+    print("  OK\n")
+
+    db = SessionLocal()
+    try:
+        if "--wipe" in args:
+            wipe(db)
+        elif "--reset" in args:
+            wipe(db)
+            seed(db)
+        else:
+            seed(db)
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
