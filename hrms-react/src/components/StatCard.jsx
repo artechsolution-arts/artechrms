@@ -22,7 +22,7 @@ export const GRADIENTS = {
   amber:  `linear-gradient(135deg, #92400E, ${B.amber})`,
   orange: `linear-gradient(135deg, #9A3412, #F97316)`,
   rose:   `linear-gradient(135deg, #D4607A, #FFAEC0)`,
-  purple: `linear-gradient(135deg, #9B72DB, #D5BFFF)`,
+  purple: `linear-gradient(135deg, #5B21B6, #C4B5FD)`,
   violet: `linear-gradient(135deg, #4C1D95, #7C3AED)`,
   indigo: `linear-gradient(135deg, #312E81, #4F46E5)`,
 };
