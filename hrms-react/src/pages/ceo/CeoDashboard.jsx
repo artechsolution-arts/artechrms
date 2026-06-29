@@ -527,7 +527,8 @@ export default function CeoDashboard({ toast, onNavigate }) {
       <div
         className="rounded-2xl p-6 flex items-center justify-between overflow-hidden relative"
         style={{
-          backgroundImage: 'linear-gradient(to bottom, rgba(8,12,30,0.85) 0%, transparent 20%, transparent 80%, rgba(8,12,30,0.85) 100%), linear-gradient(to right, rgba(8,12,30,0.85) 0%, transparent 8%, transparent 92%, rgba(8,12,30,0.85) 100%), var(--ceo-banner-bg)',
+          backgroundColor: '#0a1a3d',
+          backgroundImage: 'var(--ceo-banner-bg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
