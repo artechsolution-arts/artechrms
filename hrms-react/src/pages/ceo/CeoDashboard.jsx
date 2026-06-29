@@ -539,7 +539,6 @@ export default function CeoDashboard({ toast, onNavigate }) {
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
         </div>
-        <TrendingUp size={48} className="text-gray-300 dark:text-white/30 flex-shrink-0 relative z-10" />
         <style>{`
           :root { --ceo-banner-bg: url('/ceo-banner-light.png'); --ceo-banner-size: cover; }
           .dark { --ceo-banner-bg: url('/ceo-banner-dark.jpg'); --ceo-banner-size: 120% 120%; }
