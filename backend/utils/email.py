@@ -37,6 +37,10 @@ log = logging.getLogger(__name__)
 MS_CLIENT_ID     = os.getenv("MS_CLIENT_ID", "")
 MS_CLIENT_SECRET = os.getenv("MS_CLIENT_SECRET", "")
 MS_TENANT_ID     = os.getenv("MS_TENANT_ID", "")
+# Fixed sender mailbox that the Azure app is authorised to send from.
+# If set, ALL outgoing mails use this address (shared/service mailbox).
+# This is the recommended pattern for Mail.Send application permission.
+MS_SENDER_EMAIL  = os.getenv("MS_SENDER_EMAIL", "")
 
 _token_cache = {"token": "", "expires_at": 0.0}
 _token_lock  = threading.Lock()
@@ -156,7 +160,10 @@ def send_email(to: str, subject: str, html: str, cc: str = "",
     if not to:
         return
     if MS_CLIENT_ID and MS_CLIENT_SECRET and MS_TENANT_ID:
-        sender = from_email or SMTP_USER
+        # MS_SENDER_EMAIL (dedicated mailbox) takes priority — avoids 403 when
+        # the app only has permission for one authorised sender address.
+        # Falls back to from_email, then SMTP_USER.
+        sender = MS_SENDER_EMAIL or from_email or SMTP_USER
         if sender:
             _pool.submit(_send_graph, sender, to, subject, html, cc, attachments)
             return
