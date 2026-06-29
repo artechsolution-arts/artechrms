@@ -528,7 +528,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
         className="rounded-2xl p-6 flex items-center justify-between overflow-hidden relative"
         style={{
           backgroundImage: 'var(--ceo-banner-bg)',
-          backgroundSize: 'cover',
+          backgroundSize: '103% 130%',
           backgroundPosition: 'center',
         }}
       >
