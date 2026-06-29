@@ -540,7 +540,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
           </div>
         </div>
         <style>{`
-          :root { --ceo-banner-bg: url('/ceo-banner-light.png'); --ceo-banner-size: cover; }
+          :root { --ceo-banner-bg: url('/ceo-banner-light.png'); --ceo-banner-size: 120% 120%; }
           .dark { --ceo-banner-bg: url('/ceo-banner-dark.jpg'); --ceo-banner-size: 120% 120%; }
         `}</style>
       </div>
