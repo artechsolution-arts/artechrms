@@ -141,6 +141,27 @@ export default function EmpLeaves({ toast }) {
 
       <div className="page-content space-y-5">
 
+        {/* Leave balance summary */}
+        {balances.length > 0 && (() => {
+          const totalLeaves  = balances.reduce((s, b) => s + (b.allocated || 0), 0);
+          const leavesTaken  = balances.reduce((s, b) => s + (b.used     || 0), 0);
+          const leaveBalance = balances.reduce((s, b) => s + (b.available|| 0), 0);
+          return (
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Total Leaves',   value: totalLeaves,  color: 'text-gray-700 dark:text-gray-200' },
+                { label: 'Leaves Taken',   value: leavesTaken,  color: 'text-amber-600' },
+                { label: 'Leave Balance',  value: leaveBalance, color: leaveBalance === 0 ? 'text-red-500' : 'text-emerald-600' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="card p-4 text-center">
+                  <div className={`text-2xl font-bold ${color}`}>{value}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Application summary */}
         <div className="grid grid-cols-4 gap-3">
           {[

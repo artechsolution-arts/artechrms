@@ -213,12 +213,17 @@ function EmployeeCard({ empId, name, photo, balances, leaveTypes, colorIdx, year
                     <span className="text-[10px] text-gray-400">days</span>
                   </div>
                 ) : (
-                  <span className="text-xs flex-shrink-0">
-                    <span className={`font-semibold ${(b?.available ?? 0) === 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'}`}>
-                      {b?.available ?? 0}
+                  <div className="flex items-center gap-2.5 flex-shrink-0">
+                    <span className="text-[10px] text-gray-400">
+                      <span className="text-gray-500 dark:text-gray-400">{b?.used ?? 0}</span> taken
                     </span>
-                    <span className="text-gray-400"> / {b?.allocated ?? 0}</span>
-                  </span>
+                    <span className="text-xs">
+                      <span className={`font-semibold ${(b?.available ?? 0) === 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                        {b?.available ?? 0}
+                      </span>
+                      <span className="text-gray-400">/{b?.allocated ?? 0}</span>
+                    </span>
+                  </div>
                 )}
               </div>
               {!editing && <LeaveBar available={b?.available ?? 0} allocated={b?.allocated ?? 0} />}
@@ -229,9 +234,19 @@ function EmployeeCard({ empId, name, photo, balances, leaveTypes, colorIdx, year
 
       {/* Footer */}
       {!editing && (
-        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-          <span className="text-[11px] text-gray-400">Total allocated</span>
-          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{totalAllocated} days</span>
+        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 grid grid-cols-3 gap-1 text-center">
+          <div>
+            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300">{totalAllocated}</div>
+            <div className="text-[10px] text-gray-400">Total</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-amber-600">{totalUsed}</div>
+            <div className="text-[10px] text-gray-400">Taken</div>
+          </div>
+          <div>
+            <div className={`text-xs font-semibold ${totalAvailable === 0 ? 'text-red-500' : 'text-emerald-600'}`}>{totalAvailable}</div>
+            <div className="text-[10px] text-gray-400">Balance</div>
+          </div>
         </div>
       )}
     </div>
