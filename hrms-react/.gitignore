@@ -17,6 +17,20 @@ src-tauri/target/
 src-tauri/WixTools/
 src-tauri/gen/
 
+# Capacitor / Android
+android/.gradle/
+android/app/build/
+android/build/
+android/.idea/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+
+# Capacitor / iOS
+ios/App/Pods/
+ios/App/App.xcworkspace/
+ios/DerivedData/
+ios/.idea/
+
 # Environment (never commit secrets)
 .env.local
 .env.*.local

@@ -1,0 +1,132 @@
+name: Build Mobile Apps
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: hrms-react/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: hrms-react
+
+      - name: Build web app
+        run: npm run build
+        working-directory: hrms-react
+        env:
+          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+        working-directory: hrms-react
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+        working-directory: hrms-react
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+        working-directory: hrms-react/android
+
+      - name: Build Release APK (unsigned)
+        run: ./gradlew assembleRelease
+        working-directory: hrms-react/android
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ar-peopliz-debug.apk
+          path: hrms-react/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ar-peopliz-release-unsigned.apk
+          path: hrms-react/android/app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Attach APKs to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            hrms-react/android/app/build/outputs/apk/debug/app-debug.apk
+            hrms-react/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          name: AR Peopliz ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-ios-check:
+    name: iOS Build Check (macOS)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: hrms-react/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: hrms-react
+
+      - name: Build web app
+        run: npm run build
+        working-directory: hrms-react
+        env:
+          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+
+      - name: Sync Capacitor
+        run: npx cap sync ios
+        working-directory: hrms-react
+
+      - name: Install CocoaPods
+        run: pod install
+        working-directory: hrms-react/ios/App
+
+      - name: Build iOS (no signing)
+        run: |
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+        working-directory: hrms-react/ios/App

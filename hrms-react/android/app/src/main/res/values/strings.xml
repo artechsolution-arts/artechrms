@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AR Peopliz</string>
+    <string name="title_activity_main">AR Peopliz</string>
+    <string name="package_name">com.artech.hrms</string>
+    <string name="custom_url_scheme">com.artech.hrms</string>
+</resources>
