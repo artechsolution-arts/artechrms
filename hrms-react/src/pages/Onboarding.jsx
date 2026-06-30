@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useCallback } from 'react';
-import { api } from '../api';
+﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { api, apiForm } from '../api';
 import { fmtDate } from '../utils/date';
 import EmpAvatar from '../components/EmpAvatar';
 import ConfirmModal from '../components/ConfirmModal';
@@ -8,7 +8,7 @@ import SelectDS from '../components/Select';
 import {
   UserPlus, UserMinus, Search, RefreshCw, X, ChevronLeft, ChevronRight,
   CheckCircle2, Circle, Save, Clock, AlertCircle, Plus, Pencil, Trash2,
-  History, CheckCheck, User, Calendar,
+  History, CheckCheck, User, Calendar, Upload, FileText,
 } from 'lucide-react';
 
 const genId = () => Math.random().toString(36).slice(2, 10);
@@ -229,12 +229,48 @@ function OnEmployment({ data, set, emp }) {
   );
 }
 
-function OnDocuments({ data, set }) {
+function OnDocuments({ data, set, empId }) {
+  const [hrDocs, setHrDocs]       = useState({});
+  const [uploadingKey, setUploadingKey] = useState(null);
+  const fileInputRef  = useRef(null);
+  const pendingDocKey = useRef(null);
+
+  useEffect(() => {
+    if (!empId) return;
+    api('GET', `/api/onboarding/${empId}/hr-docs`).then(r => setHrDocs(r.docs || {})).catch(() => {});
+  }, [empId]);
+
+  const openUpload = (docKey) => {
+    pendingDocKey.current = docKey;
+    fileInputRef.current.value = '';
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    const docKey = pendingDocKey.current;
+    if (!file || !docKey) return;
+    setUploadingKey(docKey);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await apiForm(`/api/onboarding/${empId}/hr-docs/upload/${docKey}`, fd);
+      setHrDocs(prev => ({ ...prev, [docKey]: { file_url: res.file_url, file_name: res.file_name } }));
+    } catch { }
+    finally { setUploadingKey(null); }
+  };
+
+  const deleteDoc = async (docKey) => {
+    await api('DELETE', `/api/onboarding/${empId}/hr-docs/${docKey}`).catch(() => {});
+    setHrDocs(prev => { const n = { ...prev }; delete n[docKey]; return n; });
+  };
+
   const StatusBadge = ({ val, onChange }) => (
     <div style={{ width: 130 }}>
       <SelectDS value={val || 'Pending'} onChange={onChange} options={['Pending', 'Submitted', 'Verified']} size="sm" />
     </div>
   );
+
   const DocRow = ({ label, fieldKey, placeholder }) => (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, alignItems: 'end' }}>
       <Input label={label} value={data[fieldKey]} onChange={v => set(fieldKey, v)} placeholder={placeholder} />
@@ -245,8 +281,55 @@ function OnDocuments({ data, set }) {
       </div>
     </div>
   );
+
+  /* Row for docs that have a backend upload slot */
+  const uploadDocRow = (label, statusKey, docKey) => {
+    const uploaded = hrDocs[docKey];
+    const isUploading = uploadingKey === docKey;
+    return (
+      <div key={docKey} style={{ background: '#F9FAFB', borderRadius: 8, padding: '10px 12px', border: '1px solid #E5E7EB' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10, alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{label}</div>
+            {uploaded && (
+              <a href={uploaded.file_url} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 11, color: '#1A6AB4', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 3, textDecoration: 'none' }}>
+                <FileText size={11} /> {uploaded.file_name || 'View document'}
+              </a>
+            )}
+          </div>
+          <StatusBadge val={data[statusKey]} onChange={v => set(statusKey, v)} />
+          <div>
+            {!uploaded ? (
+              <button onClick={() => openUpload(docKey)} disabled={isUploading || !empId}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: '1px solid #E5E7EB', cursor: empId ? 'pointer' : 'not-allowed', background: '#fff', fontSize: 11, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', opacity: !empId ? 0.4 : 1 }}>
+                <Upload size={11} /> {isUploading ? 'Uploading…' : 'Upload'}
+              </button>
+            ) : (
+              <button onClick={() => deleteDoc(docKey)}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: '1px solid #FEE2E2', cursor: 'pointer', background: '#FEF2F2', fontSize: 11, fontWeight: 600, color: '#EF4444', whiteSpace: 'nowrap' }}>
+                <Trash2 size={11} /> Remove
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* Status-only row (no backend upload slot) */
+  const statusOnlyRow = (label, statusKey) => (
+    <div key={statusKey} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center', padding: '6px 0' }}>
+      <span style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{label}</span>
+      <StatusBadge val={data[statusKey]} onChange={v => set(statusKey, v)} />
+    </div>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* hidden file input shared by all upload rows */}
+      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={handleFileChange} />
+
       <SectionHeader title="Identity Documents" subtitle="Collect and verify all required government IDs and certificates" />
       <FieldGroup title="Government IDs">
         <DocRow label="Aadhaar Number" fieldKey="aadhaar" placeholder="XXXX XXXX XXXX" />
@@ -255,32 +338,22 @@ function OnDocuments({ data, set }) {
         <DocRow label="Driving License" fieldKey="driving_license" placeholder="DL number" />
         <DocRow label="Voter ID" fieldKey="voter_id" placeholder="Voter ID number" />
       </FieldGroup>
-      <FieldGroup title="Employment Documents">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#374151', paddingBottom: 8 }}>Offer Letter Signed</span>
-          <StatusBadge val={data.offer_letter_status} onChange={v => set('offer_letter_status', v)} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#374151', paddingBottom: 8 }}>Employment Agreement</span>
-          <StatusBadge val={data.employment_agreement_status} onChange={v => set('employment_agreement_status', v)} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#374151', paddingBottom: 8 }}>NDA / Confidentiality Agreement</span>
-          <StatusBadge val={data.nda_status} onChange={v => set('nda_status', v)} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#374151', paddingBottom: 8 }}>Educational Certificates</span>
-          <StatusBadge val={data.education_docs_status} onChange={v => set('education_docs_status', v)} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#374151', paddingBottom: 8 }}>Previous Employment / Relieving Letter</span>
-          <StatusBadge val={data.relieving_letter_status} onChange={v => set('relieving_letter_status', v)} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#374151', paddingBottom: 8 }}>BGV (Background Verification)</span>
-          <StatusBadge val={data.bgv_status} onChange={v => set('bgv_status', v)} />
-        </div>
+
+      <FieldGroup title="Joining Documents (Upload)">
+        {uploadDocRow('Offer Letter Signed', 'offer_letter_status', 'offer_letter')}
+        {uploadDocRow('Employment Agreement', 'employment_agreement_status', 'employment_agreement')}
+        {uploadDocRow('NDA / Confidentiality Agreement', 'nda_status', 'nda')}
+        {statusOnlyRow('Educational Certificates', 'education_docs_status')}
+        {statusOnlyRow('Previous Employment / Relieving Letter', 'relieving_letter_status')}
+        {statusOnlyRow('BGV (Background Verification)', 'bgv_status')}
       </FieldGroup>
+
+      <FieldGroup title="Company Policy Documents (Upload)">
+        {uploadDocRow('HR Policy Acknowledgement', 'hr_policy_status', 'hr_policy')}
+        {uploadDocRow('Code of Conduct', 'code_of_conduct_status', 'code_of_conduct')}
+        {uploadDocRow('IT Policy', 'it_policy_status', 'it_policy')}
+      </FieldGroup>
+
       <FieldGroup title="Statutory">
         <Grid2>
           <Input label="PF Account Number" value={data.pf_number} onChange={v => set('pf_number', v)} placeholder="PF number" />
@@ -1017,7 +1090,29 @@ function WizardModal({ emp, type, onClose }) {
   const saveSection = async (action = 'save', rowSummary = '') => {
     setSaving(true);
     try {
-      const data = (sections[currentKey] || {}).data || {};
+      let data = (sections[currentKey] || {}).data || {};
+
+      /* ── Sync asset rows to employee_assets table ── */
+      if (currentKey === 'assets' && type === 'onboarding') {
+        const rows = data.assets || [];
+        const synced = await Promise.all(rows.map(async row => {
+          if (row._hrm_id || !row.type) return row;
+          try {
+            const r = await api('POST', '/api/hrm/assets', {
+              employee_id: emp.id,
+              asset_name: row.type,
+              asset_type: row.type,
+              serial_number: row.serial || null,
+              allocated_date: row.issue_date || new Date().toISOString().split('T')[0],
+              condition: row.condition || 'Good',
+              notes: row.notes || null,
+            });
+            return { ...row, _hrm_id: r.id };
+          } catch { return row; }
+        }));
+        data = { ...data, assets: synced };
+      }
+
       const stepLabel = steps[step].label;
       const summary = rowSummary || `${stepLabel} updated`;
       const res = await api('PUT', `${baseUrl}/${emp.id}/section`, {
@@ -1050,7 +1145,7 @@ function WizardModal({ emp, type, onClose }) {
       switch (currentKey) {
         case 'personal_info': return <OnPersonalInfo data={d} set={s} emp={emp} />;
         case 'employment':    return <OnEmployment   data={d} set={s} emp={emp} />;
-        case 'documents':     return <OnDocuments    data={d} set={s} />;
+        case 'documents':     return <OnDocuments    data={d} set={s} empId={emp.id} />;
         case 'education':     return <OnEducation    data={d} set={s} />;
         case 'experience':    return <OnExperience   data={d} set={s} />;
         case 'assets':        return <OnAssets       data={d} set={s} />;
@@ -1218,25 +1313,141 @@ function EmpCard({ emp, type, onClick }) {
 }
 
 /* ══════════════════════════════════════════════
+   ADD NEW JOINER MODAL
+══════════════════════════════════════════════ */
+function NewJoinerModal({ depts, desigs, onClose, onCreated, toast }) {
+  const EMPTY = { first_name: '', last_name: '', email: '', mobile: '', department_id: '', designation_id: '', date_of_joining: '', employment_type: 'Full-time', basic_salary: '' };
+  const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
+  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const submit = async () => {
+    if (!form.first_name.trim() || !form.email.trim() || !form.date_of_joining) {
+      toast('First name, email and joining date are required', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const username = form.email.split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '');
+      const emp = await api('POST', '/api/employees', {
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        email: form.email.trim(),
+        mobile: form.mobile.trim() || null,
+        username,
+        password: 'Welcome@123',
+        department_id: form.department_id ? parseInt(form.department_id) : null,
+        designation_id: form.designation_id ? parseInt(form.designation_id) : null,
+        date_of_joining: form.date_of_joining,
+        employment_type: form.employment_type || 'Full-time',
+        basic_salary: form.basic_salary ? parseFloat(form.basic_salary) : null,
+        status: 'Active',
+      });
+      toast(`${form.first_name} added! Temp password: Welcome@123`, 'success');
+      onCreated(emp);
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(13,31,78,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(13,31,78,0.3)' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid #F3F4F6' }}>
+          <div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#0D1F4E', margin: 0 }}>Add New Joiner</h2>
+            <p style={{ fontSize: 12, color: '#9CA3AF', margin: '3px 0 0' }}>Creates employee record and opens onboarding wizard</p>
+          </div>
+          <button onClick={onClose} style={{ background: '#F3F4F6', border: 'none', borderRadius: 8, padding: 7, cursor: 'pointer', display: 'flex' }}>
+            <X size={15} color="#6B7280" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Grid2>
+            <Input label="First Name" value={form.first_name} onChange={v => f('first_name', v)} required placeholder="First name" />
+            <Input label="Last Name" value={form.last_name} onChange={v => f('last_name', v)} placeholder="Last name" />
+          </Grid2>
+          <Input label="Work Email" value={form.email} onChange={v => f('email', v)} required type="email" placeholder="employee@company.com" />
+          <Input label="Mobile" value={form.mobile} onChange={v => f('mobile', v)} placeholder="+91 98765 43210" />
+          <Grid2>
+            <div>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Department</label>
+              <SelectDS
+                value={form.department_id ? String(form.department_id) : ''}
+                onChange={v => f('department_id', v ? parseInt(v) : '')}
+                options={depts.map(d => ({ value: String(d.id), label: d.name }))}
+                placeholder="— Select —"
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Designation</label>
+              <SelectDS
+                value={form.designation_id ? String(form.designation_id) : ''}
+                onChange={v => f('designation_id', v ? parseInt(v) : '')}
+                options={desigs.map(d => ({ value: String(d.id), label: d.name }))}
+                placeholder="— Select —"
+              />
+            </div>
+          </Grid2>
+          <Grid2>
+            <DateField label="Date of Joining" value={form.date_of_joining} onChange={v => f('date_of_joining', v)} required />
+            <div>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Employment Type</label>
+              <SelectDS value={form.employment_type} onChange={v => f('employment_type', v)}
+                options={['Full-time', 'Part-time', 'Contract', 'Intern', 'Consultant']} />
+            </div>
+          </Grid2>
+          <Input label="Basic Salary (₹/month)" value={form.basic_salary} onChange={v => f('basic_salary', v)} type="number" placeholder="e.g. 50000" hint="Sets up payroll from day one" />
+          <div style={{ background: '#FFFBEB', borderRadius: 8, padding: '10px 14px', border: '1px solid #FDE68A', fontSize: 12, color: '#92400E' }}>
+            <strong>Temporary password:</strong> Welcome@123 — Share with the employee so they can log in and complete their profile.
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '14px 24px', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} className="btn btn-secondary btn-sm">Cancel</button>
+          <button onClick={submit} disabled={saving} className="btn btn-primary btn-sm gap-1.5">
+            <UserPlus size={13} /> {saving ? 'Creating…' : 'Create & Start Onboarding'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════════ */
 export default function Onboarding({ toast }) {
-  const [tab, setTab]           = useState('onboarding');
-  const [onList, setOnList]     = useState([]);
-  const [offList, setOffList]   = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [selected, setSelected] = useState(null);
-  const [search, setSearch]     = useState('');
+  const [tab, setTab]               = useState('onboarding');
+  const [onList, setOnList]         = useState([]);
+  const [offList, setOffList]       = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [selected, setSelected]     = useState(null);
+  const [search, setSearch]         = useState('');
+  const [showAddJoiner, setShowAddJoiner] = useState(false);
+  const [depts, setDepts]           = useState([]);
+  const [desigs, setDesigs]         = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [on, off] = await Promise.all([
+      const [on, off, deps, des] = await Promise.all([
         api('GET', '/api/onboarding/list'),
         api('GET', '/api/onboarding/offboarding/list'),
+        api('GET', '/api/employees/departments'),
+        api('GET', '/api/employees/designations'),
       ]);
       setOnList(on);
       setOffList(off);
+      setDepts(Array.isArray(deps) ? deps : (deps.departments || []));
+      setDesigs(Array.isArray(des) ? des : (des.designations || []));
     } catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
   }, []);
@@ -1257,7 +1468,14 @@ export default function Onboarding({ toast }) {
           <h1 className="page-title">Onboarding / Offboarding</h1>
           <p className="text-xs text-gray-500 mt-0.5">MNC standard employee lifecycle management</p>
         </div>
-        <button onClick={load} className="btn btn-secondary btn-sm gap-1.5"><RefreshCw size={13} /> Refresh</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {tab === 'onboarding' && (
+            <button onClick={() => setShowAddJoiner(true)} className="btn btn-primary btn-sm gap-1.5">
+              <UserPlus size={13} /> Add New Joiner
+            </button>
+          )}
+          <button onClick={load} className="btn btn-secondary btn-sm gap-1.5"><RefreshCw size={13} /> Refresh</button>
+        </div>
       </div>
 
       <div className="page-content space-y-4">
@@ -1331,6 +1549,25 @@ export default function Onboarding({ toast }) {
 
       {selected && (
         <WizardModal emp={selected} type={tab} onClose={() => { setSelected(null); load(); }} />
+      )}
+
+      {showAddJoiner && (
+        <NewJoinerModal
+          depts={depts}
+          desigs={desigs}
+          toast={toast}
+          onClose={() => setShowAddJoiner(false)}
+          onCreated={async (newEmp) => {
+            setShowAddJoiner(false);
+            await load();
+            /* Open the wizard for the newly created employee */
+            setOnList(prev => {
+              const found = prev.find(e => e.id === newEmp.id);
+              if (found) setSelected(found);
+              return prev;
+            });
+          }}
+        />
       )}
     </>
   );
