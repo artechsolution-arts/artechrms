@@ -20,6 +20,7 @@ export default function Announcements({ toast }) {
   const [form,    setForm]    = useState({ priority: 'Medium' });
   const [expanded, setExpanded] = useState({});
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [errors, setErrors] = useState({});
 
   const load = async () => {
     setLoading(true);
@@ -28,10 +29,14 @@ export default function Announcements({ toast }) {
     finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
-  const f = v => setForm(p => ({ ...p, ...v }));
+  const f = (v) => { setForm(p => ({ ...p, ...v })); const key = Object.keys(v)[0]; if (key) setErrors(p => ({ ...p, [key]: '' })); };
 
   const save = async () => {
-    if (!form.title || !form.content) return toast('Title and content required', 'warning');
+    const errs = {};
+    if (!form.title?.trim()) errs.title = 'Title is required';
+    if (!form.content?.trim()) errs.content = 'Content is required';
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
     try {
       await api('POST', '/api/hrm/announcements', form);
       toast('Announcement posted', 'success');
@@ -68,7 +73,7 @@ export default function Announcements({ toast }) {
     <>
       <div className="page-head">
         <h1 className="page-title">Announcements</h1>
-        <button onClick={() => setModal(true)} className="btn btn-primary btn-sm gap-1.5">
+        <button onClick={() => { setModal(true); setErrors({}); }} className="btn btn-primary btn-sm gap-1.5">
           <Plus size={13} /> New Announcement
         </button>
       </div>
@@ -89,7 +94,7 @@ export default function Announcements({ toast }) {
             <div className="empty-state">
               <Megaphone size={36} className="text-gray-200 dark:text-gray-700 mb-2" />
               <p className="text-sm text-gray-500">No announcements yet</p>
-              <button onClick={() => setModal(true)} className="btn btn-primary btn-sm mt-3 gap-1.5">
+              <button onClick={() => { setModal(true); setErrors({}); }} className="btn btn-primary btn-sm mt-3 gap-1.5">
                 <Plus size={13} /> Post First Announcement
               </button>
             </div>
@@ -211,10 +216,10 @@ export default function Announcements({ toast }) {
       <Modal open={modal} title="New Announcement" onClose={() => setModal(false)} onSave={save} saveLabel="Post">
         <FormSection title="Announcement Details">
           <FormGrid cols={1}>
-            <Field label="Title" required>
+            <Field label="Title" required error={errors.title}>
               <input className="form-input" value={form.title || ''} onChange={e => f({ title: e.target.value })} placeholder="Announcement title" />
             </Field>
-            <Field label="Content" required>
+            <Field label="Content" required error={errors.content}>
               <textarea className="form-textarea" rows={4} value={form.content || ''} onChange={e => f({ content: e.target.value })} placeholder="Write your announcement…" />
             </Field>
           </FormGrid>

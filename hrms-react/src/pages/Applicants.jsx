@@ -13,7 +13,11 @@ export default function Applicants({ toast }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({});
-  const f = v => setForm(prev => ({ ...prev, ...v }));
+  const [formErrors, setFormErrors] = useState({});
+  const f = v => {
+    setForm(prev => ({ ...prev, ...v }));
+    setFormErrors(prev => { const next = { ...prev }; Object.keys(v).forEach(k => delete next[k]); return next; });
+  };
 
   const load = async (st = statusFilter) => {
     setLoading(true);
@@ -31,8 +35,14 @@ export default function Applicants({ toast }) {
   }, []);
 
   const save = async () => {
-    if (!form.name?.trim() || !form.email?.trim() || !form.job_opening_id)
-      return toast('Name, email and job opening required', 'warning');
+    const errs = {};
+    if (!form.name?.trim()) errs.name = 'Name is required';
+    if (!form.email?.trim()) errs.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Enter a valid email address';
+    if (form.phone?.trim() && !/^[\d\s\-\+\(\)]{7,15}$/.test(form.phone.trim())) errs.phone = 'Enter a valid phone number';
+    if (!form.job_opening_id) errs.job_opening_id = 'Job opening is required';
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+    setFormErrors({});
     try {
       await api('POST', '/api/recruitment/applicants', {
         name: form.name, email: form.email,
@@ -55,7 +65,7 @@ export default function Applicants({ toast }) {
         <h1 className="page-title">Applicants</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => load()} className="btn btn-secondary btn-sm gap-1.5"><RefreshCw size={13} /> Refresh</button>
-          <button onClick={() => { setForm({}); setModal(true); }} className="btn btn-primary btn-sm gap-1.5"><Plus size={13} /> Add Applicant</button>
+          <button onClick={() => { setForm({}); setFormErrors({}); setModal(true); }} className="btn btn-primary btn-sm gap-1.5"><Plus size={13} /> Add Applicant</button>
         </div>
       </div>
 
@@ -117,16 +127,16 @@ export default function Applicants({ toast }) {
       <Modal open={modal} title="Add Applicant" onClose={() => setModal(false)} onSave={save} saveLabel="Add Applicant">
         <FormSection title="Personal Details">
           <FormGrid>
-            <Field label="Full Name" required>
+            <Field label="Full Name" required error={formErrors.name}>
               <input className="form-input" value={form.name || ''} onChange={e => f({ name: e.target.value })} placeholder="Applicant name" />
             </Field>
-            <Field label="Email" required>
+            <Field label="Email" required error={formErrors.email}>
               <input type="email" className="form-input" value={form.email || ''} onChange={e => f({ email: e.target.value })} placeholder="Email" />
             </Field>
-            <Field label="Phone">
+            <Field label="Phone" error={formErrors.phone}>
               <input className="form-input" value={form.phone || ''} onChange={e => f({ phone: e.target.value })} placeholder="Phone number" />
             </Field>
-            <Field label="Job Opening" required>
+            <Field label="Job Opening" required error={formErrors.job_opening_id}>
               <Select
                 value={form.job_opening_id || ''}
                 onChange={v => f({ job_opening_id: v })}

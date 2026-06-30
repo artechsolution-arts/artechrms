@@ -16,6 +16,7 @@ export default function Holidays({ toast }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ holiday_type: 'Public' });
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [errors, setErrors] = useState({});
 
   const load = async () => {
     setLoading(true);
@@ -27,7 +28,11 @@ export default function Holidays({ toast }) {
   const f = v => setForm(p => ({ ...p, ...v }));
 
   const save = async () => {
-    if (!form.name || !form.date) return toast('Name and date required', 'warning');
+    const errs = {};
+    if (!form.name?.trim()) errs.name = 'Holiday name is required';
+    if (!form.date) errs.date = 'Date is required';
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
     try { await api('POST', '/api/hrm/holidays', form); toast('Holiday added','success'); setModal(false); setForm({holiday_type:'Public'}); load(); }
     catch(e) { toast(e.message,'error'); }
   };
@@ -64,7 +69,7 @@ export default function Holidays({ toast }) {
             <span className="px-3 py-1.5 text-sm font-semibold text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-lg">{year}</span>
             <button type="button" onClick={() => setYear(y => y + 1)} className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"><ChevronRight size={14} /></button>
           </div>
-          <button onClick={() => setModal(true)} className="btn btn-primary btn-sm gap-1.5"><Plus size={13}/>Add Holiday</button>
+          <button onClick={() => { setModal(true); setErrors({}); }} className="btn btn-primary btn-sm gap-1.5"><Plus size={13}/>Add Holiday</button>
         </div>
       </div>
 
@@ -116,11 +121,11 @@ export default function Holidays({ toast }) {
       <Modal open={modal} title="Add Holiday" onClose={() => setModal(false)} onSave={save} saveLabel="Add">
         <FormSection title="Holiday Details">
           <FormGrid>
-            <Field label="Holiday Name" required>
-              <input className="form-input" value={form.name||''} onChange={e => f({name:e.target.value})} placeholder="e.g. Republic Day"/>
+            <Field label="Holiday Name" required error={errors.name}>
+              <input className="form-input" value={form.name||''} onChange={e => { f({name:e.target.value}); if (e.target.value.trim()) setErrors(p => ({...p, name: ''})); }} placeholder="e.g. Republic Day"/>
             </Field>
-            <Field label="Date" required>
-              <DatePicker value={form.date || ''} onChange={v => f({ date: v })} placeholder="Select holiday date" />
+            <Field label="Date" required error={errors.date}>
+              <DatePicker value={form.date || ''} onChange={v => { f({ date: v }); if (v) setErrors(p => ({...p, date: ''})); }} placeholder="Select holiday date" />
             </Field>
             <Field label="Type">
               <Select

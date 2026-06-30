@@ -306,23 +306,35 @@ const TABS = ['Details', 'Attachment', 'Social Media'];
 function CreateModal({ open, onClose, onSave, toast }) {
   const [tab, setTab] = useState('Details');
   const [form, setForm] = useState({ no_of_positions: 1 });
+  const [errors, setErrors] = useState({});
   const [platforms, setPlatforms] = useState([]);
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef();
 
-  const f = v => setForm(p => ({ ...p, ...v }));
+  const f = v => {
+    setForm(p => ({ ...p, ...v }));
+    setErrors(p => {
+      const n = { ...p };
+      Object.keys(v).forEach(k => delete n[k]);
+      return n;
+    });
+  };
 
   const togglePlatform = p => setPlatforms(prev =>
     prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
   );
 
-  const reset = () => { setForm({ no_of_positions: 1 }); setPlatforms([]); setFile(null); setTab('Details'); };
+  const reset = () => { setForm({ no_of_positions: 1 }); setErrors({}); setPlatforms([]); setFile(null); setTab('Details'); };
 
   const handleClose = () => { reset(); onClose(); };
 
   const handleSave = async () => {
-    if (!form.title?.trim()) { setTab('Details'); return toast('Job title is required', 'warning'); }
+    const errs = {};
+    if (!form.title?.trim()) errs.title = 'Job title is required';
+    const positions = parseInt(form.no_of_positions);
+    if (!positions || positions < 1) errs.no_of_positions = 'Must be at least 1';
+    if (Object.keys(errs).length) { setErrors(errs); setTab('Details'); return; }
     setSaving(true);
     try {
       const res = await api('POST', '/api/recruitment/openings', {
@@ -379,12 +391,25 @@ function CreateModal({ open, onClose, onSave, toast }) {
             <div className="space-y-4 max-w-2xl">
               <div>
                 <label className="form-label">Job Title <span className="text-red-500">*</span></label>
-                <input className="form-input" value={form.title || ''} onChange={e => f({ title: e.target.value })} placeholder="e.g. Senior React Developer" />
+                <input
+                  className={`form-input${errors.title ? ' border-red-400 focus:ring-red-300' : ''}`}
+                  value={form.title || ''}
+                  onChange={e => f({ title: e.target.value })}
+                  placeholder="e.g. Senior React Developer"
+                />
+                {errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">No. of Positions</label>
-                  <input type="number" className="form-input" value={form.no_of_positions || 1} onChange={e => f({ no_of_positions: e.target.value })} min="1" />
+                  <label className="form-label">No. of Positions <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    className={`form-input${errors.no_of_positions ? ' border-red-400 focus:ring-red-300' : ''}`}
+                    value={form.no_of_positions || ''}
+                    onChange={e => f({ no_of_positions: e.target.value })}
+                    min="1"
+                  />
+                  {errors.no_of_positions && <p className="mt-1 text-xs text-red-500">{errors.no_of_positions}</p>}
                 </div>
                 <div>
                   <label className="form-label">Expected CTC (₹)</label>

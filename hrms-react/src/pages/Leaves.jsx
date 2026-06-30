@@ -37,6 +37,7 @@ export default function Leaves({ toast }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({});
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('artech_hrms_user') || '{}'); } catch { return {}; } })();
   const myRole = currentUser.role || '';
@@ -66,11 +67,17 @@ export default function Leaves({ toast }) {
   }, []);
   useRefreshOnFocus(load);
 
-  const f = v => setForm(prev => ({ ...prev, ...v }));
+  const f = (v) => { setForm(prev => ({ ...prev, ...v })); const key = Object.keys(v)[0]; if (key) setFormErrors(prev => ({ ...prev, [key]: '' })); };
 
   const save = async () => {
-    if (!form.employee_id || !form.leave_type_id || !form.from_date || !form.to_date)
-      return toast('All required fields must be filled', 'warning');
+    const errs = {};
+    if (!form.employee_id) errs.employee_id = 'Employee is required';
+    if (!form.leave_type_id) errs.leave_type_id = 'Leave type is required';
+    if (!form.from_date) errs.from_date = 'Start date is required';
+    if (!form.to_date) errs.to_date = 'End date is required';
+    else if (form.from_date && form.to_date < form.from_date) errs.to_date = 'End date must be on or after start date';
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+    setFormErrors({});
     try {
       await api('POST', '/api/leaves', {
         employee_id: parseInt(form.employee_id), leave_type_id: parseInt(form.leave_type_id),
@@ -147,7 +154,7 @@ export default function Leaves({ toast }) {
         <h1 className="page-title">Leave Applications</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => load()} className="btn btn-secondary btn-sm gap-1.5"><RefreshCw size={13} /> Refresh</button>
-          <button onClick={() => { setForm({}); setModal(true); }} className="btn btn-primary btn-sm gap-1.5"><Plus size={13} /> Apply Leave</button>
+          <button onClick={() => { setForm({}); setFormErrors({}); setModal(true); }} className="btn btn-primary btn-sm gap-1.5"><Plus size={13} /> Apply Leave</button>
         </div>
       </div>
 
@@ -370,7 +377,7 @@ export default function Leaves({ toast }) {
       <Modal open={modal} title="Apply Leave" onClose={() => setModal(false)} onSave={save} saveLabel="Apply Leave">
         <FormSection title="Leave Details">
           <FormGrid>
-            <Field label="Employee" required>
+            <Field label="Employee" required error={formErrors.employee_id}>
               <Select
                 value={form.employee_id || ''}
                 onChange={v => f({ employee_id: v })}
@@ -379,7 +386,7 @@ export default function Leaves({ toast }) {
                 searchable
               />
             </Field>
-            <Field label="Leave Type" required>
+            <Field label="Leave Type" required error={formErrors.leave_type_id}>
               <Select
                 value={form.leave_type_id || ''}
                 onChange={v => f({ leave_type_id: v })}
@@ -387,10 +394,10 @@ export default function Leaves({ toast }) {
                 placeholder="Select Type"
               />
             </Field>
-            <Field label="From Date" required>
+            <Field label="From Date" required error={formErrors.from_date}>
               <DatePicker value={form.from_date || ''} onChange={v => f({ from_date: v })} placeholder="Select from date" />
             </Field>
-            <Field label="To Date" required>
+            <Field label="To Date" required error={formErrors.to_date}>
               <DatePicker value={form.to_date || ''} onChange={v => f({ to_date: v })} placeholder="Select to date" min={form.from_date} />
             </Field>
             <Field label="Reason" full>

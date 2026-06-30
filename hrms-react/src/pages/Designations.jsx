@@ -21,6 +21,7 @@ export default function Designations({ toast }) {
   const [loading, setLoading] = useState(true);
   const [modal,   setModal]   = useState(null);
   const [name,    setName]    = useState('');
+  const [errors,  setErrors]  = useState({});
   const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = useCallback(async () => {
@@ -33,11 +34,14 @@ export default function Designations({ toast }) {
   useEffect(() => { load(); }, [load]);
   useRefreshOnFocus(load);
 
-  const openAdd  = () => { setName(''); setModal({ mode: 'add' }); };
-  const openEdit = d  => { setName(d.name); setModal({ mode: 'edit', id: d.id }); };
+  const openAdd  = () => { setName(''); setErrors({}); setModal({ mode: 'add' }); };
+  const openEdit = d  => { setName(d.name); setErrors({}); setModal({ mode: 'edit', id: d.id }); };
 
   const save = async () => {
-    if (!name.trim()) return toast('Designation name is required', 'warning');
+    const errs = {};
+    if (!name.trim()) errs.name = 'Designation name is required';
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
     try {
       if (modal.mode === 'add') {
         await api('POST', '/api/employees/designations', { name: name.trim() });
@@ -149,12 +153,12 @@ export default function Designations({ toast }) {
         onSave={save}
         saveLabel={modal?.mode === 'edit' ? 'Save Changes' : 'Add Designation'}
       >
-        <Field label="Designation Name" required>
+        <Field label="Designation Name" required error={errors.name}>
           <input
-            className="form-input"
+            className={`form-input${errors.name ? ' border-red-500 focus:ring-red-400' : ''}`}
             placeholder="e.g. Senior Developer, HR Manager"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={e => { setName(e.target.value); if (errors.name) setErrors(prev => ({ ...prev, name: undefined })); }}
             onKeyDown={e => e.key === 'Enter' && save()}
             autoFocus
           />

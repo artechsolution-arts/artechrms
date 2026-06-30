@@ -34,6 +34,8 @@ export default function LeaveTypes({ toast }) {
   const [modal,  setModal]  = useState(null);
   const [form,   setForm]   = useState({});
 
+  const [errors, setErrors] = useState({});
+
   const [confirmDialog, setConfirmDialog] = useState(null);
 
   const [configModal,   setConfigModal]   = useState(null);
@@ -41,7 +43,7 @@ export default function LeaveTypes({ toast }) {
   const [configLoading, setConfigLoading] = useState(false);
   const [configSaving,  setConfigSaving]  = useState(false);
 
-  const f  = v => setForm(prev => ({ ...prev, ...v }));
+  const f = (v) => { setForm(prev => ({ ...prev, ...v })); const key = Object.keys(v)[0]; if (key) setErrors(prev => ({ ...prev, [key]: '' })); };
   const cf = v => setConfigForm(prev => ({ ...prev, ...v }));
 
   const load = useCallback(async () => {
@@ -56,11 +58,13 @@ export default function LeaveTypes({ toast }) {
 
   const openAdd = () => {
     setForm({ is_paid: true, is_carry_forward: false, max_leaves: 12 });
+    setErrors({});
     setModal({ mode: 'add' });
   };
 
   const openEdit = lt => {
     setForm({ name: lt.name, max_leaves: lt.max_leaves, is_paid: lt.is_paid, is_carry_forward: lt.is_carry_forward });
+    setErrors({});
     setModal({ mode: 'edit', id: lt.id });
   };
 
@@ -105,7 +109,11 @@ export default function LeaveTypes({ toast }) {
   };
 
   const save = async () => {
-    if (!form.name?.trim()) return toast('Leave type name is required', 'warning');
+    const errs = {};
+    if (!form.name?.trim()) errs.name = 'Leave type name is required';
+    if (form.max_leaves !== '' && form.max_leaves !== undefined && parseFloat(form.max_leaves) < 0) errs.max_leaves = 'Days cannot be negative';
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
     const payload = {
       name: form.name,
       max_leaves: parseFloat(form.max_leaves) || 0,
@@ -257,7 +265,7 @@ export default function LeaveTypes({ toast }) {
         saveLabel={modal?.mode === 'edit' ? 'Save Changes' : 'Create'}
       >
         <FormGrid>
-          <Field label="Leave Type Name" required full>
+          <Field label="Leave Type Name" required full error={errors.name}>
             <input
               className="form-input"
               placeholder="e.g. Annual Leave, Sick Leave, Casual Leave"
@@ -266,7 +274,7 @@ export default function LeaveTypes({ toast }) {
               autoFocus
             />
           </Field>
-          <Field label="Max Days Per Year">
+          <Field label="Max Days Per Year" error={errors.max_leaves}>
             <input
               type="number" min={0} step={0.5}
               className="form-input"

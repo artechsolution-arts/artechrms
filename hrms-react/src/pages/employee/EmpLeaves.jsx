@@ -27,7 +27,15 @@ export default function EmpLeaves({ toast }) {
   const [confirmDialog, setConfirmDialog] = useState(null);
 
   const [form, setForm] = useState({});
-  const f = v => setForm(p => ({ ...p, ...v }));
+  const [formErrors, setFormErrors] = useState({});
+  const f = v => {
+    setForm(p => ({ ...p, ...v }));
+    setFormErrors(p => {
+      const next = { ...p };
+      Object.keys(v).forEach(k => delete next[k]);
+      return next;
+    });
+  };
 
   const load = async () => {
     setLoading(true);
@@ -49,10 +57,13 @@ export default function EmpLeaves({ toast }) {
   const selectedBal = balances.find(b => b.leave_type_id === parseInt(form.leave_type_id));
 
   const apply = async () => {
-    if (!form.leave_type_id || !form.from_date || !form.to_date)
-      return toast('All required fields must be filled', 'warning');
-    if (form.from_date > form.to_date)
-      return toast('From date must be before to date', 'warning');
+    const errs = {};
+    if (!form.leave_type_id) errs.leave_type_id = 'Leave type is required';
+    if (!form.from_date) errs.from_date = 'Start date is required';
+    if (!form.to_date) errs.to_date = 'End date is required';
+    else if (form.from_date && form.to_date < form.from_date) errs.to_date = 'End date must be on or after start date';
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+    setFormErrors({});
     const isHalfDay = form.duration === 'Half Day';
     const days = isHalfDay ? 0.5 : (new Date(form.to_date) - new Date(form.from_date)) / 86400000 + 1;
     if (selectedBal && days > selectedBal.available)
@@ -134,7 +145,7 @@ export default function EmpLeaves({ toast }) {
           <h1 className="page-title">My Leaves</h1>
           <p className="text-xs text-gray-500 mt-0.5">Apply and track your leave applications</p>
         </div>
-        <button onClick={() => { setForm({}); setModal(true); }} className="btn btn-primary btn-sm gap-1.5">
+        <button onClick={() => { setForm({}); setFormErrors({}); setModal(true); }} className="btn btn-primary btn-sm gap-1.5">
           <Plus size={13} /> Apply Leave
         </button>
       </div>
@@ -347,7 +358,7 @@ export default function EmpLeaves({ toast }) {
       <Modal open={modal} title="Apply for Leave" onClose={() => setModal(false)} onSave={apply} saveLabel="Submit Application">
         <FormSection title="Leave Details">
           <FormGrid>
-            <Field label="Leave Type" required full>
+            <Field label="Leave Type" required full error={formErrors.leave_type_id}>
               <Select
                 value={form.leave_type_id || ''}
                 onChange={v => f({ leave_type_id: v })}
@@ -393,11 +404,11 @@ export default function EmpLeaves({ toast }) {
               />
             </Field>
 
-            <Field label="From Date" required>
+            <Field label="From Date" required error={formErrors.from_date}>
               <DatePicker value={form.from_date || ''} onChange={v => f({ from_date: v })} placeholder="Select from date" />
             </Field>
             {form.duration !== 'Half Day' && (
-              <Field label="To Date" required>
+              <Field label="To Date" required error={formErrors.to_date}>
                 <DatePicker value={form.to_date || ''} onChange={v => f({ to_date: v })} placeholder="Select to date" min={form.from_date} />
               </Field>
             )}

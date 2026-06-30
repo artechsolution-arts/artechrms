@@ -1,8 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import { downloadAuthFile } from '../utils/download';
 import { fmtDate } from '../utils/date';
 import EmpAvatar from '../components/EmpAvatar';
-import { Upload, Download, FileText, RefreshCw, Search, CheckCircle2, Clock, FileCheck } from 'lucide-react';
+import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
+import Select from '../components/Select';
+import { Upload, Download, FileText, RefreshCw, Search, CheckCircle2, Clock, FileCheck, Plus } from 'lucide-react';
+
+const DOC_TYPES = [
+  'Salary Certificate',
+  'Experience Letter',
+  'Offer Letter',
+  'Relieving Letter',
+  'No Objection Certificate (NOC)',
+  'Bank Verification Letter',
+  'Payslip Copy',
+  'Other',
+];
 
 const TABS = ['All', 'Pending', 'Fulfilled'];
 
@@ -21,21 +35,7 @@ function StatusChip({ status }) {
   );
 }
 
-async function downloadFile(url, name) {
-  const token = localStorage.getItem('artech_hrms_token');
-  const headers = url.startsWith('/api/') ? { Authorization: `Bearer ${token}` } : {};
-  const res = await fetch(url, { headers });
-  if (!res.ok) throw new Error('Download failed');
-  const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = name || 'document';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-}
+const downloadFile = (url, name) => downloadAuthFile(url, name || 'document');
 
 function RequestCard({ r, onUpload, uploading }) {
   const isFulfilled = r.status === 'Fulfilled';
@@ -113,6 +113,40 @@ export default function DocumentRequests({ toast }) {
   const fileInputRef = useRef(null);
   const pendingUploadId = useRef(null);
 
+  const [emps, setEmps] = useState([]);
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+
+  const f = (v) => {
+    setForm(prev => ({ ...prev, ...v }));
+    const key = Object.keys(v)[0];
+    if (key) setFormErrors(prev => ({ ...prev, [key]: '' }));
+  };
+
+  const openModal = () => { setForm({}); setFormErrors({}); setModal(true); };
+
+  const save = async () => {
+    const errs = {};
+    if (!form.employee_id) errs.employee_id = 'Employee is required';
+    if (!form.doc_type) errs.doc_type = 'Document type is required';
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+    setFormErrors({});
+    setSaving(true);
+    try {
+      await api('POST', '/api/hrm/document-requests', {
+        employee_id: parseInt(form.employee_id),
+        doc_type: form.doc_type,
+        remarks: form.remarks || null,
+      });
+      toast('Document request created', 'success');
+      setModal(false);
+      load();
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setSaving(false); }
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -121,7 +155,10 @@ export default function DocumentRequests({ toast }) {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    api('GET', '/api/employees?all=true').then(setEmps).catch(() => {});
+    load();
+  }, []);
 
   const handleUploadClick = (id) => {
     pendingUploadId.current = id;
@@ -171,9 +208,14 @@ export default function DocumentRequests({ toast }) {
           <h1 className="page-title">Document Requests</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Upload documents requested by employees</p>
         </div>
-        <button onClick={load} className="btn btn-secondary btn-sm gap-1.5">
-          <RefreshCw size={13} /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={load} className="btn btn-secondary btn-sm gap-1.5">
+            <RefreshCw size={13} /> Refresh
+          </button>
+          <button onClick={openModal} className="btn btn-primary btn-sm gap-1.5">
+            <Plus size={13} /> New Request
+          </button>
+        </div>
       </div>
 
       <div className="page-content space-y-4">
@@ -301,6 +343,47 @@ export default function DocumentRequests({ toast }) {
         className="hidden"
         onChange={handleFileChange}
       />
+
+      <Modal
+        open={modal}
+        title="New Document Request"
+        onClose={() => { setModal(false); setForm({}); setFormErrors({}); }}
+        onSave={save}
+        saving={saving}
+        saveLabel={saving ? 'Creating…' : 'Create Request'}
+      >
+        <FormSection title="Request Details">
+          <FormGrid>
+            <Field label="Employee" required error={formErrors.employee_id}>
+              <Select
+                value={form.employee_id || ''}
+                onChange={v => f({ employee_id: v })}
+                options={emps.map(e => ({ value: String(e.id), label: `${e.name} (${e.employee_code || e.code || ''})` }))}
+                placeholder="Select employee…"
+                error={!!formErrors.employee_id}
+              />
+            </Field>
+            <Field label="Document Type" required error={formErrors.doc_type}>
+              <Select
+                value={form.doc_type || ''}
+                onChange={v => f({ doc_type: v })}
+                options={DOC_TYPES.map(t => ({ value: t, label: t }))}
+                placeholder="Select document type…"
+                error={!!formErrors.doc_type}
+              />
+            </Field>
+            <Field label="Purpose / Remarks" full>
+              <textarea
+                className="form-textarea"
+                rows={3}
+                placeholder="Any specific purpose or instructions…"
+                value={form.remarks || ''}
+                onChange={e => f({ remarks: e.target.value })}
+              />
+            </Field>
+          </FormGrid>
+        </FormSection>
+      </Modal>
     </>
   );
 }

@@ -404,6 +404,11 @@ html[data-accent="indigo"] { --accent: #4F46E5; --accent-dark: #312E81; --accent
     color: #0D1F4E;
     --tw-ring-color: var(--accent);
   }
+  .field-error-wrap .form-input,
+  .field-error-wrap .form-textarea,
+  .field-error-wrap input,
+  .field-error-wrap textarea,
+  .field-error-wrap select { border-color: #ef4444 !important; }
   .form-select {
     @apply w-full px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:border-transparent transition-colors;
     border: 1px solid #E8EDF5;

@@ -24,6 +24,7 @@ export default function Assets({ toast }) {
   const [returnModal, setReturnModal] = useState(null);
   const [returnForm, setReturnForm]   = useState({ condition: 'Good', returned_date: new Date().toISOString().slice(0,10) });
   const [form, setForm] = useState({ allocated_date: new Date().toISOString().slice(0, 10), condition: 'Good' });
+  const [formErrors, setFormErrors] = useState({});
   const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = async () => {
@@ -40,11 +41,20 @@ export default function Assets({ toast }) {
   };
   useEffect(() => { load(); }, [filterStatus]);
 
-  const f = v => setForm(p => ({ ...p, ...v }));
+  const f = (v) => {
+    setForm(p => ({ ...p, ...v }));
+    const key = Object.keys(v)[0];
+    if (key) setFormErrors(p => ({ ...p, [key]: '' }));
+  };
 
   const save = async () => {
-    if (!form.employee_id || !form.asset_name || !form.asset_type)
-      return toast('Employee, name and type are required', 'warning');
+    const errs = {};
+    if (!form.employee_id) errs.employee_id = 'Employee is required';
+    if (!form.asset_name?.trim()) errs.asset_name = 'Asset name is required';
+    if (!form.asset_type) errs.asset_type = 'Asset type is required';
+    if (!form.allocated_date) errs.allocated_date = 'Allocated date is required';
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+    setFormErrors({});
     try {
       await api('POST', '/api/hrm/assets', { ...form, employee_id: +form.employee_id });
       toast('Asset allocated', 'success');
@@ -91,7 +101,7 @@ export default function Assets({ toast }) {
             size="sm"
             className="w-36"
           />
-          <button onClick={() => setModal(true)} className="btn btn-primary btn-sm gap-1.5"><Plus size={13}/>Allocate Asset</button>
+          <button onClick={() => { setFormErrors({}); setForm({ allocated_date: new Date().toISOString().slice(0, 10), condition: 'Good' }); setModal(true); }} className="btn btn-primary btn-sm gap-1.5"><Plus size={13}/>Allocate Asset</button>
         </div>
       </div>
 
@@ -153,7 +163,7 @@ export default function Assets({ toast }) {
       <Modal open={modal} title="Allocate Asset" onClose={() => setModal(false)} onSave={save} saveLabel="Allocate">
         <FormSection title="Asset Details">
           <FormGrid>
-            <Field label="Employee" required>
+            <Field label="Employee" required error={formErrors.employee_id}>
               <Select
                 value={form.employee_id || ''}
                 onChange={v => f({ employee_id: v })}
@@ -162,10 +172,10 @@ export default function Assets({ toast }) {
                 searchable
               />
             </Field>
-            <Field label="Asset Name" required>
+            <Field label="Asset Name" required error={formErrors.asset_name}>
               <input className="form-input" value={form.asset_name || ''} onChange={e => f({ asset_name: e.target.value })} placeholder="e.g. ThinkPad X1 Carbon"/>
             </Field>
-            <Field label="Asset Type" required>
+            <Field label="Asset Type" required error={formErrors.asset_type}>
               <Select
                 value={form.asset_type || ''}
                 onChange={v => f({ asset_type: v })}
@@ -176,7 +186,7 @@ export default function Assets({ toast }) {
             <Field label="Serial Number">
               <input className="form-input" value={form.serial_number || ''} onChange={e => f({ serial_number: e.target.value })} placeholder="SN-XXXXX"/>
             </Field>
-            <Field label="Allocated Date" required>
+            <Field label="Allocated Date" required error={formErrors.allocated_date}>
               <DatePicker value={form.allocated_date || ''} onChange={v => f({ allocated_date: v })} placeholder="Select date" />
             </Field>
             <Field label="Condition">

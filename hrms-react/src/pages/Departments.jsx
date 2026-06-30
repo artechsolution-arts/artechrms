@@ -21,6 +21,7 @@ export default function Departments({ toast }) {
   const [loading, setLoading] = useState(true);
   const [modal,   setModal]   = useState(null);
   const [name,    setName]    = useState('');
+  const [nameError, setNameError] = useState('');
   const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = useCallback(async () => {
@@ -33,11 +34,12 @@ export default function Departments({ toast }) {
   useEffect(() => { load(); }, [load]);
   useRefreshOnFocus(load);
 
-  const openAdd  = () => { setName(''); setModal({ mode: 'add' }); };
-  const openEdit = d  => { setName(d.name); setModal({ mode: 'edit', id: d.id }); };
+  const openAdd  = () => { setName(''); setNameError(''); setModal({ mode: 'add' }); };
+  const openEdit = d  => { setName(d.name); setNameError(''); setModal({ mode: 'edit', id: d.id }); };
 
   const save = async () => {
-    if (!name.trim()) return toast('Department name is required', 'warning');
+    if (!name.trim()) { setNameError('Department name is required'); return; }
+    setNameError('');
     try {
       if (modal.mode === 'add') {
         await api('POST', '/api/employees/departments', { name: name.trim() });
@@ -149,11 +151,11 @@ export default function Departments({ toast }) {
         onSave={save}
         saveLabel={modal?.mode === 'edit' ? 'Save Changes' : 'Add Department'}
       >
-        <Field label="Department Name" required>
+        <Field label="Department Name" required error={nameError}>
           <input
             className="form-input"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={e => { setName(e.target.value); if (e.target.value.trim()) setNameError(''); }}
             placeholder="e.g. Engineering, Sales, HR..."
             onKeyDown={e => e.key === 'Enter' && save()}
             autoFocus

@@ -21,6 +21,7 @@ export default function EmpResignation({ toast }) {
   const [confirm,     setConfirm]     = useState(false);
   const [empType,     setEmpType]     = useState('');
   const [noticeDays,  setNoticeDays]  = useState(0);
+  const [errors,      setErrors]      = useState({ reason: '', last_working_date: '' });
 
   const load = () => {
     setLoading(true);
@@ -43,10 +44,21 @@ export default function EmpResignation({ toast }) {
 
   useEffect(() => { load(); }, []);
 
-  const f = v => setForm(p => ({ ...p, ...v }));
+  const f = v => {
+    setForm(p => ({ ...p, ...v }));
+    const cleared = {};
+    Object.keys(v).forEach(k => { if (k in errors) cleared[k] = ''; });
+    if (Object.keys(cleared).length) setErrors(p => ({ ...p, ...cleared }));
+  };
 
   const submit = async () => {
-    if (!form.reason.trim()) return toast('Please provide a reason for resignation', 'warning');
+    const newErrors = { reason: '', last_working_date: '' };
+    if (!form.reason.trim()) newErrors.reason = 'Please provide a reason for resignation.';
+    if (!form.last_working_date) newErrors.last_working_date = 'Preferred last working date is required.';
+    if (newErrors.reason || newErrors.last_working_date) {
+      setErrors(newErrors);
+      return;
+    }
     setSubmitting(true);
     try {
       await api('POST', '/api/portal/resignation', {
@@ -57,6 +69,7 @@ export default function EmpResignation({ toast }) {
       toast('Resignation submitted. HR will review and respond.', 'success');
       setShowForm(false);
       setForm({ reason: '', last_working_date: '', notice_period_days: noticeDays });
+      setErrors({ reason: '', last_working_date: '' });
       load();
     } catch (e) { toast(e.message, 'error'); }
     finally { setSubmitting(false); }
@@ -199,25 +212,27 @@ export default function EmpResignation({ toast }) {
                 Reason for Resignation <span className="text-red-400">*</span>
               </label>
               <textarea
-                className="form-textarea w-full resize-none"
+                className={`form-textarea w-full resize-none${errors.reason ? ' border-red-400 dark:border-red-500' : ''}`}
                 rows={4}
                 placeholder="Please share your reason for resigning…"
                 value={form.reason}
                 onChange={e => f({ reason: e.target.value })}
               />
+              {errors.reason && <p className="mt-1 text-xs text-red-500">{errors.reason}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                  Preferred Last Working Date
+                  Preferred Last Working Date <span className="text-red-400">*</span>
                 </label>
                 <DatePicker
-                  className="form-input w-full"
+                  className={`form-input w-full${errors.last_working_date ? ' border-red-400 dark:border-red-500' : ''}`}
                   value={form.last_working_date}
                   min={new Date().toISOString().slice(0, 10)}
                   onChange={v => f({ last_working_date: v })}
                 />
+                {errors.last_working_date && <p className="mt-1 text-xs text-red-500">{errors.last_working_date}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -235,13 +250,13 @@ export default function EmpResignation({ toast }) {
             <div className="flex gap-2 pt-1">
               <button
                 onClick={submit}
-                disabled={submitting || !form.reason.trim()}
+                disabled={submitting}
                 className="btn btn-primary flex-1 gap-1.5"
               >
                 <FileText size={13} />
                 {submitting ? 'Submitting…' : 'Submit Resignation'}
               </button>
-              <button onClick={() => setShowForm(false)} className="btn btn-secondary px-4">
+              <button onClick={() => { setShowForm(false); setErrors({ reason: '', last_working_date: '' }); }} className="btn btn-secondary px-4">
                 Cancel
               </button>
             </div>

@@ -605,6 +605,7 @@ export default function Appraisals({ toast }) {
     { title: '', weight: 25, target: '' },
   ]);
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [confirmDialog, setConfirmDialog] = useState(null);
 
   const load = useCallback(async () => {
@@ -624,16 +625,20 @@ export default function Appraisals({ toast }) {
 
   const filtered = tab === 'All' ? rows : rows.filter(r => DISPLAY_STATUS(r.status) === tab);
 
-  const updateGoal = (i, field, val) =>
+  const updateGoal = (i, field, val) => {
     setGoals(prev => prev.map((g, gi) => gi === i ? { ...g, [field]: val } : g));
+    if (field === 'title' && val.trim()) setFormErrors(prev => ({ ...prev, goals: undefined }));
+  };
   const addGoal = () => setGoals(prev => [...prev, { title: '', weight: 10, target: '' }]);
   const removeGoal = i => setGoals(prev => prev.filter((_, gi) => gi !== i));
   const totalWeight = goals.reduce((s, g) => s + (parseFloat(g.weight) || 0), 0);
 
   const save = async () => {
-    if (!empId) return toast('Select an employee', 'warning');
+    const errors = {};
+    if (!empId) errors.employee_id = 'Please select an employee';
     const validGoals = goals.filter(g => g.title.trim());
-    if (validGoals.length === 0) return toast('Add at least one goal', 'warning');
+    if (validGoals.length === 0) errors.goals = 'Add at least one goal with a title';
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
     const period = computePeriod(cycleType, fyYear);
     setSaving(true);
     try {
@@ -700,6 +705,7 @@ export default function Appraisals({ toast }) {
               { title: '', weight: 25, target: '' },
               { title: '', weight: 25, target: '' },
             ]);
+            setFormErrors({});
             setNewOpen(true);
           }} className="btn btn-primary btn-sm gap-1.5">
             <Plus size={13} /> New Appraisal
@@ -880,10 +886,10 @@ export default function Appraisals({ toast }) {
         </FormSection>
 
         <FormSection title="Employee">
-          <Field label="Select Employee" required>
+          <Field label="Select Employee" required error={formErrors.employee_id}>
             <Select
               value={empId || ''}
-              onChange={v => setEmpId(v)}
+              onChange={v => { setEmpId(v); if (v) setFormErrors(prev => ({ ...prev, employee_id: undefined })); }}
               options={[{ value: '', label: 'Select Employee' }, ...emps.map(e => ({ value: String(e.id), label: e.full_name }))]}
               placeholder="Select Employee"
               searchable
@@ -940,6 +946,9 @@ export default function Appraisals({ toast }) {
             >
               <Plus size={12} /> Add Goal
             </button>
+            {formErrors.goals && (
+              <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><span>⚠</span>{formErrors.goals}</p>
+            )}
           </div>
         </FormSection>
       </Modal>

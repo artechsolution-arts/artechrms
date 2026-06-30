@@ -30,6 +30,7 @@ export default function PayrollEntry({ toast, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [runModal, setRunModal] = useState(false);
   const [runForm, setRunForm] = useState({});
+  const [errors, setErrors] = useState({});
   const [previewing, setPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState([]);
   const [running, setRunning] = useState(false);
@@ -37,7 +38,38 @@ export default function PayrollEntry({ toast, onNavigate }) {
   const [rules, setRules] = useState(null);
 
   const now = new Date();
-  const rf = v => setRunForm(prev => ({ ...prev, ...v }));
+
+  const rf = v => {
+    setRunForm(prev => ({ ...prev, ...v }));
+    setErrors(prev => {
+      const next = { ...prev };
+      Object.keys(v).forEach(k => delete next[k]);
+      return next;
+    });
+  };
+
+  const validateRunForm = () => {
+    const errs = {};
+    if (!runForm.employee_id) {
+      // employee_id is not a field in the batch run form; guard here for future use
+    }
+    if (runForm.basic_salary !== undefined) {
+      const sal = parseFloat(runForm.basic_salary);
+      if (!runForm.basic_salary && runForm.basic_salary !== 0) {
+        errs.basic_salary = 'Basic salary is required';
+      } else if (isNaN(sal) || sal <= 0) {
+        errs.basic_salary = 'Basic salary must be a positive number';
+      }
+    }
+    if (!runForm.month) errs.month = 'Month is required';
+    const yr = parseInt(runForm.year);
+    if (!runForm.year) {
+      errs.year = 'Year is required';
+    } else if (isNaN(yr) || yr < 2000 || yr > 2100) {
+      errs.year = 'Enter a valid year';
+    }
+    return errs;
+  };
 
   const load = async () => {
     setLoading(true);
@@ -60,6 +92,7 @@ export default function PayrollEntry({ toast, onNavigate }) {
       year: now.getFullYear(),
       overwrite: false,
     });
+    setErrors({});
     setPreviewData([]);
     setResult(null);
     setRunModal(true);
@@ -83,6 +116,9 @@ export default function PayrollEntry({ toast, onNavigate }) {
   };
 
   const runPayroll = async () => {
+    const errs = validateRunForm();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
     setRunning(true);
     try {
       const res = await api('POST', '/api/payroll/run', {
@@ -235,15 +271,15 @@ export default function PayrollEntry({ toast, onNavigate }) {
             {/* Config */}
             <FormSection title="Payroll Period">
               <FormGrid>
-                <Field label="Month">
+                <Field label="Month" error={errors.month}>
                   <Select
                     value={String(runForm.month || now.getMonth() + 1)}
                     onChange={v => rf({ month: v })}
                     options={MONTH_NAMES.map((m, i) => ({ value: String(i + 1), label: m }))}
                   />
                 </Field>
-                <Field label="Year">
-                  <input type="number" className="form-input" value={runForm.year || now.getFullYear()} onChange={e => rf({ year: e.target.value })} min="2020" max="2030" />
+                <Field label="Year" error={errors.year}>
+                  <input type="number" className={`form-input${errors.year ? ' border-red-400 focus:ring-red-400' : ''}`} value={runForm.year || now.getFullYear()} onChange={e => rf({ year: e.target.value })} min="2020" max="2030" />
                 </Field>
                 <Field label="Overwrite Existing Slips">
                   <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">

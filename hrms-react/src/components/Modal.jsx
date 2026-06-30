@@ -60,13 +60,16 @@ export function FormGrid({ children, cols = 2 }) {
   );
 }
 
-export function Field({ label, required, children, full }) {
+export function Field({ label, required, children, full, error }) {
   return (
     <div className={full ? 'md:col-span-2' : ''}>
       <label className="form-label">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
-      {children}
+      <div className={error ? 'field-error-wrap' : ''}>
+        {children}
+      </div>
+      {error && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><span>⚠</span>{error}</p>}
     </div>
   );
 }

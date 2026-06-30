@@ -603,6 +603,7 @@ export default function Employees({ toast }) {
   const [form, setForm] = useState({});
   const [showPwd, setShowPwd] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [empAssets, setEmpAssets] = useState([]);
   const [showAssetForm, setShowAssetForm] = useState(false);
   const [joinDocs, setJoinDocs]   = useState({});
@@ -957,6 +958,7 @@ export default function Employees({ toast }) {
     setEmpAssets([]);
     setShowAssetForm(false);
     setJoinDocs({});
+    setFormErrors({});
     setModal({ mode: 'add' });
   };
 
@@ -1013,6 +1015,7 @@ export default function Employees({ toast }) {
       setEmpAssets(assets);
       setShowAssetForm(false);
       setAssetForm({ asset_name: '', asset_type: '', serial_number: '', condition: 'Good', allocated_date: new Date().toISOString().slice(0, 10), notes: '' });
+      setFormErrors({});
       setModal({ mode: 'edit', id });
       loadJoinDocs(id);
     } catch (e) { toast(e.message, 'error'); }
@@ -1169,14 +1172,18 @@ export default function Employees({ toast }) {
   };
 
   const save = async () => {
-    if (!form.first_name?.trim()) return toast('First name is required', 'warning');
-    if (!form.date_of_joining) return toast('Date of joining is required', 'warning');
-    if (form.mobile && form.mobile.replace(/^\+91/, '').length !== 10) return toast('Mobile number must be 10 digits', 'warning');
+    const errs = {};
+    if (!form.first_name?.trim()) errs.first_name = 'First name is required';
+    if (!form.date_of_joining) errs.date_of_joining = 'Date of joining is required';
+    if (form.mobile && form.mobile.replace(/^\+91/, '').length !== 10) errs.mobile = 'Mobile must be 10 digits';
     if (modal.mode === 'add') {
-      if (!form.username?.trim()) return toast('Username is required', 'warning');
-      if (!form.email?.trim()) return toast('Email is required', 'warning');
-      if (form.password?.trim() && form.password.length < 6) return toast('Password must be at least 6 characters', 'warning');
+      if (!form.username?.trim()) errs.username = 'Username is required';
+      if (!form.email?.trim()) errs.email = 'Email is required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Enter a valid email address';
+      if (form.password?.trim() && form.password.length < 6) errs.password = 'Password must be at least 6 characters';
     }
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+    setFormErrors({});
     setSaving(true);
     try {
       const salaryFields = {
@@ -1278,7 +1285,11 @@ export default function Employees({ toast }) {
     return;
   };
 
-  const f = v => setForm(prev => ({ ...prev, ...v }));
+  const f = (v) => {
+    setForm(prev => ({ ...prev, ...v }));
+    const key = Object.keys(v)[0];
+    if (key) setFormErrors(prev => ({ ...prev, [key]: '' }));
+  };
   const liveCalc = calcLivePayroll(form);
 
   return (
@@ -2762,16 +2773,16 @@ export default function Employees({ toast }) {
               </p>
             </div>
             <FormGrid>
-              <Field label="Username" required>
+              <Field label="Username" required error={formErrors.username}>
                 <input className="form-input" value={form.username || ''}
                   onChange={e => f({ username: e.target.value.toLowerCase().replace(/\s/g, '') })}
                   placeholder="e.g. john.doe" autoComplete="off" />
               </Field>
-              <Field label="Email" required>
+              <Field label="Email" required error={formErrors.email}>
                 <input type="email" className="form-input" value={form.email || ''}
                   onChange={e => f({ email: e.target.value })} placeholder="john@company.com" autoComplete="off" />
               </Field>
-              <Field label="Password (leave blank if existing account)">
+              <Field label="Password (leave blank if existing account)" error={formErrors.password}>
                 <div className="relative">
                   <input type={showPwd ? 'text' : 'password'} className="form-input pr-10" value={form.password || ''}
                     onChange={e => f({ password: e.target.value })} placeholder="Leave blank to link existing account" autoComplete="new-password" />
@@ -2820,7 +2831,7 @@ export default function Employees({ toast }) {
                 options={['Full-time', 'Part-time', 'Contract', 'Intern']}
               />
             </Field>
-            <Field label="Date of Joining" required>
+            <Field label="Date of Joining" required error={formErrors.date_of_joining}>
               <DatePicker value={form.date_of_joining || ''} onChange={v => f({ date_of_joining: v })} placeholder="Select joining date" />
             </Field>
             <Field label="Reporting Manager">
@@ -2873,7 +2884,7 @@ export default function Employees({ toast }) {
         </FormSection>
         <FormSection title="Personal Details">
           <FormGrid>
-            <Field label="First Name" required>
+            <Field label="First Name" required error={formErrors.first_name}>
               <input className="form-input" value={form.first_name || ''} onChange={e => f({ first_name: e.target.value })} placeholder="First name" />
             </Field>
             <Field label="Last Name">
@@ -2884,7 +2895,7 @@ export default function Employees({ toast }) {
                 <input type="email" className="form-input" value={form.email || ''} onChange={e => f({ email: e.target.value })} placeholder="Email" />
               </Field>
             )}
-            <Field label="Mobile">
+            <Field label="Mobile" error={formErrors.mobile || (form.mobile && form.mobile.replace(/^\+91/, '').length > 0 && form.mobile.replace(/^\+91/, '').length < 10 ? 'Must be 10 digits' : '')}>
               <div className="flex">
                 <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 select-none">+91</span>
                 <input
@@ -2899,9 +2910,6 @@ export default function Employees({ toast }) {
                   inputMode="numeric"
                 />
               </div>
-              {form.mobile && form.mobile.replace(/^\+91/, '').length > 0 && form.mobile.replace(/^\+91/, '').length < 10 && (
-                <p className="text-xs text-red-500 mt-1">Must be 10 digits</p>
-              )}
             </Field>
             <Field label="Gender">
               <Select
