@@ -231,16 +231,9 @@ function OnEmployment({ data, set, emp }) {
 
 function OnDocuments({ data, set }) {
   const StatusBadge = ({ val, onChange }) => (
-    <select value={val || 'Pending'} onChange={e => onChange(e.target.value)}
-      style={{
-        fontSize: 11, padding: '2px 6px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600,
-        background: val === 'Submitted' ? '#DCFCE7' : val === 'Verified' ? '#DBEAFE' : '#FEF9C3',
-        color: val === 'Submitted' ? '#166534' : val === 'Verified' ? '#1E40AF' : '#854D0E',
-      }}>
-      <option value="Pending">Pending</option>
-      <option value="Submitted">Submitted</option>
-      <option value="Verified">Verified</option>
-    </select>
+    <div style={{ width: 130 }}>
+      <SelectDS value={val || 'Pending'} onChange={onChange} options={['Pending', 'Submitted', 'Verified']} size="sm" />
+    </div>
   );
   const DocRow = ({ label, fieldKey, placeholder }) => (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, alignItems: 'end' }}>
