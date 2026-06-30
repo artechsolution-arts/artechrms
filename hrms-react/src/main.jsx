@@ -8,3 +8,11 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+// Hide Capacitor splash screen after React mounts
+if ('Capacitor' in window) {
+  const dynImport = new Function('m', 'return import(m)');
+  dynImport('@capacitor/splash-screen').then(({ SplashScreen }) => {
+    SplashScreen.hide({ fadeOutDuration: 300 });
+  }).catch(() => {});
+}

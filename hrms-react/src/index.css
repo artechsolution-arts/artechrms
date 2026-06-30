@@ -1,4 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import '@fontsource/inter/300.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/plus-jakarta-sans/400.css';
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
+@import '@fontsource/plus-jakarta-sans/700.css';
+@import '@fontsource/plus-jakarta-sans/800.css';
+@import '@fontsource/dm-serif-display/400.css';
+@import '@fontsource/dm-serif-display/400-italic.css';
 
 @tailwind base;
 @tailwind components;
@@ -586,4 +597,45 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     transition-duration: 0.01ms !important;
   }
   .btn:active { transform: none !important; }
+}
+
+/* ── Cross-platform: safe-area insets (iPhone notch / home bar) ──────────
+   On web and Android without gesture nav, env() returns 0px — no effect.
+   On iPhone and Android with gesture nav, these push content clear of system UI. */
+
+/* Used on <main> to clear the bottom nav + home bar */
+.pb-safe-nav {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Bottom nav bar already uses .glass-mobile-nav — extend it with safe area */
+.glass-mobile-nav {
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+}
+
+/* Slide-up panel bottom gap (replace the hardcoded pb-4 divs) */
+.panel-safe-bottom {
+  height: max(16px, env(safe-area-inset-bottom, 16px));
+}
+
+/* Prevent iOS tap highlight flash on buttons */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS status bar safe area — pushes topbar below the notch/Dynamic Island */
+.pt-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Prevent body rubber-band overscroll on iOS outside scroll areas */
+body {
+  overscroll-behavior: none;
+}
+
+/* Prevent iOS auto-zoom when focusing inputs (requires font-size >= 16px) */
+@media (max-width: 1023px) {
+  input:not([type="range"]), select, textarea {
+    font-size: max(16px, 1em) !important;
+  }
 }

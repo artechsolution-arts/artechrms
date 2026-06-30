@@ -235,7 +235,7 @@ export default function App() {
           }}
         />
 
-        <main className="flex-1 overflow-auto flex flex-col pb-safe-nav lg:pb-0">
+        <main className="flex-1 overflow-auto flex flex-col pt-safe-top lg:pt-0 pb-safe-nav lg:pb-0">
           {isPortalPage ? (
             <PortalGate onNavigate={navigate}>
               <PageComponent
