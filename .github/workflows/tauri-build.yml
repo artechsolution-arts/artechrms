@@ -1,0 +1,67 @@
+name: Build & Release Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*'          # triggers on v1.0.1, v2.0.0, etc.
+  workflow_dispatch:  # allows manual trigger from GitHub UI
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            label: windows
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            label: macos-intel
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            label: macos-arm
+
+    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.label }})
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: hrms-react/package-lock.json
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: hrms-react/src-tauri -> target
+
+      - name: Install npm dependencies
+        run: npm ci
+        working-directory: hrms-react
+
+      - name: Build & release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: hrms-react
+          tagName: ${{ github.ref_name }}
+          releaseName: 'AR Peopliz ${{ github.ref_name }}'
+          releaseBody: 'Download the installer for your platform below.'
+          releaseDraft: false
+          prerelease: false
+          args: --target ${{ matrix.target }}

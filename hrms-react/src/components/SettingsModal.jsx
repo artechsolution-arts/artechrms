@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { X, Settings as SettingsIcon, Lock, Image as ImageIcon, Check, Eye, EyeOff } from 'lucide-react';
 import { useBackground, BACKGROUNDS } from '../hooks/useBackground';
@@ -35,7 +36,7 @@ export default function SettingsModal({ open, onClose, toast }) {
 
   const INPUT = 'w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2';
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="glass-panel rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
@@ -140,6 +141,7 @@ export default function SettingsModal({ open, onClose, toast }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Tauri
+src-tauri/target/
+src-tauri/WixTools/
+src-tauri/gen/
+
+# Environment (never commit secrets)
+.env.local
+.env.*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

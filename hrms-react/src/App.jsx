@@ -8,6 +8,7 @@ import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useBackground } from './hooks/useBackground';
 import { usePermissions } from './hooks/usePermissions';
+import { useUpdater } from './hooks/useUpdater';
 import { api } from './api';
 
 import Login from './pages/Login';
@@ -142,6 +143,7 @@ export default function App() {
   const { token, user, login, logout, isAuthenticated } = useAuth();
   useTheme();
   useBackground();  // re-apply saved background image on load
+  useUpdater(toast);
   const { can, allowed, loading: permLoading } = usePermissions(user?.role);
 
   const home = ROLE_HOME[user?.role] || 'dashboard';
@@ -233,7 +235,7 @@ export default function App() {
           }}
         />
 
-        <main className="flex-1 overflow-auto flex flex-col pb-16 lg:pb-0">
+        <main className="flex-1 overflow-auto flex flex-col pb-safe-nav lg:pb-0">
           {isPortalPage ? (
             <PortalGate onNavigate={navigate}>
               <PageComponent
