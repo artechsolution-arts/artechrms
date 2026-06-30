@@ -4,6 +4,7 @@ import { fmtDate } from '../utils/date';
 import EmpAvatar from '../components/EmpAvatar';
 import ConfirmModal from '../components/ConfirmModal';
 import DatePicker from '../components/DatePicker';
+import SelectDS from '../components/Select';
 import {
   UserPlus, UserMinus, Search, RefreshCw, X, ChevronLeft, ChevronRight,
   CheckCircle2, Circle, Save, Clock, AlertCircle, Plus, Pencil, Trash2,
@@ -98,11 +99,7 @@ const Select = ({ label, value, onChange, options, required, disabled }) => (
     <label className="onb-form-label" style={{ display: 'block', fontSize: 11.5, fontWeight: 600, marginBottom: 5 }}>
       {label}{required && <span style={{ color: '#EF4444', marginLeft: 3 }}>*</span>}
     </label>
-    <select value={value || ''} onChange={e => onChange(e.target.value)} disabled={disabled}
-      className="form-select" style={{ fontSize: 13 }}>
-      <option value="">— Select —</option>
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <SelectDS value={value || ''} onChange={onChange} options={options} disabled={disabled} placeholder="— Select —" />
   </div>
 );
 

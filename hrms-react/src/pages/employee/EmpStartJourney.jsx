@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../../api';
 import { fmtDate } from '../../utils/date';
 import DatePicker from '../../components/DatePicker';
+import SelectComp from '../../components/Select';
 import {
   FileText, FilePen, Lock, BookOpen, Shield, Monitor,
   CreditCard, Globe, GraduationCap, Briefcase, Wallet,
@@ -61,10 +62,7 @@ const Inp = ({ label, value, onChange, type = 'text', placeholder, required }) =
 const Sel = ({ label, value, onChange, opts }) => (
   <div>
     <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 4 }}>{label}</label>
-    <select value={value || ''} onChange={e => onChange(e.target.value)} className="form-select" style={{ fontSize: 13 }}>
-      <option value="">— Select —</option>
-      {opts.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <SelectComp value={value || ''} onChange={onChange} options={opts} placeholder="— Select —" />
   </div>
 );
 const Row2 = ({ children }) => <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>{children}</div>;

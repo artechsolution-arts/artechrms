@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { downloadAuthFile } from '../utils/download';
 import ConfirmModal from '../components/ConfirmModal';
 import DatePicker from '../components/DatePicker';
+import SelectComp from '../components/Select';
 import { api } from '../api';
 import { FileText, Download, Eye, FolderOpen, Upload, Trash2, Send, ChevronDown, Search, Check, X, Settings, Image, Phone, MapPin, User, Palette, Save, RefreshCw, ZoomIn, Move, PenLine, Type, Layers, Plus, Edit2, Wand2, FileCheck, FileCheck2, FileX, Award, Clock, TrendingUp, Star, LogOut, ShieldCheck, BookOpen, Scale, Lock, ClipboardCheck, FileImage, FileSpreadsheet, Archive, File, Presentation } from 'lucide-react';
 
@@ -226,8 +228,7 @@ function ManualEmpFields({ value, onChange }) {
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Date of Joining</label>
-          <input type="date" className="form-input w-full"
-            value={value.date_of_joining} onChange={e => f('date_of_joining', e.target.value)} />
+          <DatePicker value={value.date_of_joining} onChange={v => f('date_of_joining', v)} />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email</label>
@@ -406,13 +407,11 @@ function GenerateModal({ doc, employees, letterFields, onClose, toast }) {
                   placeholder="Select date"
                 />
               ) : field.type === 'select' ? (
-                <select
-                  className="form-input w-full"
+                <SelectComp
                   value={form[field.key] || field.options[0]}
-                  onChange={e => f({ [field.key]: e.target.value })}
-                >
-                  {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
+                  onChange={v => f({ [field.key]: v })}
+                  options={field.options}
+                />
               ) : (
                 <input
                   type="text"
@@ -1938,17 +1937,17 @@ function LetterheadEditor({ toast }) {
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div>
             <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Font Family</label>
-            <select
-              className="form-input w-full text-sm"
+            <SelectComp
               value={cfg.body_font || 'Source Sans 3'}
-              onChange={e => set({ body_font: e.target.value })}
-            >
-              <option value="Source Sans 3">Source Sans 3 (recommended)</option>
-              <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
-              <option value="Helvetica">Helvetica</option>
-              <option value="Times-Roman">Times Roman</option>
-              <option value="Courier">Courier</option>
-            </select>
+              onChange={v => set({ body_font: v })}
+              options={[
+                { value: 'Source Sans 3', label: 'Source Sans 3 (recommended)' },
+                { value: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans' },
+                { value: 'Helvetica', label: 'Helvetica' },
+                { value: 'Times-Roman', label: 'Times Roman' },
+                { value: 'Courier', label: 'Courier' },
+              ]}
+            />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Font Size</label>
@@ -2279,10 +2278,7 @@ export default function CompanyDocs({ toast }) {
   const download = async (doc) => {
     setDownloading(doc.name);
     try {
-      const blobUrl = await fetchPdfBlob(doc.url);
-      const a = document.createElement('a');
-      a.href = blobUrl; a.download = doc.name; a.click();
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      await downloadAuthFile(doc.url, doc.name);
     } catch (e) { toast(e.message, 'error'); }
     finally { setDownloading(null); }
   };

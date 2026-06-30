@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import DatePicker from '../components/DatePicker';
+import Select from '../components/Select';
 import { Plus, Megaphone, Trash2, ToggleLeft, ToggleRight, AlertCircle, Info, ChevronUp } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -225,9 +226,7 @@ export default function Announcements({ toast }) {
           </FormGrid>
           <FormGrid>
             <Field label="Priority">
-              <select className="form-select" value={form.priority || 'Medium'} onChange={e => f({ priority: e.target.value })}>
-                {['Low', 'Medium', 'High'].map(p => <option key={p}>{p}</option>)}
-              </select>
+              <Select value={form.priority || 'Medium'} onChange={v => f({ priority: v })} options={['Low', 'Medium', 'High']} />
             </Field>
             <Field label="Expires On (optional)">
               <DatePicker value={form.expires_on || ''} onChange={v => f({ expires_on: v })} placeholder="Select expiry date" />
