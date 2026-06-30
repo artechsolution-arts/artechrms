@@ -112,19 +112,23 @@ jobs:
         working-directory: hrms-react
         run: npx cap sync ios
 
-      - name: Install CocoaPods
+      - name: Resolve Swift packages
         working-directory: hrms-react/ios/App
-        run: pod install
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme App
 
       - name: Build iOS (simulator, no signing)
         working-directory: hrms-react/ios/App
         run: |
           xcodebuild \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            build 2>&1 | tail -20
+            -clonedSourcePackagesDirPath .spm-cache \
+            build 2>&1 | tail -30
