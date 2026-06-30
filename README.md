@@ -1,17 +1,18 @@
 <div align="center">
 
-# Artech HRMS
+# AR Peopliz
 
-**A modern, full-stack Human Resource Management System**
+**Full-stack HRMS — Web · Android · iOS · Desktop**
+
+*by Artech Solutions*
 
 <p>
-  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI"/>
-  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React"/>
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS"/>
-  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
-  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
-  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite"/>
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Capacitor-119EFF?style=for-the-badge&logo=capacitor&logoColor=white" />
+  <img src="https://img.shields.io/badge/Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=black" />
+  <img src="https://img.shields.io/badge/Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white" />
 </p>
 
 </div>
@@ -20,25 +21,37 @@
 
 ## Overview
 
-Artech HRMS is a production-ready Human Resource Management System built for modern teams. It covers the full employee lifecycle — from recruitment and onboarding to payroll, leaves, appraisals, and offboarding — all in a single unified platform.
+AR Peopliz is a production-ready Human Resource Management System that covers the full employee lifecycle — from recruitment and onboarding to payroll, leaves, appraisals, and offboarding — across all platforms from a single codebase.
+
+| Platform | How |
+|----------|-----|
+| **Web** | React SPA served by FastAPI, deployed on Railway |
+| **Android** | Capacitor APK — built via GitHub Actions on every release tag |
+| **iOS** | Capacitor — built and validated via GitHub Actions on every release tag |
+| **Desktop** | Tauri (Windows + macOS) — installers attached to GitHub Releases |
 
 ---
 
-## Features
+## Modules
 
 | Module | Description |
 |--------|-------------|
-| **Dashboard** | Real-time KPIs, headcount trends, attendance heatmap |
-| **Employee Management** | Profiles, org chart, documents, profile photos |
-| **Leave Management** | Apply, approve/reject, leave balance tracking |
-| **Payroll** | Salary structure (CTC), HRA, PF, ESI, PT, payslip generation |
+| **Onboarding / Offboarding** | Entry-point for new hires — creates employee record, assigns assets, uploads joining docs (Offer Letter, NDA, HR Policy…), opens wizard automatically |
+| **Employee Management** | Profiles, org chart, salary structure, documents, profile photos |
+| **Dashboard** | Real-time KPIs for HR and CEO — headcount, attendance, payroll summary |
+| **Leave Management** | Apply, approve/reject, balance tracking, manager approval workflow |
+| **Payroll** | CTC breakdown — Basic, HRA, PF, ESI, PT, LTA; payslip PDF generation |
 | **Recruitment** | Job openings, applicant pipeline, JD attachments |
-| **Appraisals** | Goals, ratings, 360° feedback cycles |
-| **HRM Tools** | Attendance, shifts, announcements |
-| **Social** | Internal announcements, Instagram post scheduler |
+| **Appraisals** | Goals, self/manager ratings, 360° feedback cycles |
+| **Asset Management** | Issue and track company assets per employee; linked to onboarding |
+| **Attendance / Biometric** | Attendance records, shift management, biometric ID mapping |
+| **Announcements** | Company-wide announcements with priority and expiry |
+| **Company Documents** | Letterhead templates, policy documents |
 | **AI Assistant** | Claude-powered HR Q&A (requires Anthropic API key) |
-| **Employee Portal** | Self-service: payslips, leaves, profile |
-| **SuperAdmin Panel** | User management, role permissions, feature toggles |
+| **Employee Self-Service** | Payslips, leave requests, profile editing, salary slip download |
+| **Notifications** | In-app notification feed |
+| **Reports** | Exportable HR reports |
+| **SuperAdmin Panel** | User management, role permissions, feature-flag toggles |
 
 ---
 
@@ -46,84 +59,39 @@ Artech HRMS is a production-ready Human Resource Management System built for mod
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 18, Vite, Tailwind CSS 3, Chart.js |
+| **Frontend** | React 19, Vite, Tailwind CSS 3, Lucide React, Chart.js |
 | **Backend** | FastAPI, SQLAlchemy 2.0, Python 3.11 |
-| **Database** | PostgreSQL 16 |
-| **Auth** | JWT (HS256, 8-hour expiry) |
-| **Containerization** | Docker, Docker Compose |
+| **Database** | PostgreSQL |
+| **Auth** | JWT (HS256, Bearer token) |
+| **Mobile** | Capacitor 8 (Android + iOS) |
+| **Desktop** | Tauri 2 (Windows, macOS Intel + ARM) |
 | **AI** | Anthropic Claude API |
+| **Web Deploy** | Railway (Docker, auto-deploy on push to `main`) |
+| **CI/CD** | GitHub Actions — mobile builds (Android/iOS) + Tauri desktop on `v*` tags |
 
 ---
 
-## Quick Start (Docker)
-
-> **Prerequisite:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
-
-```bash
-# 1. Clone or copy the project folder
-git clone <your-repo-url> artechrms
-cd artechrms
-
-# 2. Build and start everything
-docker compose up --build
-
-# 3. Open the app
-open http://localhost:8000
-```
-
-> First boot takes **2–3 minutes** — Docker downloads Node 20 + Python 3.11 images, builds the React app, and installs all Python packages. Subsequent starts take **~10 seconds** (fully cached).
-
----
-
-## Docker Commands
-
-```bash
-# Start in the foreground (with live logs)
-docker compose up --build
-
-# Start in background
-docker compose up -d --build
-
-# Stop containers
-docker compose down
-
-# Stop and wipe all data (fresh start)
-docker compose down -v
-
-# View live application logs
-docker compose logs -f app
-
-# Rebuild after code changes
-docker compose up --build
-```
-
----
-
-## Local Development (Without Docker)
+## Quick Start (Local Dev)
 
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 20+
-- PostgreSQL 16+ running locally
+- Node.js 22+
+- PostgreSQL running locally
 
 ### Backend
 
 ```bash
 cd artechrms
 
-# Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
-# Install dependencies
 pip install -r backend/requirements.txt
 
-# Set environment variables
 export DATABASE_URL="postgresql://postgres:<password>@127.0.0.1:5432/artechrms"
 export SECRET_KEY="your-secret-key"
 
-# Start the API server
 uvicorn backend.main:app --reload --port 8000
 ```
 
@@ -131,28 +99,65 @@ uvicorn backend.main:app --reload --port 8000
 
 ```bash
 cd hrms-react
-
-# Install dependencies
 npm install
-
-# Start dev server (proxies API calls to localhost:8000)
-npm run dev
+npm run dev       # dev server at http://localhost:5173 (proxies /api to :8000)
 ```
-
-Open `http://localhost:5173` for the dev server with hot reload.
 
 ---
 
-## Environment Variables
+## Deploying to Railway (Web)
 
-Configure these in `docker-compose.yml` or as shell exports for local dev:
+Railway builds the Docker image from `Dockerfile`. The frontend is **pre-built and committed** to the `frontend/` directory — Railway does not run `npm build` itself.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | `postgresql://postgres:postgres@db:5432/artechrms` | PostgreSQL connection string |
-| `SECRET_KEY` | built-in default | JWT signing key — **change in production** |
-| `ALLOWED_ORIGINS` | `http://localhost:8000` | Comma-separated CORS origins |
-| `ANTHROPIC_API_KEY` | _(unset)_ | Enables the AI Assistant module |
+**Every time you change frontend source files, run this before pushing:**
+
+```bash
+cd hrms-react
+npm run build           # outputs to ../frontend/
+
+cd ..
+git add frontend/
+git commit -m "build: rebuild frontend"
+git push origin main    # Railway auto-deploys on push to main
+```
+
+> The `Dockerfile` copies `frontend/` directly into the Python image. This keeps Railway deploys fast — no Node.js stage, no npm install on the server.
+
+### Environment Variables (set in Railway dashboard)
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string (Railway provides this automatically) |
+| `SECRET_KEY` | JWT signing key — use a long random string |
+| `ALLOWED_ORIGINS` | Your Railway app URL, e.g. `https://arpeopliz.up.railway.app` |
+| `ANTHROPIC_API_KEY` | Enables the AI Assistant module |
+| `VITE_BACKEND_URL` | Backend URL used by Capacitor/Tauri mobile and desktop builds |
+
+---
+
+## Releasing Mobile & Desktop Builds
+
+Push a version tag — GitHub Actions builds Android APK, iOS (simulator check), and Tauri installers automatically:
+
+```bash
+git tag v1.x.x
+git push origin v1.x.x
+```
+
+Artifacts are attached to the GitHub Release:
+- `ar-peopliz-debug.apk` — Android debug APK
+- `ar-peopliz-release-unsigned.apk` — Android release APK (unsigned)
+- Windows `.exe` / `.msi` installer
+- macOS `.dmg` (Intel + Apple Silicon)
+
+### Required GitHub Secrets
+
+| Secret | Used by |
+|--------|---------|
+| `GITHUB_TOKEN` | All workflows (auto-provided) |
+| `VITE_BACKEND_URL` | Mobile + Tauri builds (sets the API base URL) |
+| `TAURI_SIGNING_PRIVATE_KEY` | Tauri update signing |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Tauri update signing |
 
 ---
 
@@ -163,60 +168,75 @@ artechrms/
 ├── backend/
 │   ├── main.py              # FastAPI app, middleware, startup
 │   ├── database.py          # SQLAlchemy engine & session
-│   ├── auth_utils.py        # JWT encode/decode, password hashing
-│   ├── models/              # SQLAlchemy ORM models
+│   ├── auth_utils.py        # JWT helpers, password hashing
+│   ├── models/              # ORM models (employee, leave, payroll…)
 │   └── routers/             # API route handlers (one per module)
+│       ├── employees.py
+│       ├── onboarding.py    # Onboarding + HR doc upload endpoints
+│       ├── payroll.py
+│       ├── leaves.py
+│       ├── hrm.py           # Assets, attendance, announcements
+│       ├── recruitment.py
+│       ├── appraisals.py
+│       └── ai.py            # Claude AI assistant
 ├── hrms-react/
 │   ├── src/
 │   │   ├── App.jsx          # Auth shell + role-based routing
-│   │   ├── SuperAdminApp.jsx
-│   │   ├── EmployeeApp.jsx
-│   │   ├── pages/           # Page components per module
-│   │   ├── components/      # Shared UI components
-│   │   ├── hooks/           # useAuth, useApi
-│   │   └── api.js           # Axios instance + interceptors
-│   ├── vite.config.js
-│   └── tailwind.config.js
-├── Dockerfile               # Multi-stage build (Node → Python)
-├── docker-compose.yml       # App + PostgreSQL orchestration
-├── docker-entrypoint.sh     # Wait-for-postgres + uvicorn start
-└── README.md
+│   │   ├── pages/           # One component per module
+│   │   ├── components/      # Shared design-system components
+│   │   │   ├── Select.jsx   # Custom dropdown
+│   │   │   ├── DatePicker.jsx
+│   │   │   └── Modal.jsx
+│   │   └── api.js           # fetch wrapper (JWT, 401 handling)
+│   ├── android/             # Capacitor Android project
+│   ├── ios/                 # Capacitor iOS project
+│   ├── src-tauri/           # Tauri desktop config & Rust shell
+│   └── vite.config.js       # outDir: ../frontend (Railway build)
+├── frontend/                # Pre-built React bundle (committed to git)
+├── .github/workflows/
+│   ├── deploy.yml           # Builds + pushes Docker image to GHCR
+│   ├── mobile-build.yml     # Android APK + iOS build check
+│   └── tauri-build.yml      # Windows + macOS desktop installers
+├── Dockerfile               # Python-only image (copies pre-built frontend/)
+├── railway.toml             # Railway build config + health check
+└── docker-entrypoint.sh     # Wait-for-postgres + uvicorn start
 ```
 
 ---
 
 ## Role-Based Access
 
-| Role | Panel | Permissions |
-|------|-------|-------------|
-| `SuperAdmin` | SuperAdmin Panel | Full access to all modules + user management + feature permissions |
+| Role | Panel | Access |
+|------|-------|--------|
+| `SuperAdmin` | SuperAdmin Panel | Full access + user management + feature toggles |
 | `Admin` / `HR Manager` | HR Dashboard | All HR modules (configurable per feature) |
-| `Manager` | HR Dashboard | Subset of HR features (configurable) |
-| `HR User` | HR Dashboard | Subset of HR features (configurable) |
+| `Manager` | HR Dashboard | Subset of HR features |
+| `HR User` | HR Dashboard | Subset of HR features |
 | `Employee` | Employee Portal | Self-service only (payslips, leaves, profile) |
+| `CEO` | CEO Dashboard | Executive KPIs and headcount view |
 
 ---
 
 ## Production Checklist
 
-- [ ] Change `SECRET_KEY` to a long random string (min 32 chars)
-- [ ] Set `ALLOWED_ORIGINS` to your actual domain
+- [ ] Set `SECRET_KEY` to a long random string (min 32 chars)
+- [ ] Set `ALLOWED_ORIGINS` to your production domain
 - [ ] Use a strong PostgreSQL password
-- [ ] Mount `/app/static/uploads` to persistent storage
+- [ ] Mount `/app/static/uploads` to persistent storage (Railway volume or S3)
 - [ ] Set `ANTHROPIC_API_KEY` if using the AI assistant
-- [ ] Place the app behind a reverse proxy (nginx/Caddy) with HTTPS
+- [ ] Set `VITE_BACKEND_URL` for mobile/desktop builds
 
 ---
 
 <div align="center">
 
-Built with ❤️ by **Artech**
+Built with ❤️ by **Artech Solutions**
 
 <p>
-  <img src="https://img.shields.io/badge/Made_with-FastAPI-009688?style=flat-square&logo=fastapi" />
-  <img src="https://img.shields.io/badge/UI-React_+_Tailwind-61DAFB?style=flat-square&logo=react" />
-  <img src="https://img.shields.io/badge/DB-PostgreSQL-316192?style=flat-square&logo=postgresql" />
-  <img src="https://img.shields.io/badge/Deploy-Docker-2496ED?style=flat-square&logo=docker" />
+  <img src="https://img.shields.io/badge/Web-Railway-0B0D0E?style=flat-square&logo=railway" />
+  <img src="https://img.shields.io/badge/Mobile-Capacitor-119EFF?style=flat-square&logo=capacitor" />
+  <img src="https://img.shields.io/badge/Desktop-Tauri-FFC131?style=flat-square&logo=tauri" />
+  <img src="https://img.shields.io/badge/AI-Claude-D97757?style=flat-square" />
 </p>
 
 </div>
