@@ -588,7 +588,7 @@ function OnExperience({ data, set }) {
 }
 
 function OnAssets({ data, set }) {
-  const ASSET_TYPES = ['Laptop / Desktop', 'Mobile Phone', 'SIM Card', 'ID Card', 'Access Card', 'Headset / Peripherals', 'Locker / Workstation', 'Other'];
+  const ASSET_TYPES = ['Laptop / Desktop', 'Mobile Phone', 'SIM Card', 'ID Card', 'Access Card', 'Headset / Peripherals', 'Mouse', 'Bag', 'Drives', 'Locker / Workstation', 'Other'];
   const { rows, editingId, draft, setDraft, startAdd, startEdit, cancelEdit, saveEdit, deleteRow, confirmDialog, setConfirmDialog } =
     useRowList(data, set, 'assets');
 
