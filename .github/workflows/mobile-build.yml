@@ -59,32 +59,44 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug assembleRelease --no-daemon
 
-      - name: Rename APKs for clarity
+      - name: Generate signing keystore
         run: |
-          cp hrms-react/android/app/build/outputs/apk/debug/app-debug.apk \
-             AR-Peopliz-Android-Debug.apk
-          cp hrms-react/android/app/build/outputs/apk/release/app-release-unsigned.apk \
-             AR-Peopliz-Android-Release.apk
+          keytool -genkeypair -v \
+            -keystore ar-peopliz.keystore \
+            -alias ar-peopliz \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=AR Peopliz, OU=Artech Solutions, O=Artech, L=Unknown, ST=Unknown, C=IN" \
+            -storepass arpeopliz2024 \
+            -keypass arpeopliz2024
 
-      - name: Upload Android Debug APK
+      - name: Sign and align release APK
+        run: |
+          UNSIGNED=hrms-react/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          BUILD_TOOLS=$(ls $ANDROID_SDK_ROOT/build-tools/ | sort -V | tail -1)
+          # zipalign first, then sign
+          $ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/zipalign -v 4 $UNSIGNED AR-Peopliz-Android.apk
+          $ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner sign \
+            --ks ar-peopliz.keystore \
+            --ks-pass pass:arpeopliz2024 \
+            --ks-key-alias ar-peopliz \
+            --key-pass pass:arpeopliz2024 \
+            AR-Peopliz-Android.apk
+          echo "APK signed successfully"
+          $ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner verify AR-Peopliz-Android.apk && echo "Verification passed"
+
+      - name: Upload Android APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Android-Debug-APK
-          path: AR-Peopliz-Android-Debug.apk
+          name: AR-Peopliz-Android-APK
+          path: AR-Peopliz-Android.apk
 
-      - name: Upload Android Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Android-Release-APK
-          path: AR-Peopliz-Android-Release.apk
-
-      - name: Attach APKs to GitHub Release
+      - name: Attach APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            AR-Peopliz-Android-Debug.apk
-            AR-Peopliz-Android-Release.apk
+          files: AR-Peopliz-Android.apk
           name: AR Peopliz ${{ github.ref_name }}
           draft: false
           prerelease: false

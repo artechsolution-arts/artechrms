@@ -73,27 +73,38 @@ jobs:
           releaseBody: |
             ## Download AR Peopliz
 
-            ### 🖥️ Desktop Apps
-            | Platform | File to download |
-            |----------|-----------------|
-            | **Windows** | `AR.Peopliz_x64-setup.exe` (installer) or `AR.Peopliz_x64_en-US.msi` |
-            | **macOS — Apple Silicon (M1/M2/M3)** | `AR.Peopliz_aarch64.dmg` |
-            | **macOS — Intel** | `AR.Peopliz_x64.dmg` |
+            ### 🖥️ Windows
+            Download `AR.Peopliz_x64-setup.exe` and run it. If Windows SmartScreen warns you, click **"More info" → "Run anyway"**.
 
-            ### 📱 Mobile Apps
-            | Platform | File to download |
-            |----------|-----------------|
-            | **Android** | `AR-Peopliz-Android-Release.apk` — enable "Install unknown apps" in Settings |
-            | **iOS (iPhone/iPad)** | No download needed — use the **web app** instead (see below) |
+            ### 🍎 macOS
+            Download the `.dmg` for your chip:
+            - **Apple Silicon (M1/M2/M3/M4)** → `AR.Peopliz_aarch64.dmg`
+            - **Intel Mac** → `AR.Peopliz_x64.dmg`
 
-            ### 🌐 iOS / Web Install (free, no App Store needed)
-            1. Open **Safari** on your iPhone or iPad
-            2. Go to your AR Peopliz URL
-            3. Tap the **Share** button (box with arrow)
-            4. Tap **"Add to Home Screen"**
-            5. Tap **Add** — the app icon appears on your home screen
+            **macOS will block the app on first open** (it's not from the App Store). To install:
+            1. Double-click the `.dmg` and drag AR Peopliz to Applications
+            2. **Do NOT double-click** the app — instead **right-click → Open**
+            3. Click **Open** on the security dialog
+            4. The app opens normally from now on
 
-            The web app works exactly like a native app on iOS.
+            Or via Terminal: `xattr -cr "/Applications/AR Peopliz.app"`
+
+            ### 📱 Android
+            Download `AR-Peopliz-Android.apk`.
+
+            **First-time install steps:**
+            1. Open the APK file on your phone
+            2. If prompted, go to **Settings → Install unknown apps** and allow your browser/Files app
+            3. Tap **Install**
+            4. If Google Play Protect warns you, tap **"Install anyway"** — the app is safe
+
+            ### 🍏 iOS (iPhone / iPad)
+            No download needed. Install as a web app via Safari:
+            1. Open **Safari** → go to your AR Peopliz URL
+            2. Tap the **Share** button (box with arrow at the bottom)
+            3. Tap **"Add to Home Screen"** → tap **Add**
+
+            The icon appears on your home screen and works like a native app.
 
             ---
             Built from commit `${{ github.sha }}`
