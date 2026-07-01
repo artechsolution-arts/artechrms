@@ -56,7 +56,7 @@ def list_onboarding(db: Session = Depends(get_db)):
                         items[label] = {"done": False, "done_at": None, "note": ""}
 
             total = len(ONBOARDING_ITEMS)
-            done  = sum(1 for v in items.values() if v.get("done"))
+            done  = sum(1 for k, v in items.items() if not k.startswith('__') and isinstance(v, dict) and v.get("done"))
             result.append({**_emp_summary(emp), "progress": done, "total": total, "items": items})
         return result
     except Exception as exc:
@@ -255,7 +255,7 @@ def list_offboarding(db: Session = Depends(get_db)):
                         items[label] = {"done": False, "done_at": None, "note": ""}
 
             total = len(OFFBOARDING_ITEMS)
-            done  = sum(1 for v in items.values() if v.get("done"))
+            done  = sum(1 for k, v in items.items() if not k.startswith('__') and isinstance(v, dict) and v.get("done"))
             result.append({**_emp_summary(emp), "progress": done, "total": total, "items": items})
         return result
     except Exception as exc:
