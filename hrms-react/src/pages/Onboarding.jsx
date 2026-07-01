@@ -1109,6 +1109,25 @@ function ActivityLog({ sections, steps, history = [] }) {
 const SUPERADMIN_ONLY_ON  = ['assets', 'it_access'];
 const SUPERADMIN_ONLY_OFF = ['assets_return', 'access_revocation'];
 
+function hasMeaningfulData(sectionKey, sectionVal) {
+  if (!sectionVal?.data) return false;
+  const d = sectionVal.data;
+  if (sectionKey === 'it_access') {
+    return ['email','system','vpn','slack','jira','github','cloud','erp'].some(k => d[k]);
+  }
+  if (sectionKey === 'assets') {
+    return Array.isArray(d.assets) && d.assets.length > 0;
+  }
+  if (sectionKey === 'assets_return') {
+    return Object.values(d).some(v => v === true || v === 'returned');
+  }
+  if (sectionKey === 'checklist') {
+    return Object.values(d).some(v => v === true);
+  }
+  // generic: any non-empty string or truthy value
+  return Object.values(d).some(v => v !== null && v !== undefined && v !== '' && v !== false);
+}
+
 function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
   const isSuperAdmin = userRole?.toLowerCase() === 'superadmin';
   const allSteps = type === 'onboarding' ? ON_STEPS : OFF_STEPS;
@@ -1197,7 +1216,7 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
     if (step < steps.length - 1) setStep(s => s + 1);
   };
 
-  const completedCount = steps.filter(s => sections[s.key]?.saved_at).length;
+  const completedCount = steps.filter(s => hasMeaningfulData(s.key, sections[s.key])).length;
   const pct = Math.round(completedCount / steps.length * 100);
   const isActivityLog = steps[step].key === 'activity_log';
   const isEmpInfo     = steps[step].key === 'employee_info';
@@ -1260,14 +1279,14 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
             <div style={{ height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${pct}%`, background: accentColor, borderRadius: 2, transition: 'width 0.3s' }} />
             </div>
-            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>{completedCount}/{steps.length} sections saved</div>
+            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>{completedCount}/{steps.length} sections filled</div>
           </div>
 
           {/* Steps */}
           <nav style={{ flex: 1, padding: '8px 0' }}>
             {steps.map((s, i) => {
               const isActive  = i === step;
-              const isSaved   = !!sections[s.key]?.saved_at;
+              const isSaved   = hasMeaningfulData(s.key, sections[s.key]);
               return (
                 <button key={s.key} onClick={() => setStep(i)}
                   style={{
@@ -1303,7 +1322,7 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
             <div>
               <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 500 }}>Step {step + 1} of {steps.length} &nbsp;·&nbsp; </span>
               <span className="onb-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#0D1F4E' }}>{steps[step].label}</span>
-              {sections[steps[step].key]?.saved_at && (
+              {hasMeaningfulData(steps[step].key, sections[steps[step].key]) && (
                 <span style={{ marginLeft: 8, fontSize: 11, color: '#16A34A', background: '#F0FDF4', padding: '2px 7px', borderRadius: 20, border: '1px solid #BBF7D0' }}>
                   ✓ Saved
                 </span>
