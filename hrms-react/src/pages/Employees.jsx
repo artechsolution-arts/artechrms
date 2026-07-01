@@ -597,6 +597,8 @@ export default function Employees({ toast }) {
   const [updateForm, setUpdateForm] = useState({});
   const [updateSaving, setUpdateSaving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [empItAccess, setEmpItAccess] = useState(null);
+  const [empItAccessLoading, setEmpItAccessLoading] = useState(false);
 
   // Auto-load history whenever the job-info tab is active
   useEffect(() => {
@@ -718,6 +720,15 @@ export default function Employees({ toast }) {
     finally { setEmpLeavesLoading(false); }
   };
 
+  const loadItAccess = async (id) => {
+    setEmpItAccessLoading(true);
+    try {
+      const res = await api('GET', `/api/onboarding/${id}/sections`);
+      setEmpItAccess(res.sections?.it_access?.data || null);
+    } catch { setEmpItAccess(null); }
+    finally { setEmpItAccessLoading(false); }
+  };
+
   const loadEmpAtt = async (id, year, month) => {
     setEmpAttLoading(true);
     setAttCalSelected(null);
@@ -783,6 +794,7 @@ export default function Employees({ toast }) {
     if (tab === 'documents')  loadEmpDocs(emp.id);
     if (tab === 'leaves')     loadEmpLeaves(emp.id);
     if (tab === 'attendance') loadEmpAtt(emp.id, attCalYear, attCalMonth);
+    if (tab === 'it-access')  loadItAccess(emp.id);
   };
 
   const saveHistoryEvent = async () => {
@@ -1570,6 +1582,7 @@ export default function Employees({ toast }) {
                   { key: 'edu-exp',     label: 'Education', icon: GraduationCap },
                   { key: 'payroll',     label: 'Payroll' },
                   { key: 'assets',      label: 'Assets' },
+                  { key: 'it-access',   label: 'IT Access', icon: ShieldCheck },
                 ].map(tab => (
                   <button
                     key={tab.key}
@@ -2510,6 +2523,53 @@ export default function Employees({ toast }) {
                     <div className="empty-state py-10">
                       <Monitor size={32} className="mx-auto mb-2 text-gray-200" />
                       <p className="text-sm text-gray-400">No assets allocated to this employee</p>
+                    </div>
+                  )}
+                </div>
+              ) : detailTab === 'it-access' ? (
+                /* ── IT ACCESS ── */
+                <div className="p-6">
+                  {empItAccessLoading ? (
+                    <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
+                      <div className="animate-spin w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full mr-2" />
+                      Loading…
+                    </div>
+                  ) : !empItAccess ? (
+                    <div className="empty-state py-10">
+                      <ShieldCheck size={32} className="mx-auto mb-2 text-gray-200" />
+                      <p className="text-sm text-gray-400">No IT Access data saved yet for this employee</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {[
+                        { key: 'email',  label: 'Official Email ID',     desc: 'Corporate email account' },
+                        { key: 'system', label: 'System / Network Access', desc: 'Windows/Linux login & domain' },
+                        { key: 'vpn',    label: 'VPN Access',            desc: 'Remote access VPN' },
+                        { key: 'slack',  label: 'Communication Tools',   desc: 'Slack / Teams / Google Chat' },
+                        { key: 'jira',   label: 'Project Tools',         desc: 'Jira / Trello / Asana' },
+                        { key: 'github', label: 'Code Repository',       desc: 'GitHub / GitLab / Bitbucket' },
+                        { key: 'cloud',  label: 'Cloud Access',          desc: 'AWS / GCP / Azure' },
+                        { key: 'erp',    label: 'ERP / HRMS Access',     desc: 'AR Peopliz portal login' },
+                      ].map(({ key, label, desc }) => (
+                        <div key={key} className={`flex items-center justify-between rounded-xl border px-4 py-3 ${empItAccess[key] ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/10' : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40'}`}>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{label}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{desc}</p>
+                            {empItAccess[key] && empItAccess[key + '_user'] && (
+                              <p className="text-[11px] font-medium text-blue-600 dark:text-blue-400 mt-1 font-mono">{empItAccess[key + '_user']}</p>
+                            )}
+                          </div>
+                          <span className={`ml-3 flex-shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${empItAccess[key] ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500'}`}>
+                            {empItAccess[key] ? 'Enabled' : 'Not set'}
+                          </span>
+                        </div>
+                      ))}
+                      {empItAccess.notes && (
+                        <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 px-4 py-3">
+                          <p className="text-xs font-semibold text-gray-500 mb-1">Additional Notes</p>
+                          <p className="text-xs text-gray-700 dark:text-gray-300">{empItAccess.notes}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
