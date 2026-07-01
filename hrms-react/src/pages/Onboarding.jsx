@@ -1451,19 +1451,19 @@ export default function Onboarding({ toast }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [on, off, deps, des] = await Promise.all([
-        api('GET', '/api/onboarding/list'),
-        api('GET', '/api/onboarding/offboarding/list'),
-        api('GET', '/api/employees/departments'),
-        api('GET', '/api/employees/designations'),
-      ]);
-      setOnList(on);
-      setOffList(off);
-      setDepts(Array.isArray(deps) ? deps : (deps.departments || []));
-      setDesigs(Array.isArray(des) ? des : (des.designations || []));
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setLoading(false); }
+    const [onRes, offRes, depsRes, desRes] = await Promise.allSettled([
+      api('GET', '/api/onboarding/list'),
+      api('GET', '/api/onboarding/offboarding/list'),
+      api('GET', '/api/employees/departments'),
+      api('GET', '/api/employees/designations'),
+    ]);
+    if (onRes.status  === 'fulfilled') setOnList(onRes.value);
+    else toast(`Onboarding list: ${onRes.reason?.message || 'failed'}`, 'error');
+    if (offRes.status === 'fulfilled') setOffList(offRes.value);
+    else toast(`Offboarding list: ${offRes.reason?.message || 'failed'}`, 'error');
+    if (depsRes.status === 'fulfilled') { const d = depsRes.value; setDepts(Array.isArray(d) ? d : (d?.departments || [])); }
+    if (desRes.status  === 'fulfilled') { const d = desRes.value;  setDesigs(Array.isArray(d) ? d : (d?.designations || [])); }
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
