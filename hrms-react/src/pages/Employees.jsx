@@ -282,7 +282,7 @@ function EmployeeHistoryTab({ emp, history, loading, showForm, setShowForm, form
   );
 }
 
-const DEGREE_OPTIONS = ['High School', 'Diploma', 'B.A.', 'B.Sc.', 'B.Com.', 'B.Tech / B.E.', 'BCA', 'BBA', 'M.A.', 'M.Sc.', 'M.Com.', 'M.Tech / M.E.', 'MCA', 'MBA', 'Ph.D.', 'Other'];
+const DEGREE_OPTIONS = ['10th / SSLC', 'Intermediate / 12th / HSC', 'Diploma', 'B.A.', 'B.Sc.', 'B.Com.', 'B.Tech / B.E.', 'BCA', 'BBA', 'M.A.', 'M.Sc.', 'M.Com.', 'M.Tech / M.E.', 'MCA', 'MBA', 'Ph.D.', 'Other'];
 const YEAR_OPTIONS = Array.from({ length: 50 }, (_, i) => String(new Date().getFullYear() - i));
 
 function EduCard({ item, onDelete }) {

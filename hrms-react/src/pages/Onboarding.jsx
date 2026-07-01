@@ -493,7 +493,7 @@ function OnEducation({ data, set }) {
             <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Grid2>
                 <Select label="Qualification" value={draft.qualification || ''} onChange={v => setDraft(p => ({ ...p, qualification: v }))}
-                  options={['10th / SSLC', '12th / HSC', 'Diploma', "Bachelor's Degree", "Master's Degree", 'MBA', 'PhD', 'Certification', 'Other']} />
+                  options={['10th / SSLC', 'Intermediate / 12th / HSC', 'Diploma', "Bachelor's Degree", "Master's Degree", 'MBA', 'PhD', 'Certification', 'Other']} />
                 <Input label="Field of Study" value={draft.field || ''} onChange={v => setDraft(p => ({ ...p, field: v }))} placeholder="e.g. Computer Science" />
               </Grid2>
               <Input label="Institution / University" value={draft.institution || ''} onChange={v => setDraft(p => ({ ...p, institution: v }))} placeholder="Institute name" />
