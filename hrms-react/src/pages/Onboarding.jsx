@@ -1106,10 +1106,16 @@ function ActivityLog({ sections, steps, history = [] }) {
 /* ══════════════════════════════════════════════
    WIZARD MODAL
 ══════════════════════════════════════════════ */
-const SUPERADMIN_ONLY = ['assets', 'it_access'];
+const SUPERADMIN_ONLY_ON  = ['assets', 'it_access'];
+const SUPERADMIN_ONLY_OFF = ['assets_return', 'access_revocation'];
 
 function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
-  const steps   = type === 'onboarding' ? ON_STEPS : OFF_STEPS;
+  const isSuperAdmin = userRole === 'superadmin';
+  const allSteps = type === 'onboarding' ? ON_STEPS : OFF_STEPS;
+  const restrictedKeys = type === 'onboarding' ? SUPERADMIN_ONLY_ON : SUPERADMIN_ONLY_OFF;
+  const steps = allSteps.filter(s =>
+    isSuperAdmin ? restrictedKeys.includes(s.key) : !restrictedKeys.includes(s.key)
+  );
   const [step, setStep]       = useState(0);
   const [sections, setSections] = useState({});
   const [history, setHistory]   = useState([]);
@@ -1193,9 +1199,8 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
 
   const completedCount = steps.filter(s => sections[s.key]?.saved_at).length;
   const pct = Math.round(completedCount / steps.length * 100);
-  const isActivityLog    = steps[step].key === 'activity_log';
-  const isEmpInfo        = steps[step].key === 'employee_info';
-  const isSuperAdminOnly = SUPERADMIN_ONLY.includes(currentKey) && userRole !== 'superadmin';
+  const isActivityLog = steps[step].key === 'activity_log';
+  const isEmpInfo     = steps[step].key === 'employee_info';
 
   const renderStepContent = () => {
     const d = sectionData;
@@ -1321,23 +1326,17 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
                 className="btn btn-secondary btn-sm gap-1.5" style={{ opacity: step === 0 ? 0.4 : 1 }}>
                 <ChevronLeft size={13} /> Previous
               </button>
-              {isSuperAdminOnly ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '6px 12px' }}>
-                  🔒 Only Super Admin can edit this section
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {saved && <span style={{ fontSize: 12, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={13} /> Saved!</span>}
-                  <button onClick={saveSection} disabled={saving} className="btn btn-secondary btn-sm gap-1.5">
-                    <Save size={13} /> {saving ? 'Saving…' : 'Save'}
-                  </button>
-                  <button onClick={saveAndNext} disabled={saving || step === steps.length - 1}
-                    className="btn btn-primary btn-sm gap-1.5"
-                    style={{ opacity: step === steps.length - 1 ? 0.4 : 1 }}>
-                    Save & Next <ChevronRight size={13} />
-                  </button>
-                </div>
-              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {saved && <span style={{ fontSize: 12, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={13} /> Saved!</span>}
+                <button onClick={saveSection} disabled={saving} className="btn btn-secondary btn-sm gap-1.5">
+                  <Save size={13} /> {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button onClick={saveAndNext} disabled={saving || step === steps.length - 1}
+                  className="btn btn-primary btn-sm gap-1.5"
+                  style={{ opacity: step === steps.length - 1 ? 0.4 : 1 }}>
+                  Save & Next <ChevronRight size={13} />
+                </button>
+              </div>
             </div>
           )}
         </div>
