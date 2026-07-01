@@ -94,6 +94,20 @@ const Input = ({ label, value, onChange, type = 'text', required, placeholder, d
   </div>
 );
 
+const PhoneInput = ({ label, value, onChange, required, disabled }) => (
+  <div>
+    <label className="onb-form-label" style={{ display: 'block', fontSize: 11.5, fontWeight: 600, marginBottom: 5, letterSpacing: '0.01em' }}>
+      {label}{required && <span style={{ color: '#EF4444', marginLeft: 3 }}>*</span>}
+    </label>
+    <div style={{ display: 'flex' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 10px', borderRadius: '10px 0 0 10px', border: '1px solid #E5E7EB', borderRight: 'none', background: disabled ? '#F9FAFB' : '#F9FAFB', fontSize: 13, color: '#6B7280', userSelect: 'none', whiteSpace: 'nowrap' }}>+91</span>
+      <input inputMode="numeric" maxLength={10} value={(value || '').replace(/^\+91/, '')}
+        onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 10); onChange(d ? `+91${d}` : ''); }}
+        placeholder="10-digit mobile" disabled={disabled}
+        className="form-input" style={{ fontSize: 13, borderRadius: '0 10px 10px 0', flex: 1, ...(disabled ? { background: '#F9FAFB', color: '#6B7280' } : {}) }} />
+    </div>
+  </div>
+);
 const Select = ({ label, value, onChange, options, required, disabled }) => (
   <div>
     <label className="onb-form-label" style={{ display: 'block', fontSize: 11.5, fontWeight: 600, marginBottom: 5 }}>
@@ -175,8 +189,8 @@ function OnPersonalInfo({ data, set, emp }) {
         <Select label="Gender" value={data.gender} onChange={v => set('gender', v)} options={['Male', 'Female', 'Other', 'Prefer not to say']} />
       </Grid2>
       <Grid2>
-        <Input label="Mobile Number" value={data.mobile} onChange={v => set('mobile', v)} placeholder="+91 98765 43210" />
-        <Input label="Alternate Mobile" value={data.alt_mobile} onChange={v => set('alt_mobile', v)} placeholder="+91 98765 43210" />
+        <PhoneInput label="Mobile Number" value={data.mobile} onChange={v => set('mobile', v)} />
+        <PhoneInput label="Alternate Mobile" value={data.alt_mobile} onChange={v => set('alt_mobile', v)} />
       </Grid2>
       <Grid2>
         <Select label="Blood Group" value={data.blood_group} onChange={v => set('blood_group', v)} options={['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']} />
@@ -189,7 +203,7 @@ function OnPersonalInfo({ data, set, emp }) {
           <Input label="Contact Name" value={data.emergency_name} onChange={v => set('emergency_name', v)} placeholder="Full name" />
           <Input label="Relationship" value={data.emergency_relation} onChange={v => set('emergency_relation', v)} placeholder="e.g. Spouse, Parent" />
         </Grid2>
-        <Input label="Contact Phone" value={data.emergency_phone} onChange={v => set('emergency_phone', v)} placeholder="+91 98765 43210" />
+        <PhoneInput label="Contact Phone" value={data.emergency_phone} onChange={v => set('emergency_phone', v)} />
       </FieldGroup>
     </div>
   );
@@ -1374,7 +1388,7 @@ function NewJoinerModal({ depts, desigs, onClose, onCreated, toast }) {
             <Input label="Last Name" value={form.last_name} onChange={v => f('last_name', v)} placeholder="Last name" />
           </Grid2>
           <Input label="Work Email" value={form.email} onChange={v => f('email', v)} required type="email" placeholder="employee@company.com" />
-          <Input label="Mobile" value={form.mobile} onChange={v => f('mobile', v)} placeholder="+91 98765 43210" />
+          <PhoneInput label="Mobile" value={form.mobile} onChange={v => f('mobile', v)} />
           <Grid2>
             <div>
               <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Department</label>

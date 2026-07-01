@@ -237,8 +237,13 @@ function ManualEmpFields({ value, onChange }) {
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Phone</label>
-          <input className="form-input w-full" placeholder="+91 98765 43210"
-            value={value.phone} onChange={e => f('phone', e.target.value)} />
+          <div className="flex">
+            <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 select-none">+91</span>
+            <input className="form-input rounded-l-none flex-1" inputMode="numeric" maxLength={10}
+              value={(value.phone || '').replace(/^\+91/, '')}
+              onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 10); f('phone', d ? `+91${d}` : ''); }}
+              placeholder="10-digit mobile number" />
+          </div>
         </div>
       </div>
       {value.email && (

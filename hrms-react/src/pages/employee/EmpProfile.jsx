@@ -371,7 +371,13 @@ export default function EmpProfile({ toast, onPhotoUpdate }) {
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Mobile Number</label>
-                      <input type="tel" className="form-input w-full" value={editForm.mobile} onChange={e => ef({ mobile: e.target.value })} placeholder="+91 XXXXX XXXXX" />
+                      <div className="flex">
+                        <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 select-none">+91</span>
+                        <input className="form-input rounded-l-none flex-1" inputMode="numeric" maxLength={10}
+                          value={(editForm.mobile || '').replace(/^\+91/, '')}
+                          onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 10); ef({ mobile: d ? `+91${d}` : '' }); }}
+                          placeholder="10-digit mobile number" />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Residential Address</label>

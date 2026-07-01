@@ -59,6 +59,19 @@ const Inp = ({ label, value, onChange, type = 'text', placeholder, required }) =
       placeholder={placeholder} className="form-input" style={{ fontSize: 13 }} />
   </div>
 );
+const PhoneInp = ({ label, value, onChange, required }) => (
+  <div>
+    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+      {label}{required && <span style={{ color: '#EF4444' }}> *</span>}
+    </label>
+    <div style={{ display: 'flex' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 10px', borderRadius: '10px 0 0 10px', border: '1px solid #E5E7EB', borderRight: 'none', background: '#F9FAFB', fontSize: 13, color: '#6B7280', userSelect: 'none', whiteSpace: 'nowrap' }}>+91</span>
+      <input inputMode="numeric" maxLength={10} value={(value || '').replace(/^\+91/, '')}
+        onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 10); onChange(d ? `+91${d}` : ''); }}
+        placeholder="10-digit mobile" className="form-input" style={{ fontSize: 13, borderRadius: '0 10px 10px 0', flex: 1 }} />
+    </div>
+  </div>
+);
 const Sel = ({ label, value, onChange, opts }) => (
   <div>
     <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 4 }}>{label}</label>
@@ -214,8 +227,8 @@ function StepForm({ step, data, setData, fileUrl, fileName, onUpload, uploading 
             <Sel label="Relationship" value={data.relationship} onChange={v => set('relationship', v)} opts={['Spouse', 'Parent', 'Sibling', 'Child', 'Friend', 'Other']} />
           </Row2>
           <Row2>
-            <Inp label="Phone Number" value={data.phone} onChange={v => set('phone', v)} placeholder="+91 98765 43210" required />
-            <Inp label="Alternate Phone" value={data.alt_phone} onChange={v => set('alt_phone', v)} placeholder="Optional" />
+            <PhoneInp label="Phone Number" value={data.phone} onChange={v => set('phone', v)} required />
+            <PhoneInp label="Alternate Phone" value={data.alt_phone} onChange={v => set('alt_phone', v)} />
           </Row2>
         </div>
       )}

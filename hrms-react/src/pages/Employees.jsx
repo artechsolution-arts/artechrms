@@ -3004,7 +3004,15 @@ export default function Employees({ toast }) {
                 placeholder="Select"
               />
             </Field>
-            <Field label="Phone"><input className="form-input" value={form.ec_phone || ''} onChange={e => f({ ec_phone: e.target.value })} placeholder="Mobile number" /></Field>
+            <Field label="Phone">
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 select-none">+91</span>
+                <input className="form-input rounded-l-none flex-1" inputMode="numeric" maxLength={10}
+                  value={(form.ec_phone || '').replace(/^\+91/, '')}
+                  onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 10); f({ ec_phone: d ? `+91${d}` : '' }); }}
+                  placeholder="10-digit mobile number" />
+              </div>
+            </Field>
           </FormGrid>
         </FormSection>
 

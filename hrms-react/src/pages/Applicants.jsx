@@ -134,7 +134,13 @@ export default function Applicants({ toast }) {
               <input type="email" className="form-input" value={form.email || ''} onChange={e => f({ email: e.target.value })} placeholder="Email" />
             </Field>
             <Field label="Phone" error={formErrors.phone}>
-              <input className="form-input" value={form.phone || ''} onChange={e => f({ phone: e.target.value })} placeholder="Phone number" />
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 select-none">+91</span>
+                <input className="form-input rounded-l-none flex-1" inputMode="numeric" maxLength={10}
+                  value={(form.phone || '').replace(/^\+91/, '')}
+                  onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 10); f({ phone: d ? `+91${d}` : '' }); }}
+                  placeholder="10-digit mobile number" />
+              </div>
             </Field>
             <Field label="Job Opening" required error={formErrors.job_opening_id}>
               <Select
