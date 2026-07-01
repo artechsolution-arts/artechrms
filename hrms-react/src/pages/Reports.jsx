@@ -93,7 +93,7 @@ function fmtDuration(h) {
   return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
 }
 
-function exportToExcel(report, editedHoursMap) {
+function exportToExcel(report, editedHoursMap, getStdHours) {
   const { rows, days, period_label } = report;
   const wb = XLSX.utils.book_new();
 
@@ -110,11 +110,12 @@ function exportToExcel(report, editedHoursMap) {
   summaryAoa.push([]);
   summaryAoa.push([
     'Emp ID', 'Name', 'Department',
-    'Present Days', 'Leave Days', 'Absent Days', 'Original Hrs', 'Adjusted Hrs', 'Status',
+    'Present Days', 'Leave Days', 'Absent Days', 'Std Work Hrs', 'Original Hrs', 'Adjusted Hrs', 'Status',
   ]);
 
   for (const row of rows) {
     const adj = effHrs(row);
+    const std = getStdHours ? getStdHours(row) : null;
     summaryAoa.push([
       row.employee_code,
       row.employee_name,
@@ -122,6 +123,7 @@ function exportToExcel(report, editedHoursMap) {
       row.present_days,
       row.in_probation ? '—' : row.leave_days,
       row.in_probation ? row.absent_days + (row.leave_days || 0) : row.absent_days,
+      std != null && std > 0 ? fmtDuration(std) : '—',
       fmtDuration(row.total_hours),
       adj !== row.total_hours ? fmtDuration(adj) : '—',
       row.in_probation ? 'Probation' : 'Confirmed',
@@ -131,7 +133,7 @@ function exportToExcel(report, editedHoursMap) {
   const ws1 = XLSX.utils.aoa_to_sheet(summaryAoa);
   ws1['!cols'] = [
     { wch: 12 }, { wch: 28 }, { wch: 22 },
-    { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
+    { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
   ];
   XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
 
@@ -574,7 +576,7 @@ export default function Reports() {
 
               {/* Download */}
               <button
-                onClick={() => exportToExcel(report, editedHours)}
+                onClick={() => exportToExcel(report, editedHours, getEmpReqHours)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm"
               >
                 <FileSpreadsheet size={13} />
@@ -646,6 +648,9 @@ export default function Reports() {
                         </th>
                       ))}
                       <th className="bg-gray-50 dark:bg-gray-800 px-3 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-l border-gray-200 dark:border-gray-700 whitespace-nowrap">
+                        Std Work Hrs
+                      </th>
+                      <th className="bg-gray-50 dark:bg-gray-800 px-3 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
                         Original Hrs
                       </th>
                       <th className="bg-gray-50 dark:bg-gray-800 px-3 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
@@ -714,8 +719,15 @@ export default function Reports() {
                             );
                           })}
 
-                          {/* Original Hours */}
+                          {/* Standard Work Hours */}
                           <td className="px-3 py-2 text-right border-l border-b border-gray-100 dark:border-gray-800">
+                            <span className="tabular-nums text-blue-600 dark:text-blue-400 text-xs font-medium">
+                              {empReq != null && empReq > 0 ? fmtHours(empReq) : '—'}
+                            </span>
+                          </td>
+
+                          {/* Original Hours */}
+                          <td className="px-3 py-2 text-right border-b border-gray-100 dark:border-gray-800">
                             <span className="tabular-nums text-gray-500 dark:text-gray-400 text-xs">
                               {fmtHours(row.total_hours)}
                             </span>
@@ -774,7 +786,7 @@ export default function Reports() {
               <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <span className="text-[11px] text-gray-400">{report.rows.length} employees · {report.days.length} days</span>
                 <button
-                  onClick={() => exportToExcel(report, editedHours)}
+                  onClick={() => exportToExcel(report, editedHours, getEmpReqHours)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-semibold transition-all"
                 >
                   <FileSpreadsheet size={11} />
