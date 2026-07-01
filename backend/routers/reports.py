@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import Column, Integer, String, Date, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, DateTime, Text, JSON, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.sql import func
 from pydantic import BaseModel
 from datetime import date, datetime, timedelta
@@ -16,11 +16,11 @@ from fastapi import Header
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 
-# ── Model ──────────────────────────────────────────────────────
+# ── Models ─────────────────────────────────────────────────────
 class Report(Base):
     __tablename__ = "reports"
     id            = Column(Integer, primary_key=True, index=True)
-    report_type   = Column(String(50), nullable=False)   # attendance_weekly / attendance_monthly
+    report_type   = Column(String(50), nullable=False)
     period_label  = Column(String(150), nullable=False)
     start_date    = Column(Date, nullable=False)
     end_date      = Column(Date, nullable=False)
@@ -28,6 +28,19 @@ class Report(Base):
     generated_at  = Column(DateTime, default=func.now())
     row_count     = Column(Integer, default=0)
     report_data   = Column(JSON, nullable=True)
+
+
+class ReportHourOverride(Base):
+    __tablename__ = "report_hour_overrides"
+    id             = Column(Integer, primary_key=True, index=True)
+    employee_id    = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    period_start   = Column(Date, nullable=False)
+    period_end     = Column(Date, nullable=False)
+    original_hours = Column(Float, nullable=False, default=0.0)
+    edited_hours   = Column(Float, nullable=False)
+    saved_at       = Column(DateTime, default=func.now())
+    saved_by       = Column(Integer, ForeignKey("users.id"), nullable=True)
+    __table_args__ = (UniqueConstraint("employee_id", "period_start", "period_end", name="uq_emp_period_override"),)
 
 
 # ── Auth helper ────────────────────────────────────────────────
@@ -57,13 +70,25 @@ class GenerateReportIn(BaseModel):
 class EmployeeHoursItem(BaseModel):
     employee_id:    int
     actual_hours:   float
-    required_hours: float   # per-employee (adjusted for joining date)
+    required_hours: float
 
 
 class HoursReminderIn(BaseModel):
     period_label: str
-    period_type:  str    # "week" | "month"
+    period_type:  str
     employees:    List[EmployeeHoursItem]
+
+
+class HourOverrideItem(BaseModel):
+    employee_id:    int
+    original_hours: float
+    edited_hours:   float
+
+
+class SaveHoursIn(BaseModel):
+    start_date: str
+    end_date:   str
+    overrides:  List[HourOverrideItem]
 
 
 # ── Helpers ────────────────────────────────────────────────────
@@ -124,11 +149,17 @@ def generate_attendance_report(
         return (int(m.group()) if m else 0, code)
     employees = sorted(employees, key=_emp_sort_key)
 
+    # Load any saved hour overrides for this period
+    overrides = db.query(ReportHourOverride).filter(
+        ReportHourOverride.period_start == start,
+        ReportHourOverride.period_end   == end,
+    ).all()
+    override_map = {o.employee_id: o.edited_hours for o in overrides}
+
     rows = []
     for emp in employees:
         dept_name = emp.department_rel.name if emp.department_rel else "—"
 
-        # Determine probation status
         in_probation = False
         if emp.date_of_joining and emp.probation_period_days:
             probation_end = emp.date_of_joining + timedelta(days=emp.probation_period_days)
@@ -161,6 +192,7 @@ def generate_attendance_report(
                 "out_time": rec.out_time if rec and rec.out_time else "—",
                 "hours":    h,
             })
+        orig = round(total_hours, 2)
         rows.append({
             "employee_id":      emp.id,
             "employee_code":    emp.employee_id or "",
@@ -168,11 +200,12 @@ def generate_attendance_report(
             "department":       dept_name,
             "in_probation":     in_probation,
             "date_of_joining":  str(emp.date_of_joining) if emp.date_of_joining else None,
-            "days":          day_entries,
-            "total_hours":   round(total_hours, 2),
-            "present_days":  present_days,
-            "leave_days":    leave_days,
-            "absent_days":   absent_days,
+            "days":             day_entries,
+            "total_hours":      orig,
+            "edited_hours":     override_map.get(emp.id),  # None if never edited
+            "present_days":     present_days,
+            "leave_days":       leave_days,
+            "absent_days":      absent_days,
         })
 
     # Store in DB
@@ -274,6 +307,42 @@ def send_hours_reminder(data: HoursReminderIn, db: Session = Depends(get_db)):
         sent += 1
 
     return {"sent": sent, "skipped": skipped, "total": len(data.employees)}
+
+
+@router.post("/attendance/save-hours")
+def save_hour_overrides(
+    data: SaveHoursIn,
+    db: Session = Depends(get_db),
+    user_id: Optional[int] = Depends(_user_id),
+):
+    try:
+        start = date.fromisoformat(data.start_date)
+        end   = date.fromisoformat(data.end_date)
+    except ValueError:
+        raise HTTPException(400, "Invalid date format")
+
+    for ov in data.overrides:
+        existing = db.query(ReportHourOverride).filter(
+            ReportHourOverride.employee_id  == ov.employee_id,
+            ReportHourOverride.period_start == start,
+            ReportHourOverride.period_end   == end,
+        ).first()
+        if existing:
+            existing.edited_hours   = ov.edited_hours
+            existing.original_hours = ov.original_hours
+            existing.saved_at       = func.now()
+            existing.saved_by       = user_id
+        else:
+            db.add(ReportHourOverride(
+                employee_id    = ov.employee_id,
+                period_start   = start,
+                period_end     = end,
+                original_hours = ov.original_hours,
+                edited_hours   = ov.edited_hours,
+                saved_by       = user_id,
+            ))
+    db.commit()
+    return {"saved": len(data.overrides), "period_start": str(start), "period_end": str(end)}
 
 
 @router.get("")

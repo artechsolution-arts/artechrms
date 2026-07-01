@@ -101,10 +101,11 @@ function exportToExcel(report, editedHoursMap) {
   summaryAoa.push([]);
   summaryAoa.push([
     'Emp ID', 'Name', 'Department',
-    'Present Days', 'Leave Days', 'Absent Days', 'Total Work Hrs', 'Status',
+    'Present Days', 'Leave Days', 'Absent Days', 'Original Hrs', 'Adjusted Hrs', 'Status',
   ]);
 
   for (const row of rows) {
+    const adj = effHrs(row);
     summaryAoa.push([
       row.employee_code,
       row.employee_name,
@@ -112,7 +113,8 @@ function exportToExcel(report, editedHoursMap) {
       row.present_days,
       row.in_probation ? '—' : row.leave_days,
       row.in_probation ? row.absent_days + (row.leave_days || 0) : row.absent_days,
-      fmtDuration(effHrs(row)),
+      fmtDuration(row.total_hours),
+      adj !== row.total_hours ? fmtDuration(adj) : '—',
       row.in_probation ? 'Probation' : 'Confirmed',
     ]);
   }
@@ -120,7 +122,7 @@ function exportToExcel(report, editedHoursMap) {
   const ws1 = XLSX.utils.aoa_to_sheet(summaryAoa);
   ws1['!cols'] = [
     { wch: 12 }, { wch: 28 }, { wch: 22 },
-    { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 15 }, { wch: 12 },
+    { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
   ];
   XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
 
@@ -338,7 +340,15 @@ export default function Reports() {
         api('GET', `/api/hrm/holidays?year=${year}`),
       ]);
 
-      // Count weekday holidays in this exact period
+      // Restore any previously saved hour edits for this period
+      const savedEdits = {};
+      (res.rows || []).forEach(r => {
+        if (r.edited_hours !== null && r.edited_hours !== undefined) {
+          savedEdits[r.employee_id] = String(r.edited_hours);
+        }
+      });
+      setEditedHours(savedEdits);
+
       const startD = new Date(start + 'T00:00:00');
       const endD   = new Date(end   + 'T00:00:00');
       const weekdayHols = (hols || []).filter(h => {
@@ -363,16 +373,40 @@ export default function Reports() {
     }
   }
 
-  // ── Save edits ────────────────────────────────────────────────
-  function handleSave() {
-    setEditMode(false);
-    setEditsSaved(true);
-    toast('Hours saved. Click Send Reminder to notify employees below target.', 'success');
+  // ── Save edits to DB ──────────────────────────────────────────
+  async function handleSave() {
+    if (!report) return;
+    try {
+      const overrides = report.rows.map(r => ({
+        employee_id:    r.employee_id,
+        original_hours: r.total_hours,
+        edited_hours:   editedHours[r.employee_id] !== undefined
+          ? parseFloat(editedHours[r.employee_id]) || 0
+          : r.total_hours,
+      }));
+      await api('POST', '/api/reports/attendance/save-hours', {
+        start_date: report.start_date,
+        end_date:   report.end_date,
+        overrides,
+      });
+      setEditMode(false);
+      setEditsSaved(true);
+      toast('Adjusted hours saved permanently. Send Reminder will use these hours.', 'success');
+    } catch (e) {
+      toast(e?.message || 'Failed to save hours', 'error');
+    }
   }
 
   function handleCancelEdit() {
     setEditMode(false);
-    setEditedHours({});
+    // Restore previously saved edits (from DB), discard unsaved changes
+    const savedEdits = {};
+    (report?.rows || []).forEach(r => {
+      if (r.edited_hours !== null && r.edited_hours !== undefined) {
+        savedEdits[r.employee_id] = String(r.edited_hours);
+      }
+    });
+    setEditedHours(savedEdits);
   }
 
   // ── Send hours reminder emails ────────────────────────────────
@@ -603,7 +637,10 @@ export default function Reports() {
                         </th>
                       ))}
                       <th className="bg-gray-50 dark:bg-gray-800 px-3 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-l border-gray-200 dark:border-gray-700 whitespace-nowrap">
-                        Total Hrs{editMode && <span className="ml-1 text-amber-400 normal-case tracking-normal">(edit)</span>}
+                        Original Hrs
+                      </th>
+                      <th className="bg-gray-50 dark:bg-gray-800 px-3 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
+                        Adjusted Hrs{editMode && <span className="ml-1 text-amber-400 normal-case tracking-normal">(edit)</span>}
                       </th>
                       <th className="bg-gray-50 dark:bg-gray-800 px-3 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
                         Days
@@ -661,8 +698,15 @@ export default function Reports() {
                             );
                           })}
 
-                          {/* Total Hours — editable in edit mode */}
+                          {/* Original Hours */}
                           <td className="px-3 py-2 text-right border-l border-b border-gray-100 dark:border-gray-800">
+                            <span className="tabular-nums text-gray-500 dark:text-gray-400 text-xs">
+                              {fmtHours(row.total_hours)}
+                            </span>
+                          </td>
+
+                          {/* Adjusted Hours — editable in edit mode */}
+                          <td className="px-3 py-2 text-right border-b border-gray-100 dark:border-gray-800">
                             {editMode ? (
                               <input
                                 type="number"
@@ -677,11 +721,12 @@ export default function Reports() {
                               />
                             ) : (
                               <span className={`font-semibold tabular-nums whitespace-nowrap ${
-                                belowReq
-                                  ? 'text-red-500 dark:text-red-400'
-                                  : 'text-gray-700 dark:text-gray-200'
+                                belowReq ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-200'
                               }`}>
                                 {fmtHours(effH)}
+                                {editedHours[row.employee_id] !== undefined && effH !== row.total_hours && (
+                                  <span className="ml-1 text-[9px] font-normal text-amber-500">(adj)</span>
+                                )}
                                 {belowReq && empReq !== null && (
                                   <span className="ml-1 text-[9px] font-normal text-red-400">
                                     ({Math.round((empReq - effH) * 10) / 10}h short)

@@ -55,7 +55,7 @@ export default function Applicants({ toast }) {
   };
 
   const updateStatus = async (id, status) => {
-    try { await api('PUT', `/api/recruitment/applicants/${id}/status?status=${status}`); toast('Status updated', 'success'); }
+    try { await api('PUT', `/api/recruitment/applicants/${id}/status?status=${status}`); toast('Status updated', 'success'); load(); }
     catch (e) { toast(e.message, 'error'); }
   };
 
