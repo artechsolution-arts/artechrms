@@ -42,23 +42,25 @@ def _emp_summary(emp):
 
 @router.get("/list")
 def list_onboarding(db: Session = Depends(get_db)):
-    emps = db.query(Employee).filter(Employee.status.in_(["Active"])).order_by(Employee.date_of_joining.desc()).all()
-    result = []
-    for emp in emps:
-        checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == emp.id).first()
-        if not checklist:
-            items = _build_default_items(ONBOARDING_ITEMS)
-        else:
-            items = json.loads(checklist.items)
-            # Merge in any new items not yet in the record
-            for _, label in ONBOARDING_ITEMS:
-                if label not in items:
-                    items[label] = {"done": False, "done_at": None, "note": ""}
+    try:
+        emps = db.query(Employee).filter(Employee.status.in_(["Active"])).order_by(Employee.date_of_joining.desc()).all()
+        result = []
+        for emp in emps:
+            checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == emp.id).first()
+            if not checklist:
+                items = _build_default_items(ONBOARDING_ITEMS)
+            else:
+                items = json.loads(checklist.items)
+                for _, label in ONBOARDING_ITEMS:
+                    if label not in items:
+                        items[label] = {"done": False, "done_at": None, "note": ""}
 
-        total = len(ONBOARDING_ITEMS)
-        done  = sum(1 for v in items.values() if v.get("done"))
-        result.append({**_emp_summary(emp), "progress": done, "total": total, "items": items})
-    return result
+            total = len(ONBOARDING_ITEMS)
+            done  = sum(1 for v in items.values() if v.get("done"))
+            result.append({**_emp_summary(emp), "progress": done, "total": total, "items": items})
+        return result
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/{employee_id}")
@@ -229,33 +231,35 @@ def update_onboarding_item(employee_id: int, data: ChecklistUpdate, db: Session 
 
 @router.get("/offboarding/list")
 def list_offboarding(db: Session = Depends(get_db)):
-    # Show employees who are resigned / left / have offboarding checklists
-    from backend.models.resignation import Resignation
-    resigned_ids = {r[0] for r in db.query(Resignation.employee_id).all()}
-    left_ids     = {e.id for e in db.query(Employee).filter(Employee.status.in_(["Inactive", "Left"])).all()}
-    target_ids   = resigned_ids | left_ids
+    try:
+        from backend.models.resignation import Resignation
+        resigned_ids = {r[0] for r in db.query(Resignation.employee_id).all()}
+        left_ids     = {e.id for e in db.query(Employee).filter(Employee.status.in_(["Inactive", "Left"])).all()}
+        target_ids   = resigned_ids | left_ids
 
-    existing_ids = {c.employee_id for c in db.query(OffboardingChecklist).all()}
-    all_ids      = target_ids | existing_ids
+        existing_ids = {c.employee_id for c in db.query(OffboardingChecklist).all()}
+        all_ids      = target_ids | existing_ids
 
-    result = []
-    for eid in all_ids:
-        emp = db.query(Employee).filter(Employee.id == eid).first()
-        if not emp:
-            continue
-        checklist = db.query(OffboardingChecklist).filter(OffboardingChecklist.employee_id == eid).first()
-        if not checklist:
-            items = _build_default_items(OFFBOARDING_ITEMS)
-        else:
-            items = json.loads(checklist.items)
-            for _, label in OFFBOARDING_ITEMS:
-                if label not in items:
-                    items[label] = {"done": False, "done_at": None, "note": ""}
+        result = []
+        for eid in all_ids:
+            emp = db.query(Employee).filter(Employee.id == eid).first()
+            if not emp:
+                continue
+            checklist = db.query(OffboardingChecklist).filter(OffboardingChecklist.employee_id == eid).first()
+            if not checklist:
+                items = _build_default_items(OFFBOARDING_ITEMS)
+            else:
+                items = json.loads(checklist.items)
+                for _, label in OFFBOARDING_ITEMS:
+                    if label not in items:
+                        items[label] = {"done": False, "done_at": None, "note": ""}
 
-        total = len(OFFBOARDING_ITEMS)
-        done  = sum(1 for v in items.values() if v.get("done"))
-        result.append({**_emp_summary(emp), "progress": done, "total": total, "items": items})
-    return result
+            total = len(OFFBOARDING_ITEMS)
+            done  = sum(1 for v in items.values() if v.get("done"))
+            result.append({**_emp_summary(emp), "progress": done, "total": total, "items": items})
+        return result
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/offboarding/{employee_id}")
