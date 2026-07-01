@@ -357,7 +357,7 @@ def update_onboarding_item(employee_id: int, data: ChecklistUpdate, db: Session 
 def list_offboarding(db: Session = Depends(get_db)):
     try:
         from backend.models.resignation import Resignation
-        resigned_ids = {r[0] for r in db.query(Resignation.employee_id).all()}
+        resigned_ids = {r[0] for r in db.query(Resignation.employee_id).filter(Resignation.status == "Approved").all()}
         left_ids     = {e.id for e in db.query(Employee).filter(Employee.status.in_(["Inactive", "Left"])).all()}
         target_ids   = resigned_ids | left_ids
 
@@ -369,17 +369,22 @@ def list_offboarding(db: Session = Depends(get_db)):
             emp = db.query(Employee).filter(Employee.id == eid).first()
             if not emp:
                 continue
+            OFF_PROGRESS_SECTIONS = ['exit_details', 'notice_period', 'knowledge_transfer',
+                                     'assets_return', 'access_revocation', 'exit_interview',
+                                     'final_settlement', 'documents']
             checklist = db.query(OffboardingChecklist).filter(OffboardingChecklist.employee_id == eid).first()
             if not checklist:
                 items = _build_default_items(OFFBOARDING_ITEMS)
+                sections = {}
             else:
                 items = json.loads(checklist.items)
+                sections = items.get("__sections__", {})
                 for _, label in OFFBOARDING_ITEMS:
                     if label not in items:
                         items[label] = {"done": False, "done_at": None, "note": ""}
 
-            total = len(OFFBOARDING_ITEMS)
-            done  = sum(1 for k, v in items.items() if not k.startswith('__') and isinstance(v, dict) and v.get("done"))
+            total = len(OFF_PROGRESS_SECTIONS)
+            done  = sum(1 for key in OFF_PROGRESS_SECTIONS if _section_has_data(sections.get(key, {})))
             result.append({**_emp_summary(emp), "progress": done, "total": total, "items": items})
         return result
     except Exception as exc:

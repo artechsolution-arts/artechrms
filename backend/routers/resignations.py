@@ -112,6 +112,36 @@ def approve_resignation(resignation_id: int, data: ActionIn, request: Request, d
     r.actioned_at = datetime.utcnow()
     db.commit()
 
+    # Auto-initiate offboarding checklist on resignation approval
+    try:
+        import json as _json
+        from datetime import datetime as _dt
+        from backend.models.onboarding import OffboardingChecklist, OFFBOARDING_ITEMS
+        existing = db.query(OffboardingChecklist).filter(OffboardingChecklist.employee_id == r.employee_id).first()
+        if not existing:
+            items = {item: {"done": False, "done_at": None, "note": ""} for _, item in OFFBOARDING_ITEMS}
+            lwd = str(r.approved_last_working_date or r.last_working_date or "")
+            items["__sections__"] = {
+                "exit_details": {
+                    "data": {"reason": "Resignation", "last_working_day": lwd},
+                    "saved_at": _dt.utcnow().isoformat(),
+                },
+            }
+            items["__history__"] = [{
+                "id": f"exit_details_{int(_dt.utcnow().timestamp()*1000)}",
+                "timestamp": _dt.utcnow().isoformat(),
+                "section": "exit_details",
+                "section_label": "Exit Details",
+                "action": "save",
+                "summary": f"Offboarding auto-initiated — resignation approved. LWD: {lwd}",
+                "changed_by": user.email or "HR",
+            }]
+            checklist = OffboardingChecklist(employee_id=r.employee_id, items=_json.dumps(items))
+            db.add(checklist)
+            db.commit()
+    except Exception:
+        pass  # non-fatal — offboarding can be initiated manually
+
     _send_resignation_status_notif(db, r, actioned_by_email=user.email or "")
     return {"ok": True}
 
