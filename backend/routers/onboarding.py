@@ -112,10 +112,108 @@ def _append_history(payload: dict, entry: dict):
     payload["__history__"] = history
 
 
-@router.put("/{employee_id}/section")
-def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Session = Depends(get_db)):
+def _apply_section_to_emp(emp, section: str, d: dict, db):
+    """Apply a single onboarding section dict to the Employee ORM object.
+    Returns True if any field was changed (caller must commit)."""
     from datetime import date as _date_type
     from backend.models.hrm import EmergencyContact
+
+    changed = False
+
+    if section == "personal_info":
+        if d.get("dob"):
+            try:
+                emp.date_of_birth = _date_type.fromisoformat(d["dob"]); changed = True
+            except (ValueError, TypeError): pass
+        if d.get("present_address"):
+            emp.residential_address = d["present_address"].strip(); changed = True
+        if d.get("mobile"):
+            emp.mobile = str(d["mobile"]).strip(); changed = True
+        if d.get("gender"):
+            emp.gender = d["gender"].strip(); changed = True
+        if d.get("blood_group"):
+            emp.blood_group = d["blood_group"].strip(); changed = True
+        if d.get("marital_status"):
+            emp.marital_status = d["marital_status"].strip(); changed = True
+        if d.get("personal_email"):
+            emp.personal_email = d["personal_email"].strip(); changed = True
+        if d.get("alt_mobile"):
+            emp.alt_mobile = str(d["alt_mobile"]).strip(); changed = True
+        if d.get("permanent_address"):
+            emp.permanent_address = d["permanent_address"].strip(); changed = True
+        ec_name = (d.get("emergency_name") or "").strip()
+        if ec_name:
+            existing = db.query(EmergencyContact).filter(EmergencyContact.employee_id == emp.id).first()
+            if existing:
+                existing.name = ec_name
+                existing.relationship_type = d.get("emergency_relation") or "Other"
+                existing.phone = d.get("emergency_phone") or ""
+            else:
+                db.add(EmergencyContact(
+                    employee_id=emp.id, name=ec_name,
+                    relationship_type=d.get("emergency_relation") or "Other",
+                    phone=d.get("emergency_phone") or "", is_primary=True,
+                ))
+            changed = True
+
+    elif section == "employment":
+        if d.get("employment_type"):
+            emp.employment_type = d["employment_type"].strip(); changed = True
+        rid = d.get("reporting_manager_id")
+        if rid is not None:
+            try:
+                emp.reports_to_id = int(rid) if rid else None; changed = True
+            except (ValueError, TypeError): pass
+        np_ = d.get("notice_period")
+        if np_ is not None and str(np_).strip() != "":
+            try:
+                emp.notice_period_days = int(np_); changed = True
+            except (ValueError, TypeError): pass
+        pp = d.get("probation_period")
+        if pp is not None and str(pp).strip() != "":
+            try:
+                emp.probation_period_days = int(pp); changed = True
+            except (ValueError, TypeError): pass
+        if d.get("work_location"):
+            emp.work_location = d["work_location"].strip(); changed = True
+        if d.get("shift"):
+            emp.shift = d["shift"].strip(); changed = True
+        if d.get("confirmation_date"):
+            try:
+                emp.confirmation_date = _date_type.fromisoformat(d["confirmation_date"]); changed = True
+            except (ValueError, TypeError): pass
+
+    elif section == "documents":
+        if d.get("aadhaar"):
+            emp.aadhar_no = str(d["aadhaar"]).strip().replace(" ", ""); changed = True
+        if d.get("pan"):
+            emp.pan_no = str(d["pan"]).strip().upper(); changed = True
+        if d.get("passport"):
+            emp.passport_no = str(d["passport"]).strip(); changed = True
+        if d.get("driving_license"):
+            emp.driving_license_no = str(d["driving_license"]).strip(); changed = True
+        if d.get("voter_id"):
+            emp.voter_id_no = str(d["voter_id"]).strip(); changed = True
+        if d.get("pf_number"):
+            emp.pf_number = str(d["pf_number"]).strip(); changed = True
+        if d.get("esi_number"):
+            emp.esi_number = str(d["esi_number"]).strip(); changed = True
+
+    elif section == "education":
+        entries = d.get("entries")
+        if isinstance(entries, list):
+            emp.education = entries; changed = True
+
+    elif section == "experience":
+        entries = d.get("entries")
+        if isinstance(entries, list):
+            emp.experience = entries; changed = True
+
+    return changed
+
+
+@router.put("/{employee_id}/section")
+def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Session = Depends(get_db)):
 
     checklist = db.query(OnboardingChecklist).filter(
         OnboardingChecklist.employee_id == employee_id
@@ -142,136 +240,42 @@ def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Sessi
     checklist.updated_at = datetime.utcnow()
     db.commit()
 
-    # Sync structured section data to Employee / EmergencyContact tables
+    # Sync this section's data to Employee record
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if emp and data.data:
-        d = data.data
-        emp_changed = False
-
-        if data.section == "personal_info":
-            if d.get("dob"):
-                try:
-                    emp.date_of_birth = _date_type.fromisoformat(d["dob"])
-                    emp_changed = True
-                except (ValueError, TypeError):
-                    pass
-            if d.get("present_address"):
-                emp.residential_address = d["present_address"].strip()
-                emp_changed = True
-            if d.get("mobile"):
-                emp.mobile = str(d["mobile"]).strip()
-                emp_changed = True
-            if d.get("gender"):
-                emp.gender = d["gender"].strip()
-                emp_changed = True
-            if d.get("blood_group"):
-                emp.blood_group = d["blood_group"].strip()
-                emp_changed = True
-            if d.get("marital_status"):
-                emp.marital_status = d["marital_status"].strip()
-                emp_changed = True
-            if d.get("personal_email"):
-                emp.personal_email = d["personal_email"].strip()
-                emp_changed = True
-            if d.get("alt_mobile"):
-                emp.alt_mobile = str(d["alt_mobile"]).strip()
-                emp_changed = True
-            if d.get("permanent_address"):
-                emp.permanent_address = d["permanent_address"].strip()
-                emp_changed = True
-            # Emergency contact within personal_info
-            ec_name = (d.get("emergency_name") or "").strip()
-            if ec_name:
-                existing = db.query(EmergencyContact).filter(EmergencyContact.employee_id == emp.id).first()
-                if existing:
-                    existing.name = ec_name
-                    existing.relationship_type = d.get("emergency_relation") or "Other"
-                    existing.phone = d.get("emergency_phone") or ""
-                else:
-                    db.add(EmergencyContact(
-                        employee_id=emp.id, name=ec_name,
-                        relationship_type=d.get("emergency_relation") or "Other",
-                        phone=d.get("emergency_phone") or "", is_primary=True,
-                    ))
-                emp_changed = True
-
-        elif data.section == "employment":
-            if d.get("employment_type"):
-                emp.employment_type = d["employment_type"].strip()
-                emp_changed = True
-            rid = d.get("reporting_manager_id")
-            if rid is not None:
-                try:
-                    emp.reports_to_id = int(rid) if rid else None
-                    emp_changed = True
-                except (ValueError, TypeError):
-                    pass
-            np_ = d.get("notice_period")
-            if np_ is not None and str(np_).strip() != "":
-                try:
-                    emp.notice_period_days = int(np_)
-                    emp_changed = True
-                except (ValueError, TypeError):
-                    pass
-            pp = d.get("probation_period")
-            if pp is not None and str(pp).strip() != "":
-                try:
-                    emp.probation_period_days = int(pp)
-                    emp_changed = True
-                except (ValueError, TypeError):
-                    pass
-            if d.get("work_location"):
-                emp.work_location = d["work_location"].strip()
-                emp_changed = True
-            if d.get("shift"):
-                emp.shift = d["shift"].strip()
-                emp_changed = True
-            if d.get("confirmation_date"):
-                try:
-                    emp.confirmation_date = _date_type.fromisoformat(d["confirmation_date"])
-                    emp_changed = True
-                except (ValueError, TypeError):
-                    pass
-
-        elif data.section == "documents":
-            if d.get("aadhaar"):
-                emp.aadhar_no = str(d["aadhaar"]).strip().replace(" ", "")
-                emp_changed = True
-            if d.get("pan"):
-                emp.pan_no = str(d["pan"]).strip().upper()
-                emp_changed = True
-            if d.get("passport"):
-                emp.passport_no = str(d["passport"]).strip()
-                emp_changed = True
-            if d.get("driving_license"):
-                emp.driving_license_no = str(d["driving_license"]).strip()
-                emp_changed = True
-            if d.get("voter_id"):
-                emp.voter_id_no = str(d["voter_id"]).strip()
-                emp_changed = True
-            if d.get("pf_number"):
-                emp.pf_number = str(d["pf_number"]).strip()
-                emp_changed = True
-            if d.get("esi_number"):
-                emp.esi_number = str(d["esi_number"]).strip()
-                emp_changed = True
-
-        elif data.section == "education":
-            entries = d.get("entries")
-            if isinstance(entries, list):
-                emp.education = entries
-                emp_changed = True
-
-        elif data.section == "experience":
-            entries = d.get("entries")
-            if isinstance(entries, list):
-                emp.experience = entries
-                emp_changed = True
-
-        if emp_changed:
+        if _apply_section_to_emp(emp, data.section, data.data, db):
             db.commit()
 
     return {"ok": True, "sections": sections}
+
+
+@router.post("/{employee_id}/sync-to-employee")
+def sync_onboarding_to_employee(employee_id: int, db: Session = Depends(get_db)):
+    """Push ALL stored onboarding section data into the Employee record.
+    Safe to call multiple times — later values overwrite earlier ones."""
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+    checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == employee_id).first()
+    if not checklist:
+        return {"ok": True, "synced": []}
+
+    payload = json.loads(checklist.items)
+    sections = payload.get("__sections__", {})
+    synced = []
+    changed = False
+    for section_key, section_val in sections.items():
+        d = section_val.get("data") if isinstance(section_val, dict) else None
+        if not d:
+            continue
+        if _apply_section_to_emp(emp, section_key, d, db):
+            synced.append(section_key)
+            changed = True
+
+    if changed:
+        db.commit()
+
+    return {"ok": True, "synced": synced}
 
 
 @router.get("/{employee_id}/sections")

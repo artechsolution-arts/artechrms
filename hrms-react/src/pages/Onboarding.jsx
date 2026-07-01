@@ -1123,7 +1123,13 @@ function WizardModal({ emp, type, onClose, allEmps = [] }) {
     } catch { /* ignore */ }
   }, [emp.id, baseUrl]);
 
-  useEffect(() => { loadSections(); }, [loadSections]);
+  useEffect(() => {
+    loadSections();
+    // Retroactively sync all stored onboarding data to the Employee record
+    if (type === 'onboarding') {
+      api('POST', `/api/onboarding/${emp.id}/sync-to-employee`).catch(() => {});
+    }
+  }, [loadSections, emp.id, type]);
 
   const currentKey  = steps[step].key;
   const sectionData = (sections[currentKey] || {}).data || {};
