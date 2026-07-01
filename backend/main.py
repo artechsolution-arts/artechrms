@@ -331,6 +331,17 @@ with engine.connect() as _conn:
         except Exception:
             pass
 
+# Sync CEO permissions to HR level so CEO has full edit access (not view-only)
+try:
+    from backend.models.permission import RolePermission, DEFAULT_PERMISSIONS as _DP
+    with SessionLocal() as _ps:
+        _ceo = _ps.query(RolePermission).filter(RolePermission.role == 'CEO').first()
+        if _ceo:
+            _ceo.allowed_features = _DP.get('CEO', [])
+            _ps.commit()
+except Exception:
+    pass
+
 from backend.leave_accrual import start_accrual_scheduler, _run_accrual
 start_accrual_scheduler()
 

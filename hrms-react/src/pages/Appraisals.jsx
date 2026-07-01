@@ -303,7 +303,7 @@ function AppraisalDetail({ appraisal, onClose, onRefresh, toast }) {
 
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('artech_hrms_user') || '{}'); } catch { return {}; } })();
   const userRole = currentUser.role || '';
-  const isHR = userRole === 'HR' || userRole === 'SuperAdmin';
+  const isHR = userRole === 'HR' || userRole === 'SuperAdmin' || userRole === 'CEO';
 
   const displayStatus = DISPLAY_STATUS(appraisal.status);
 

@@ -31,14 +31,8 @@ ALL_FEATURES = sorted(set(HR_FEATURES + EMP_FEATURES + ["ceo-dashboard", "compen
 
 DEFAULT_PERMISSIONS = {
     "HR": HR_FEATURES,
-    "CEO": [
-        "ceo-dashboard", "compensation-planner",
-        "employees", "departments", "leaves", "work-mode-sheet",
-        "attendance", "holidays", "announcements", "onboarding",
-        "document-requests", "appraisals", "status-sheets",
-        "job-openings", "applicants", "payroll-entry", "salary-slips", "resignations",
-        "edit-requests",
-    ],
+    # CEO gets everything HR has, plus CEO-specific pages
+    "CEO": sorted(set(HR_FEATURES + ["ceo-dashboard", "compensation-planner"])),
     "Employee": EMP_FEATURES,
 }
 
