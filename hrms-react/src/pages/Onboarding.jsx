@@ -1110,7 +1110,7 @@ const SUPERADMIN_ONLY_ON  = ['assets', 'it_access'];
 const SUPERADMIN_ONLY_OFF = ['assets_return', 'access_revocation'];
 
 function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
-  const isSuperAdmin = userRole === 'superadmin';
+  const isSuperAdmin = userRole?.toLowerCase() === 'superadmin';
   const allSteps = type === 'onboarding' ? ON_STEPS : OFF_STEPS;
   const restrictedKeys = type === 'onboarding' ? SUPERADMIN_ONLY_ON : SUPERADMIN_ONLY_OFF;
   const steps = isSuperAdmin
