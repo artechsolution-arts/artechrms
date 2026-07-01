@@ -1,10 +1,10 @@
-name: Build & Release Desktop App
+name: Build Desktop Apps
 
 on:
   push:
     tags:
-      - 'v*'          # triggers on v1.0.1, v2.0.0, etc.
-  workflow_dispatch:  # allows manual trigger from GitHub UI
+      - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,99 +15,113 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - os: macos-latest   # Apple Silicon (M1/M2/M3/M4)
+            label: macOS-AppleSilicon
+            artifact: AR-Peopliz-macOS-AppleSilicon.dmg
+          - os: macos-13       # Intel Mac
+            label: macOS-Intel
+            artifact: AR-Peopliz-macOS-Intel.dmg
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            label: windows
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            label: macos-intel
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            label: macos-arm
+            label: Windows
+            artifact: AR-Peopliz-Windows-Setup.exe
 
     runs-on: ${{ matrix.os }}
-    name: Build (${{ matrix.label }})
+    name: ${{ matrix.label }}
 
     steps:
       - name: Clone repository
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           git init
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git fetch --depth 1 origin "${{ github.sha }}"
           git checkout FETCH_HEAD
 
-      - name: Setup Node
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: hrms-react/package-lock.json
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: hrms-react/src-tauri -> target
 
-      - name: Install npm dependencies
-        run: npm ci
-        working-directory: hrms-react
+      - name: Install Pake CLI
+        run: npm install -g pake-cli
 
-      - name: Build & release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build desktop app (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APP_URL: ${{ secrets.VITE_BACKEND_URL }}
+        run: |
+          pake "$APP_URL" \
+            --name "AR Peopliz" \
+            --icon hrms-react/src-tauri/icons/icon-512.png \
+            --width 1280 \
+            --height 800
+          find . -maxdepth 2 -name "*.dmg" | head -1 | xargs -I{} mv {} "${{ matrix.artifact }}"
+
+      - name: Build desktop app (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          APP_URL: ${{ secrets.VITE_BACKEND_URL }}
+        run: |
+          pake "$env:APP_URL" --name "AR Peopliz" --icon hrms-react/src-tauri/icons/icon-512.png --width 1280 --height 800
+          $exe = Get-ChildItem -Recurse -Filter "*.exe" | Where-Object { $_.Name -notlike "*pake*" } | Select-Object -First 1
+          if ($exe) { Move-Item $exe.FullName "${{ matrix.artifact }}" }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          projectPath: hrms-react
-          tagName: ${{ github.ref_name }}
-          releaseName: 'AR Peopliz ${{ github.ref_name }}'
-          releaseBody: |
-            ## Download AR Peopliz
+          name: ${{ matrix.label }}
+          path: ${{ matrix.artifact }}
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact }}
+          name: AR Peopliz ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            ## AR Peopliz ${{ github.ref_name }}
 
             ### 🖥️ Windows
-            Download `AR.Peopliz_x64-setup.exe` and run it. If Windows SmartScreen warns you, click **"More info" → "Run anyway"**.
+            1. Download **`AR-Peopliz-Windows-Setup.exe`**
+            2. Run it — if Windows SmartScreen appears, click **More info → Run anyway**
 
-            ### 🍎 macOS
-            Download the `.dmg` for your chip:
-            - **Apple Silicon (M1/M2/M3/M4)** → `AR.Peopliz_aarch64.dmg`
-            - **Intel Mac** → `AR.Peopliz_x64.dmg`
+            ### 🍎 macOS — Apple Silicon (M1/M2/M3/M4)
+            1. Download **`AR-Peopliz-macOS-AppleSilicon.dmg`**
+            2. Open the DMG and drag **AR Peopliz** to Applications
+            3. **Right-click → Open** (do NOT double-click the first time)
+            4. Click **Open** in the dialog
 
-            **macOS will block the app on first open** (it's not from the App Store). To install:
-            1. Double-click the `.dmg` and drag AR Peopliz to Applications
-            2. **Do NOT double-click** the app — instead **right-click → Open**
-            3. Click **Open** on the security dialog
-            4. The app opens normally from now on
+            **If you see "can't be opened" instead — run this once in Terminal:**
+            ```
+            xattr -dr com.apple.quarantine "/Applications/AR Peopliz.app"
+            ```
+            Then double-click normally from now on.
 
-            Or via Terminal: `xattr -cr "/Applications/AR Peopliz.app"`
+            ### 🍎 macOS — Intel Mac
+            Same steps as above but download **`AR-Peopliz-macOS-Intel.dmg`**
 
             ### 📱 Android
-            Download `AR-Peopliz-Android.apk`.
+            1. Download **`AR-Peopliz-Android.apk`**
+            2. Open it on your phone → Settings → **Install unknown apps** → allow your browser
+            3. Tap **Install** → if Play Protect warns, tap **Install anyway**
 
-            **First-time install steps:**
-            1. Open the APK file on your phone
-            2. If prompted, go to **Settings → Install unknown apps** and allow your browser/Files app
-            3. Tap **Install**
-            4. If Google Play Protect warns you, tap **"Install anyway"** — the app is safe
-
-            ### 🍏 iOS (iPhone / iPad)
-            No download needed. Install as a web app via Safari:
+            ### 🍏 iOS (iPhone / iPad) — no download needed
             1. Open **Safari** → go to your AR Peopliz URL
-            2. Tap the **Share** button (box with arrow at the bottom)
-            3. Tap **"Add to Home Screen"** → tap **Add**
-
-            The icon appears on your home screen and works like a native app.
+            2. Tap **Share** (box with arrow) → **Add to Home Screen** → **Add**
 
             ---
-            Built from commit `${{ github.sha }}`
-          releaseDraft: false
-          prerelease: false
-          args: --target ${{ matrix.target }}
+            Built from `${{ github.sha }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
