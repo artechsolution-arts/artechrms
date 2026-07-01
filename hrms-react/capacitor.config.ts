@@ -7,10 +7,8 @@ const config: CapacitorConfig = {
   webDir: '../frontend',
 
   server: {
+    url: 'https://www.arpeopliz.com',
     androidScheme: 'https',
-    // Uncomment for live-reload on a physical device during development:
-    // url: 'http://192.168.1.100:3000',
-    // cleartext: true,
   },
 
   android: {
