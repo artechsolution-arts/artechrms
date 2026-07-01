@@ -1390,7 +1390,7 @@ function EmpCard({ emp, type, onClick }) {
             {emp.designation || '—'} · {emp.department || '—'}
           </div>
         </div>
-        <span style={{ fontSize: 11, fontWeight: 700, color, background: color + '18', padding: '2px 8px', borderRadius: 20, border: `1px solid ${color}30`, flexShrink: 0 }}>
+        <span title={`${emp.progress} of ${emp.total} sections filled`} style={{ fontSize: 11, fontWeight: 700, color, background: color + '18', padding: '2px 8px', borderRadius: 20, border: `1px solid ${color}30`, flexShrink: 0 }}>
           {emp.progress}/{emp.total}
         </span>
       </div>

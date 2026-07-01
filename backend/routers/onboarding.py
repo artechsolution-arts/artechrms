@@ -41,6 +41,30 @@ def _emp_summary(emp):
 
 # ─── Onboarding ────────────────────────────────────────────────
 
+# Wizard sections that count toward onboarding progress (excludes activity_log viewer)
+PROGRESS_SECTIONS = ['personal_info', 'employment', 'documents', 'education',
+                     'experience', 'assets', 'it_access', 'training', 'checklist']
+
+def _section_has_data(section_val: dict) -> bool:
+    """Return True if a section has any meaningful non-empty data."""
+    if not isinstance(section_val, dict):
+        return False
+    d = section_val.get("data") or {}
+    if not d:
+        return False
+    # assets: needs at least one row
+    if "assets" in d:
+        return bool(d.get("assets"))
+    # it_access: any toggle enabled
+    if any(k in d for k in ('email', 'system', 'vpn', 'slack', 'jira', 'github', 'cloud', 'erp')):
+        return any(d.get(k) for k in ('email', 'system', 'vpn', 'slack', 'jira', 'github', 'cloud', 'erp'))
+    # checklist: any item ticked
+    if all(isinstance(v, bool) for v in d.values() if not isinstance(v, str)):
+        return any(d.values())
+    # generic: any non-empty value
+    return any(v not in (None, '', False, [], {}) for v in d.values())
+
+
 @router.get("/list")
 def list_onboarding(db: Session = Depends(get_db)):
     try:
@@ -50,14 +74,16 @@ def list_onboarding(db: Session = Depends(get_db)):
             checklist = db.query(OnboardingChecklist).filter(OnboardingChecklist.employee_id == emp.id).first()
             if not checklist:
                 items = _build_default_items(ONBOARDING_ITEMS)
+                sections = {}
             else:
                 items = json.loads(checklist.items)
                 for _, label in ONBOARDING_ITEMS:
                     if label not in items:
                         items[label] = {"done": False, "done_at": None, "note": ""}
+                sections = items.get("__sections__", {})
 
-            total = len(ONBOARDING_ITEMS)
-            done  = sum(1 for k, v in items.items() if not k.startswith('__') and isinstance(v, dict) and v.get("done"))
+            total = len(PROGRESS_SECTIONS)
+            done  = sum(1 for key in PROGRESS_SECTIONS if _section_has_data(sections.get(key, {})))
             result.append({**_emp_summary(emp), "progress": done, "total": total, "items": items})
         return result
     except Exception as exc:
