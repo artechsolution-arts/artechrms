@@ -116,21 +116,6 @@ jobs:
         working-directory: hrms-react
         run: npx cap sync ios
 
-      - name: Cache Swift packages
-        uses: actions/cache@v4
-        with:
-          path: hrms-react/ios/App/.spm-cache
-          key: spm-${{ hashFiles('hrms-react/ios/App/App.xcodeproj/project.pbxproj') }}
-          restore-keys: spm-
-
-      - name: Resolve Swift packages
-        working-directory: hrms-react/ios/App
-        run: |
-          xcodebuild -resolvePackageDependencies \
-            -project App.xcodeproj \
-            -scheme App \
-            -clonedSourcePackagesDirPath .spm-cache
-
-      - name: Validate project structure
+      - name: Validate iOS project
         working-directory: hrms-react/ios/App
         run: xcodebuild -list -project App.xcodeproj
