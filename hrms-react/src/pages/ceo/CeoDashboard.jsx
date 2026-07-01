@@ -43,7 +43,7 @@ const B = {
   steel: '#A0AABF',
 };
 
-const CHART_FONT = { family: "'Plus Jakarta Sans', sans-serif", size: 11 };
+const CHART_FONT = { family: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", size: 11 };
 const GRID_COLOR = 'rgba(13,31,78,0.06)';
 const TICK_COLOR = B.steel;
 
@@ -518,9 +518,8 @@ export default function CeoDashboard({ toast, onNavigate }) {
   return (
     <div className="dash-root page-content space-y-6">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        @keyframes dashFadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-        .ceo-dash { font-family: 'Plus Jakarta Sans', sans-serif; }
+@keyframes dashFadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        .ceo-dash { font-family: system-ui, -apple-system, sans-serif; }
       `}</style>
 
       {/* ── Banner ── */}

@@ -24,7 +24,7 @@ const B = {
   steel: '#A0AABF',
 };
 
-const CHART_FONT = { family: "'Plus Jakarta Sans', sans-serif", size: 11 };
+const CHART_FONT = { family: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", size: 11 };
 const GRID_COLOR = 'rgba(13,31,78,0.06)';
 const TICK_COLOR = B.steel;
 
@@ -74,7 +74,7 @@ function StatCard({ label, value, icon: Icon, gradient, accent, sub, onClick, de
         </div>
       </div>
 
-      <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', lineHeight: 1, marginBottom: 6, fontFamily: "'DM Serif Display', serif" }}>
+      <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', lineHeight: 1, marginBottom: 6 }}>
         {value ?? '—'}
       </div>
 
@@ -297,16 +297,15 @@ export default function Dashboard({ onNavigate, toast }) {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        @keyframes dashFadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes dashFadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .dash-root { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .dash-root { font-family: system-ui, -apple-system, sans-serif; }
         .action-btn {
           display: inline-flex; align-items: center; gap: 5px;
           padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 600;
           background: ${B.cloud}; border: 1px solid ${B.mist}; color: ${B.navy};
           cursor: pointer; transition: background 0.15s, border-color 0.15s;
-          font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: 0.01em;
+          letter-spacing: 0.01em;
         }
         .action-btn:hover { background: ${B.mist}; border-color: ${B.steel}; }
         .hire-row { transition: background 0.15s; }
@@ -320,7 +319,7 @@ export default function Dashboard({ onNavigate, toast }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <div style={{ width: 4, height: 20, borderRadius: 2, background: `linear-gradient(180deg, ${B.blue}, ${B.teal})` }} />
-              <h1 style={{ fontSize: 20, fontWeight: 800, color: B.navy, letterSpacing: '-0.01em', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              <h1 style={{ fontSize: 20, fontWeight: 800, color: B.navy, letterSpacing: '-0.01em' }}>
                 Dashboard
               </h1>
             </div>

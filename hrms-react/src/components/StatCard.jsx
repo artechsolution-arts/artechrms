@@ -62,7 +62,7 @@ export default function StatCard({ label, value, icon: Icon, gradient, sub, onCl
         )}
       </div>
 
-      <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', lineHeight: 1, marginBottom: 6, fontFamily: "'DM Serif Display', serif" }}>
+      <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', lineHeight: 1, marginBottom: 6 }}>
         {value ?? '—'}
       </div>
 

@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
+import { usePlatform } from '../hooks/usePlatform';
 import { motion } from 'framer-motion';
 import { Loader2, Eye, EyeOff, ArrowRight, UserRound, CalendarDays, Clock3, TrendingUp, Wallet, BarChart3, X, Mail, Phone, CheckCircle2 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ const FEATURES = [
 const HEX_ROWS = [[0, 1, 2], [3, 4, 5]];
 
 export default function Login({ onLogin }) {
+  const { isNative } = usePlatform();
   const [mode, setMode]               = useState('checking');
   const [revealed, setRevealed]       = useState(false);
   const [form, setForm]               = useState({ username: '', password: '', full_name: '', email: '' });
@@ -192,12 +194,10 @@ export default function Login({ onLogin }) {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,600&family=DM+Serif+Display:ital@0;1&display=swap');
-
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         .lp {
-          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-family: system-ui, -apple-system, sans-serif;
           height: 100vh;
           display: flex;
           overflow: hidden;
@@ -333,7 +333,7 @@ export default function Login({ onLogin }) {
           border-radius: 50px;
           background: linear-gradient(135deg, ${C.teal} 0%, ${C.blue} 100%);
           color: ${C.navy};
-          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 15px;
           font-weight: 700;
           letter-spacing: 0.02em;
@@ -533,7 +533,7 @@ export default function Login({ onLogin }) {
           border-radius: 10px;
           padding: 9px 12px;
           color: ${C.navy};
-          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 13px;
           font-weight: 400;
           outline: none;
@@ -575,7 +575,7 @@ export default function Login({ onLogin }) {
           border-radius: 10px;
           background: linear-gradient(135deg, ${C.blue} 0%, ${C.navy} 100%);
           color: #fff;
-          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 13px;
           font-weight: 700;
           letter-spacing: 0.03em;
@@ -608,7 +608,7 @@ export default function Login({ onLogin }) {
           border: 1.5px solid ${C.mist};
           border-radius: 10px;
           color: ${C.navy};
-          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 13px;
           font-weight: 600;
           cursor: pointer;
@@ -752,7 +752,7 @@ export default function Login({ onLogin }) {
                 animation: 'shimmerBar 0.9s ease-out 0.5s both',
               }} />
               <h1 style={{
-                fontFamily: "'DM Serif Display', serif",
+                fontFamily: "system-ui, -apple-system, sans-serif",
                 fontSize: 'clamp(2rem, 4vw, 3rem)',
                 lineHeight: 1.2,
                 color: '#fff',
@@ -816,7 +816,7 @@ export default function Login({ onLogin }) {
               transition={{ delay: 0.64, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
             >
               <h2 style={{
-                fontFamily: "'DM Serif Display', serif",
+                fontFamily: "system-ui, -apple-system, sans-serif",
                 fontSize: 'clamp(1.5rem, 2.1vw, 1.9rem)',
                 color: '#fff',
                 letterSpacing: '-0.02em',
@@ -929,7 +929,7 @@ export default function Login({ onLogin }) {
             {/* Header */}
             <div className="lp-mobile-header" style={{ marginBottom: 8, animation: 'fadeUp 0.5s ease-out 0.15s both' }}>
               <h2 className="lp-mobile-h2" style={{
-                fontFamily: "'DM Serif Display', serif",
+                fontFamily: "system-ui, -apple-system, sans-serif",
                 fontSize: '1.35rem',
                 color: C.navy,
                 marginBottom: 3,
@@ -1009,7 +1009,7 @@ export default function Login({ onLogin }) {
                     <span style={{ fontSize: 12.5, color: C.steel, fontWeight: 500 }}>Remember me</span>
                   </label>
                   <button type="button"
-                    style={{ background: 'none', border: 'none', fontSize: 12.5, color: C.blue, cursor: 'pointer', fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+                    style={{ background: 'none', border: 'none', fontSize: 12.5, color: C.blue, cursor: 'pointer', fontWeight: 600, fontFamily: 'system-ui, -apple-system, sans-serif' }}
                     onClick={() => { setForgotOpen(true); setForgotEmail(''); setForgotSent(false); }}>
                     Forgot Password?
                   </button>
@@ -1037,10 +1037,10 @@ export default function Login({ onLogin }) {
 
               {mode === 'login' && (
                 <>
-                  <div className="lp-divider" style={{ animation: 'fadeIn 0.4s ease-out 0.22s both' }}>
+                  {!isNative && <div className="lp-divider" style={{ animation: 'fadeIn 0.4s ease-out 0.22s both' }}>
                     <span style={{ fontSize: 11, color: C.steel, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600 }}>or</span>
-                  </div>
-                  <button type="button" className="lp-sso"
+                  </div>}
+                  {!isNative && <button type="button" className="lp-sso"
                     style={{ animation: 'fadeUp 0.4s ease-out 0.25s both' }}
                     onClick={() => { window.location.href = '/api/auth/microsoft'; }}>
                     {/* Microsoft logo */}
@@ -1051,7 +1051,7 @@ export default function Login({ onLogin }) {
                       <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
                     </svg>
                     Continue with Microsoft
-                  </button>
+                  </button>}
                 </>
               )}
 
@@ -1060,7 +1060,7 @@ export default function Login({ onLogin }) {
                   <span style={{ fontSize: 12.5, color: C.steel }}>Already have an account? </span>
                   <button type="button"
                     onClick={() => { setMode('login'); setError(''); }}
-                    style={{ background: 'none', border: 'none', fontSize: 12.5, color: C.blue, cursor: 'pointer', fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                    style={{ background: 'none', border: 'none', fontSize: 12.5, color: C.blue, cursor: 'pointer', fontWeight: 600, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                     Sign in instead
                   </button>
                 </div>
@@ -1077,7 +1077,7 @@ export default function Login({ onLogin }) {
               <span style={{ fontSize: 11.5, color: C.steel }}>
                 Need help?{' '}
                 <button type="button"
-                  style={{ background: 'none', border: 'none', fontSize: 11.5, color: C.blue, cursor: 'pointer', fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+                  style={{ background: 'none', border: 'none', fontSize: 11.5, color: C.blue, cursor: 'pointer', fontWeight: 600, fontFamily: 'system-ui, -apple-system, sans-serif' }}
                   onClick={() => setSupportOpen(true)}>Contact HR Support</button>
               </span>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -1103,7 +1103,7 @@ export default function Login({ onLogin }) {
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.blue }} />
                   <span style={{ fontSize: 11, fontWeight: 700, color: C.blue, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Password Reset</span>
                 </div>
-                <h3 style={{ fontSize: 17, fontFamily: "'DM Serif Display',serif", color: C.navy, fontWeight: 400 }}>
+                <h3 style={{ fontSize: 17, fontFamily: "system-ui, -apple-system, sans-serif", color: C.navy, fontWeight: 400 }}>
                   Forgot your password?
                 </h3>
               </div>
@@ -1154,7 +1154,7 @@ export default function Login({ onLogin }) {
                     }
                   </button>
                   <button type="button" onClick={() => setForgotOpen(false)}
-                    style={{ width: '100%', marginTop: 10, padding: '11px', background: 'none', border: `1px solid ${C.mist}`, borderRadius: 10, fontSize: 13, color: C.steel, cursor: 'pointer', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 500 }}>
+                    style={{ width: '100%', marginTop: 10, padding: '11px', background: 'none', border: `1px solid ${C.mist}`, borderRadius: 10, fontSize: 13, color: C.steel, cursor: 'pointer', fontFamily: 'system-ui, -apple-system, sans-serif', fontWeight: 500 }}>
                     Cancel
                   </button>
                 </form>
@@ -1174,7 +1174,7 @@ export default function Login({ onLogin }) {
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.teal }} />
                   <span style={{ fontSize: 11, fontWeight: 700, color: C.teal, letterSpacing: '0.06em', textTransform: 'uppercase' }}>HR Support</span>
                 </div>
-                <h3 style={{ fontSize: 17, fontFamily: "'DM Serif Display',serif", color: C.navy, fontWeight: 400 }}>
+                <h3 style={{ fontSize: 17, fontFamily: "system-ui, -apple-system, sans-serif", color: C.navy, fontWeight: 400 }}>
                   Contact HR Support
                 </h3>
               </div>
