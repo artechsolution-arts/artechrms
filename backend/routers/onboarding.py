@@ -158,6 +158,12 @@ def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Sessi
             if d.get("present_address"):
                 emp.residential_address = d["present_address"].strip()
                 emp_changed = True
+            if d.get("mobile"):
+                emp.mobile = str(d["mobile"]).strip()
+                emp_changed = True
+            if d.get("gender"):
+                emp.gender = d["gender"].strip()
+                emp_changed = True
             # Emergency contact within personal_info
             ec_name = (d.get("emergency_name") or "").strip()
             if ec_name:
@@ -174,12 +180,50 @@ def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Sessi
                     ))
                 emp_changed = True
 
+        elif data.section == "employment":
+            if d.get("employment_type"):
+                emp.employment_type = d["employment_type"].strip()
+                emp_changed = True
+            rid = d.get("reporting_manager_id")
+            if rid is not None:
+                try:
+                    emp.reports_to_id = int(rid) if rid else None
+                    emp_changed = True
+                except (ValueError, TypeError):
+                    pass
+            np_ = d.get("notice_period")
+            if np_ is not None and str(np_).strip() != "":
+                try:
+                    emp.notice_period_days = int(np_)
+                    emp_changed = True
+                except (ValueError, TypeError):
+                    pass
+            pp = d.get("probation_period")
+            if pp is not None and str(pp).strip() != "":
+                try:
+                    emp.probation_period_days = int(pp)
+                    emp_changed = True
+                except (ValueError, TypeError):
+                    pass
+
         elif data.section == "documents":
             if d.get("aadhaar"):
                 emp.aadhar_no = str(d["aadhaar"]).strip().replace(" ", "")
                 emp_changed = True
             if d.get("pan"):
                 emp.pan_no = str(d["pan"]).strip().upper()
+                emp_changed = True
+
+        elif data.section == "education":
+            entries = d.get("entries")
+            if isinstance(entries, list):
+                emp.education = entries
+                emp_changed = True
+
+        elif data.section == "experience":
+            entries = d.get("entries")
+            if isinstance(entries, list):
+                emp.experience = entries
                 emp_changed = True
 
         if emp_changed:
