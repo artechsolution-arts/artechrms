@@ -680,12 +680,15 @@ export default function Employees({ toast }) {
     setAttCalSelected(null);
     const now = new Date(); setAttCalYear(now.getFullYear()); setAttCalMonth(now.getMonth() + 1);
     try {
-      const [emp, contacts, assets] = await Promise.all([
+      const [emp, contacts, assets, onboarding] = await Promise.all([
         api('GET', `/api/employees/${id}`),
         api('GET', `/api/hrm/employees/${id}/emergency-contacts`).catch(() => []),
         api('GET', `/api/hrm/assets?employee_id=${id}`).catch(() => []),
+        api('GET', `/api/onboarding/${id}/sections`).catch(() => ({ sections: {} })),
       ]);
       const ec = contacts[0] || {};
+      const itAccess = onboarding?.sections?.it_access?.data || null;
+      setEmpItAccess(itAccess);
       setDetailEmp({ ...emp, _ec: ec, _assets: assets });
     } catch (e) { toast(e.message, 'error'); setDetailEmp(null); }
     finally { setDetailLoading(false); }
@@ -1527,6 +1530,14 @@ export default function Employees({ toast }) {
                         <Phone size={13} className="text-green-500" />
                       </div>
                       <span className="text-xs">{detailEmp.mobile}</span>
+                    </div>
+                  )}
+                  {empItAccess?.email && empItAccess?.email_user && (
+                    <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                        <Mail size={13} className="text-blue-500" />
+                      </div>
+                      <span className="truncate text-xs">{empItAccess.email_user}</span>
                     </div>
                   )}
                   {(detailEmp.office_address || detailEmp.residential_address) && (
