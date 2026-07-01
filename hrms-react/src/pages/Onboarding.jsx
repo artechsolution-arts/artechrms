@@ -99,12 +99,12 @@ const PhoneInput = ({ label, value, onChange, required, disabled }) => (
     <label className="onb-form-label" style={{ display: 'block', fontSize: 11.5, fontWeight: 600, marginBottom: 5, letterSpacing: '0.01em' }}>
       {label}{required && <span style={{ color: '#EF4444', marginLeft: 3 }}>*</span>}
     </label>
-    <div style={{ display: 'flex' }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 10px', borderRadius: '10px 0 0 10px', border: '1px solid #E5E7EB', borderRight: 'none', background: disabled ? '#F9FAFB' : '#F9FAFB', fontSize: 13, color: '#6B7280', userSelect: 'none', whiteSpace: 'nowrap' }}>+91</span>
+    <div className="flex">
+      <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 select-none">+91</span>
       <input inputMode="numeric" maxLength={10} value={(value || '').replace(/^\+91/, '')}
         onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 10); onChange(d ? `+91${d}` : ''); }}
-        placeholder="10-digit mobile" disabled={disabled}
-        className="form-input" style={{ fontSize: 13, borderRadius: '0 10px 10px 0', flex: 1, ...(disabled ? { background: '#F9FAFB', color: '#6B7280' } : {}) }} />
+        placeholder="10-digit mobile number" disabled={disabled}
+        className="form-input rounded-l-none flex-1" style={{ fontSize: 13 }} />
     </div>
   </div>
 );
