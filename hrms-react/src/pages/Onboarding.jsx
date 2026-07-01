@@ -1128,7 +1128,7 @@ function hasMeaningfulData(sectionKey, sectionVal) {
   return Object.values(d).some(v => v !== null && v !== undefined && v !== '' && v !== false);
 }
 
-function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
+function WizardModal({ emp, type, onClose, allEmps = [], userRole = '', toast }) {
   const isSuperAdmin = userRole?.toLowerCase() === 'superadmin';
   const allSteps = type === 'onboarding' ? ON_STEPS : OFF_STEPS;
   const restrictedKeys = type === 'onboarding' ? SUPERADMIN_ONLY_ON : SUPERADMIN_ONLY_OFF;
@@ -1140,6 +1140,7 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
   const [history, setHistory]   = useState([]);
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const baseUrl = type === 'onboarding' ? `/api/onboarding` : `/api/onboarding/offboarding`;
 
@@ -1172,6 +1173,7 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
 
   const saveSection = async (action = 'save', rowSummary = '') => {
     setSaving(true);
+    setSaveError('');
     try {
       let data = (sections[currentKey] || {}).data || {};
 
@@ -1201,13 +1203,19 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
       const res = await api('PUT', `${baseUrl}/${emp.id}/section`, {
         section: currentKey, data, action, row_summary: summary, changed_by: 'HR',
       });
-      setSections(prev => ({ ...prev, ...res.sections }));
+      // Update local state from server response to confirm what was persisted
+      setSections(prev => ({ ...prev, [currentKey]: res.sections?.[currentKey] ?? prev[currentKey] }));
       // Reload history to get the fresh log
       const hd = await api('GET', `${baseUrl}/${emp.id}/sections`).catch(() => ({ history: [] }));
       setHistory(Array.isArray(hd.history) ? [...hd.history].reverse() : []);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch { /* ignore */ }
+      if (toast) toast(`${stepLabel} saved`, 'success');
+    } catch (e) {
+      const msg = e?.message || 'Save failed';
+      setSaveError(msg);
+      if (toast) toast(msg, 'error');
+    }
     finally { setSaving(false); }
   };
 
@@ -1345,8 +1353,9 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
                 className="btn btn-secondary btn-sm gap-1.5" style={{ opacity: step === 0 ? 0.4 : 1 }}>
                 <ChevronLeft size={13} /> Previous
               </button>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {saved && <span style={{ fontSize: 12, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={13} /> Saved!</span>}
+                {saveError && <span style={{ fontSize: 11, color: '#DC2626', maxWidth: 200 }} title={saveError}>Save failed — {saveError.slice(0, 40)}</span>}
                 <button onClick={saveSection} disabled={saving} className="btn btn-secondary btn-sm gap-1.5">
                   <Save size={13} /> {saving ? 'Saving…' : 'Save'}
                 </button>
@@ -1635,7 +1644,7 @@ export default function Onboarding({ toast }) {
       </div>
 
       {selected && (
-        <WizardModal emp={selected} type={tab} allEmps={allEmps} userRole={user?.role} onClose={() => { setSelected(null); load(); }} />
+        <WizardModal emp={selected} type={tab} allEmps={allEmps} userRole={user?.role} toast={toast} onClose={() => { setSelected(null); load(); }} />
       )}
 
       {showAddJoiner && (

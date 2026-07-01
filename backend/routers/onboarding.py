@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from pydantic import BaseModel
 from typing import Optional
 import json, time
@@ -237,8 +238,10 @@ def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Sessi
         "changed_by": data.changed_by,
     })
     checklist.items = json.dumps(payload)
+    flag_modified(checklist, 'items')   # force SQLAlchemy to include in UPDATE
     checklist.updated_at = datetime.utcnow()
     db.commit()
+    db.refresh(checklist)              # confirm the write landed in DB
 
     # Sync this section's data to Employee record
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
