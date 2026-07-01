@@ -70,7 +70,33 @@ jobs:
           projectPath: hrms-react
           tagName: ${{ github.ref_name }}
           releaseName: 'AR Peopliz ${{ github.ref_name }}'
-          releaseBody: 'Download the installer for your platform below.'
+          releaseBody: |
+            ## Download AR Peopliz
+
+            ### 🖥️ Desktop Apps
+            | Platform | File to download |
+            |----------|-----------------|
+            | **Windows** | `AR.Peopliz_x64-setup.exe` (installer) or `AR.Peopliz_x64_en-US.msi` |
+            | **macOS — Apple Silicon (M1/M2/M3)** | `AR.Peopliz_aarch64.dmg` |
+            | **macOS — Intel** | `AR.Peopliz_x64.dmg` |
+
+            ### 📱 Mobile Apps
+            | Platform | File to download |
+            |----------|-----------------|
+            | **Android** | `AR-Peopliz-Android-Release.apk` — enable "Install unknown apps" in Settings |
+            | **iOS (iPhone/iPad)** | No download needed — use the **web app** instead (see below) |
+
+            ### 🌐 iOS / Web Install (free, no App Store needed)
+            1. Open **Safari** on your iPhone or iPad
+            2. Go to your AR Peopliz URL
+            3. Tap the **Share** button (box with arrow)
+            4. Tap **"Add to Home Screen"**
+            5. Tap **Add** — the app icon appears on your home screen
+
+            The web app works exactly like a native app on iOS.
+
+            ---
+            Built from commit `${{ github.sha }}`
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
