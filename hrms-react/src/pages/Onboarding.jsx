@@ -1405,6 +1405,88 @@ function EmpCard({ emp, type, onClick }) {
 }
 
 /* ══════════════════════════════════════════════
+   INITIATE OFFBOARDING MODAL
+══════════════════════════════════════════════ */
+function InitiateOffboardingModal({ allEmps, offList, onClose, onInitiated, toast }) {
+  const alreadyOffboarding = new Set((offList || []).map(e => e.id));
+  const eligible = (allEmps || []).filter(e => !alreadyOffboarding.has(e.id));
+  const [empId, setEmpId] = useState('');
+  const [reason, setReason] = useState('Resignation');
+  const [lastDay, setLastDay] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!empId) { toast('Please select an employee', 'error'); return; }
+    setSaving(true);
+    try {
+      await api('POST', `/api/onboarding/offboarding/${empId}/initiate`);
+      if (lastDay || reason !== 'Resignation') {
+        await api('PUT', `/api/onboarding/offboarding/${empId}/section`, {
+          section: 'exit_details',
+          data: { reason, last_working_day: lastDay },
+          action: 'save',
+          row_summary: `Exit initiated — ${reason}`,
+          changed_by: 'HR',
+        });
+      }
+      const emp = eligible.find(e => String(e.id) === String(empId));
+      toast(`Offboarding started for ${emp?.full_name || 'employee'}`, 'success');
+      onInitiated();
+    } catch (e) {
+      toast(e.message || 'Failed to initiate offboarding', 'error');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(13,31,78,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, boxShadow: '0 24px 80px rgba(13,31,78,0.3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid #F3F4F6' }}>
+          <div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#0D1F4E', margin: 0 }}>Initiate Offboarding</h2>
+            <p style={{ fontSize: 12, color: '#9CA3AF', margin: '3px 0 0' }}>Start the exit process for an employee</p>
+          </div>
+          <button onClick={onClose} style={{ background: '#F3F4F6', border: 'none', borderRadius: 8, padding: 7, cursor: 'pointer', display: 'flex' }}><X size={15} color="#6B7280" /></button>
+        </div>
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Employee <span style={{ color: '#EF4444' }}>*</span></label>
+            <SelectDS
+              value={empId ? String(empId) : ''}
+              onChange={v => setEmpId(v || '')}
+              options={eligible.map(e => ({ value: String(e.id), label: `${e.full_name || e.first_name + ' ' + e.last_name} — ${e.designation || e.department || ''}`.trim().replace(/—\s*$/, '') }))}
+              placeholder="Search employee…"
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Reason for Leaving</label>
+            <SelectDS
+              value={reason}
+              onChange={v => setReason(v || 'Resignation')}
+              options={['Resignation', 'Termination', 'Retirement', 'Contract End', 'Layoff', 'Mutual Separation', 'Absconding', 'Other']}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Last Working Day</label>
+            <DatePicker value={lastDay} onChange={setLastDay} placeholder="Select date" />
+          </div>
+          <div style={{ background: '#FEF2F2', borderRadius: 8, padding: '10px 14px', border: '1px solid #FECACA', fontSize: 12, color: '#7F1D1D' }}>
+            This will open the offboarding wizard for this employee. Their status can be updated separately from the Employees page.
+          </div>
+        </div>
+        <div style={{ padding: '14px 24px', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} className="btn btn-secondary btn-sm">Cancel</button>
+          <button onClick={submit} disabled={saving || !empId}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, border: 'none', cursor: saving || !empId ? 'not-allowed' : 'pointer', background: saving || !empId ? '#FCA5A5' : '#EF4444', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+            <UserMinus size={13} /> {saving ? 'Initiating…' : 'Start Offboarding'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
    ADD NEW JOINER MODAL
 ══════════════════════════════════════════════ */
 function NewJoinerModal({ depts, desigs, onClose, onCreated, toast }) {
@@ -1525,6 +1607,7 @@ export default function Onboarding({ toast }) {
   const [selected, setSelected]     = useState(null);
   const [search, setSearch]         = useState('');
   const [showAddJoiner, setShowAddJoiner] = useState(false);
+  const [showInitiateOff, setShowInitiateOff] = useState(false);
   const [depts, setDepts]           = useState([]);
   const [desigs, setDesigs]         = useState([]);
   const [allEmps, setAllEmps]       = useState([]);
@@ -1568,6 +1651,12 @@ export default function Onboarding({ toast }) {
           {tab === 'onboarding' && (
             <button onClick={() => setShowAddJoiner(true)} className="btn btn-primary btn-sm gap-1.5">
               <UserPlus size={13} /> Add New Joiner
+            </button>
+          )}
+          {tab === 'offboarding' && (
+            <button onClick={() => setShowInitiateOff(true)} className="btn btn-sm gap-1.5"
+              style={{ background: '#EF4444', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <UserMinus size={13} /> Initiate Offboarding
             </button>
           )}
           <button onClick={load} className="btn btn-secondary btn-sm gap-1.5"><RefreshCw size={13} /> Refresh</button>
@@ -1645,6 +1734,20 @@ export default function Onboarding({ toast }) {
 
       {selected && (
         <WizardModal emp={selected} type={tab} allEmps={allEmps} userRole={user?.role} toast={toast} onClose={() => { setSelected(null); load(); }} />
+      )}
+
+      {showInitiateOff && (
+        <InitiateOffboardingModal
+          allEmps={allEmps}
+          offList={offList}
+          toast={toast}
+          onClose={() => setShowInitiateOff(false)}
+          onInitiated={async () => {
+            setShowInitiateOff(false);
+            await load();
+            setTab('offboarding');
+          }}
+        />
       )}
 
       {showAddJoiner && (
