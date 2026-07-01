@@ -1359,7 +1359,7 @@ export default function Employees({ toast }) {
                             <div className="font-semibold text-gray-900 dark:text-white text-sm">{e.full_name}</div>
                             <div className="text-xs text-gray-400">
                               <code className="bg-gray-100 px-1 rounded text-[10px]">{e.employee_id}</code>
-                              {e.email && <span className="ml-1">· {e.email}</span>}
+                              {(e.official_email || e.email) && <span className="ml-1">· {e.official_email || e.email}</span>}
                             </div>
                           </div>
                         </div>
@@ -1516,12 +1516,12 @@ export default function Employees({ toast }) {
 
                 {/* Contact info grid */}
                 <div className="hidden sm:grid grid-cols-1 gap-2 flex-1 max-w-xs ml-auto">
-                  {detailEmp.email && (
+                  {(detailEmp.official_email || detailEmp.email) && (
                     <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
                       <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
                         <Mail size={13} className="text-blue-500" />
                       </div>
-                      <span className="truncate text-xs">{detailEmp.email}</span>
+                      <span className="truncate text-xs">{detailEmp.official_email || detailEmp.email}</span>
                     </div>
                   )}
                   {detailEmp.mobile && (
@@ -1530,14 +1530,6 @@ export default function Employees({ toast }) {
                         <Phone size={13} className="text-green-500" />
                       </div>
                       <span className="text-xs">{detailEmp.mobile}</span>
-                    </div>
-                  )}
-                  {empItAccess?.email && empItAccess?.email_user && (
-                    <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                      <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
-                        <Mail size={13} className="text-blue-500" />
-                      </div>
-                      <span className="truncate text-xs">{empItAccess.email_user}</span>
                     </div>
                   )}
                   {(detailEmp.office_address || detailEmp.residential_address) && (

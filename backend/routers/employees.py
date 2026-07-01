@@ -289,6 +289,7 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
         "education": emp.education or [],
         "experience": emp.experience or [],
         "profile_photo": emp.profile_photo,
+        "official_email": emp.official_email,
     }
 
 

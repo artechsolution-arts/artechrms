@@ -210,6 +210,11 @@ def _apply_section_to_emp(emp, section: str, d: dict, db):
         if isinstance(entries, list):
             emp.experience = entries; changed = True
 
+    elif section == "it_access":
+        # Sync official email from IT Access to employee record
+        if d.get("email") and d.get("email_user"):
+            emp.official_email = d["email_user"].strip(); changed = True
+
     return changed
 
 

@@ -214,6 +214,7 @@ with engine.connect() as _conn:
         "CREATE INDEX IF NOT EXISTS idx_doc_status    ON document_requests(status)",
         "CREATE INDEX IF NOT EXISTS idx_users_uname   ON users(username)",
         "CREATE INDEX IF NOT EXISTS idx_users_email   ON users(email)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS official_email VARCHAR(200)",
         # ── Notification + Approval tables (safe with IF NOT EXISTS) ─────────
         """CREATE TABLE IF NOT EXISTS notifications (
             id SERIAL PRIMARY KEY,

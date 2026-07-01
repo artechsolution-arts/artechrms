@@ -79,6 +79,7 @@ class Employee(Base):
     pf_applicable = Column(Integer, default=1)
     esi_applicable = Column(Integer, default=1)
     pt_state = Column(String(50), default="Karnataka")
+    official_email = Column(String(200), nullable=True)  # corporate email from IT Access
     education = Column(JSON, default=list)   # [{degree, institution, start_year, end_year, grade}]
     experience = Column(JSON, default=list)  # [{company, role, from_year, to_year, description}]
     created_at = Column(DateTime(timezone=True), server_default=func.now())
