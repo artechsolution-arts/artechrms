@@ -1677,12 +1677,16 @@ export default function Employees({ toast }) {
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Job Information</h3>
                     <div className="space-y-0 divide-y divide-gray-100 dark:divide-gray-800">
                       {[
-                        { label: 'Department',        value: detailEmp.department },
+                        { label: 'Department',         value: detailEmp.department },
                         { label: 'Designation',        value: detailEmp.designation },
                         { label: 'Reporting Manager',  value: detailEmp.reporting_manager },
                         { label: 'Employment Type',    value: detailEmp.employment_type },
+                        { label: 'Work Location',      value: detailEmp.work_location },
+                        { label: 'Shift',              value: detailEmp.shift },
                         { label: 'Date of Joining',    value: fmtDate(detailEmp.date_of_joining) },
+                        { label: 'Confirmation Date',  value: detailEmp.confirmation_date ? fmtDate(detailEmp.confirmation_date) : null },
                         { label: 'Notice Period',      value: detailEmp.notice_period_days ? `${detailEmp.notice_period_days} days` : null },
+                        { label: 'Probation Period',   value: detailEmp.probation_period_days ? `${detailEmp.probation_period_days} days` : null },
                       ].map(({ label, value }) => value ? (
                         <div key={label} className="flex items-start py-3 gap-3">
                           <span className="text-xs text-gray-600 dark:text-gray-300 w-36 flex-shrink-0 pt-0.5">{label}</span>
@@ -2044,13 +2048,16 @@ export default function Employees({ toast }) {
                       <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Personal Details</h3>
                       <div className="divide-y divide-gray-100 dark:divide-gray-800">
                         {[
-                          { label: 'Full Name',      value: detailEmp.full_name },
-                          { label: 'Date of Birth',  value: fmtDate(detailEmp.date_of_birth) },
-                          { label: 'Gender',         value: detailEmp.gender },
-                          { label: 'Marital Status', value: detailEmp.marital_status },
-                          { label: 'Nationality',    value: detailEmp.nationality },
-                          { label: 'Email',          value: detailEmp.email },
-                          { label: 'Mobile',         value: detailEmp.mobile },
+                          { label: 'Full Name',       value: detailEmp.full_name },
+                          { label: 'Date of Birth',   value: fmtDate(detailEmp.date_of_birth) },
+                          { label: 'Gender',          value: detailEmp.gender },
+                          { label: 'Marital Status',  value: detailEmp.marital_status },
+                          { label: 'Blood Group',     value: detailEmp.blood_group },
+                          { label: 'Nationality',     value: detailEmp.nationality },
+                          { label: 'Work Email',      value: detailEmp.email },
+                          { label: 'Personal Email',  value: detailEmp.personal_email },
+                          { label: 'Mobile',          value: detailEmp.mobile },
+                          { label: 'Alt Mobile',      value: detailEmp.alt_mobile },
                         ].map(({ label, value }) => value ? (
                           <div key={label} className="flex items-start py-2.5 gap-3">
                             <span className="text-xs text-gray-500 dark:text-gray-300 w-32 flex-shrink-0 pt-0.5">{label}</span>
@@ -2064,6 +2071,7 @@ export default function Employees({ toast }) {
                       <div className="divide-y divide-gray-100 dark:divide-gray-800">
                         {[
                           { label: 'Residential', value: detailEmp.residential_address },
+                          { label: 'Permanent',   value: detailEmp.permanent_address },
                           { label: 'Office',      value: detailEmp.office_address },
                         ].map(({ label, value }) => (
                           <div key={label} className="flex items-start py-2.5 gap-3">
@@ -2097,13 +2105,18 @@ export default function Employees({ toast }) {
                         ))}
                       </div>
                     </div>
-                    {(detailEmp.aadhar_no || detailEmp.pan_no) && (
+                    {(detailEmp.aadhar_no || detailEmp.pan_no || detailEmp.passport_no || detailEmp.driving_license_no || detailEmp.voter_id_no || detailEmp.pf_number || detailEmp.esi_number) && (
                       <div>
                         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Identity Documents</h3>
                         <div className="divide-y divide-gray-100 dark:divide-gray-800">
                           {[
-                            { label: 'Aadhaar', value: detailEmp.aadhar_no },
-                            { label: 'PAN',     value: detailEmp.pan_no },
+                            { label: 'Aadhaar',          value: detailEmp.aadhar_no },
+                            { label: 'PAN',              value: detailEmp.pan_no },
+                            { label: 'Passport',         value: detailEmp.passport_no },
+                            { label: 'Driving Licence',  value: detailEmp.driving_license_no },
+                            { label: 'Voter ID',         value: detailEmp.voter_id_no },
+                            { label: 'PF Number',        value: detailEmp.pf_number },
+                            { label: 'ESI Number',       value: detailEmp.esi_number },
                           ].map(({ label, value }) => value ? (
                             <div key={label} className="flex items-start py-2.5 gap-3">
                               <span className="text-xs text-gray-500 dark:text-gray-300 w-32 flex-shrink-0 pt-0.5">{label}</span>
