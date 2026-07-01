@@ -164,6 +164,21 @@ def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Sessi
             if d.get("gender"):
                 emp.gender = d["gender"].strip()
                 emp_changed = True
+            if d.get("blood_group"):
+                emp.blood_group = d["blood_group"].strip()
+                emp_changed = True
+            if d.get("marital_status"):
+                emp.marital_status = d["marital_status"].strip()
+                emp_changed = True
+            if d.get("personal_email"):
+                emp.personal_email = d["personal_email"].strip()
+                emp_changed = True
+            if d.get("alt_mobile"):
+                emp.alt_mobile = str(d["alt_mobile"]).strip()
+                emp_changed = True
+            if d.get("permanent_address"):
+                emp.permanent_address = d["permanent_address"].strip()
+                emp_changed = True
             # Emergency contact within personal_info
             ec_name = (d.get("emergency_name") or "").strip()
             if ec_name:
@@ -205,6 +220,18 @@ def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Sessi
                     emp_changed = True
                 except (ValueError, TypeError):
                     pass
+            if d.get("work_location"):
+                emp.work_location = d["work_location"].strip()
+                emp_changed = True
+            if d.get("shift"):
+                emp.shift = d["shift"].strip()
+                emp_changed = True
+            if d.get("confirmation_date"):
+                try:
+                    emp.confirmation_date = _date_type.fromisoformat(d["confirmation_date"])
+                    emp_changed = True
+                except (ValueError, TypeError):
+                    pass
 
         elif data.section == "documents":
             if d.get("aadhaar"):
@@ -212,6 +239,21 @@ def save_onboarding_section(employee_id: int, data: SectionDataUpdate, db: Sessi
                 emp_changed = True
             if d.get("pan"):
                 emp.pan_no = str(d["pan"]).strip().upper()
+                emp_changed = True
+            if d.get("passport"):
+                emp.passport_no = str(d["passport"]).strip()
+                emp_changed = True
+            if d.get("driving_license"):
+                emp.driving_license_no = str(d["driving_license"]).strip()
+                emp_changed = True
+            if d.get("voter_id"):
+                emp.voter_id_no = str(d["voter_id"]).strip()
+                emp_changed = True
+            if d.get("pf_number"):
+                emp.pf_number = str(d["pf_number"]).strip()
+                emp_changed = True
+            if d.get("esi_number"):
+                emp.esi_number = str(d["esi_number"]).strip()
                 emp_changed = True
 
         elif data.section == "education":

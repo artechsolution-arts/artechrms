@@ -312,6 +312,20 @@ with engine.connect() as _conn:
         # dedup_key on notifications — prevents duplicate push notifications
         "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS dedup_key VARCHAR(200)",
         "CREATE INDEX IF NOT EXISTS idx_notif_dedup ON notifications(recipient_user_id, dedup_key)",
+        # Employee extended profile fields (synced from Onboarding)
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS passport_no VARCHAR(30)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS driving_license_no VARCHAR(30)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS voter_id_no VARCHAR(30)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pf_number VARCHAR(30)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS esi_number VARCHAR(30)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS blood_group VARCHAR(10)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS marital_status VARCHAR(20)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS personal_email VARCHAR(200)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS alt_mobile VARCHAR(20)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS permanent_address VARCHAR(500)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS work_location VARCHAR(100)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS shift VARCHAR(50)",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS confirmation_date DATE",
         # report_hour_overrides — persists HR-edited attendance hours per period
         """CREATE TABLE IF NOT EXISTS report_hour_overrides (
             id           SERIAL PRIMARY KEY,

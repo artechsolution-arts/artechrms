@@ -52,6 +52,19 @@ class EmployeeIn(BaseModel):
     bank_branch: Optional[str] = None
     aadhar_no: Optional[str] = None
     pan_no: Optional[str] = None
+    passport_no: Optional[str] = None
+    driving_license_no: Optional[str] = None
+    voter_id_no: Optional[str] = None
+    pf_number: Optional[str] = None
+    esi_number: Optional[str] = None
+    blood_group: Optional[str] = None
+    marital_status: Optional[str] = None
+    personal_email: Optional[str] = None
+    alt_mobile: Optional[str] = None
+    permanent_address: Optional[str] = None
+    work_location: Optional[str] = None
+    shift: Optional[str] = None
+    confirmation_date: Optional[date] = None
     biometric_id: Optional[str] = None
     basic_salary: Optional[float] = None
     hra_percent: float = 40.0
@@ -251,6 +264,19 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
         "bank_branch": emp.bank_branch,
         "aadhar_no": emp.aadhar_no,
         "pan_no": emp.pan_no,
+        "passport_no": emp.passport_no,
+        "driving_license_no": emp.driving_license_no,
+        "voter_id_no": emp.voter_id_no,
+        "pf_number": emp.pf_number,
+        "esi_number": emp.esi_number,
+        "blood_group": emp.blood_group,
+        "marital_status": emp.marital_status,
+        "personal_email": emp.personal_email,
+        "alt_mobile": emp.alt_mobile,
+        "permanent_address": emp.permanent_address,
+        "work_location": emp.work_location,
+        "shift": emp.shift,
+        "confirmation_date": str(emp.confirmation_date) if emp.confirmation_date else None,
         "biometric_id": emp.biometric_id,
         "basic_salary": emp.basic_salary,
         "hra_percent": emp.hra_percent if emp.hra_percent is not None else 40.0,
