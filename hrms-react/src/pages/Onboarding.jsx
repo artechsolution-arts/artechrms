@@ -209,7 +209,11 @@ function OnPersonalInfo({ data, set, emp }) {
   );
 }
 
-function OnEmployment({ data, set, emp }) {
+function OnEmployment({ data, set, emp, allEmps = [] }) {
+  const managerOpts = [
+    { value: '', label: '— None —' },
+    ...allEmps.filter(e => e.id !== emp?.id).map(e => ({ value: String(e.id), label: e.full_name })),
+  ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionHeader title="Employment Details" subtitle="Job and organisation details" />
@@ -228,7 +232,16 @@ function OnEmployment({ data, set, emp }) {
       </Grid2>
       <Grid2>
         <Input label="Official Email" value={data.official_email} onChange={v => set('official_email', v)} placeholder="name@artechsolution.co.in" />
-        <Input label="Reporting Manager" value={data.reporting_manager} onChange={v => set('reporting_manager', v)} placeholder="Manager name" />
+        <div>
+          <label className="onb-form-label" style={{ display: 'block', fontSize: 11.5, fontWeight: 600, marginBottom: 5, letterSpacing: '0.01em' }}>Reporting Manager</label>
+          <SelectDS
+            value={data.reporting_manager_id ? String(data.reporting_manager_id) : ''}
+            onChange={v => set('reporting_manager_id', v ? parseInt(v) : null)}
+            options={managerOpts}
+            placeholder="— Select manager —"
+            searchable
+          />
+        </div>
       </Grid2>
       <Grid2>
         <Input label="Notice Period (days)" value={data.notice_period} onChange={v => set('notice_period', v)} type="number" placeholder="30" />
@@ -1070,7 +1083,7 @@ function ActivityLog({ sections, steps, history = [] }) {
 /* ══════════════════════════════════════════════
    WIZARD MODAL
 ══════════════════════════════════════════════ */
-function WizardModal({ emp, type, onClose }) {
+function WizardModal({ emp, type, onClose, allEmps = [] }) {
   const steps   = type === 'onboarding' ? ON_STEPS : OFF_STEPS;
   const [step, setStep]       = useState(0);
   const [sections, setSections] = useState({});
@@ -1158,7 +1171,7 @@ function WizardModal({ emp, type, onClose }) {
     if (type === 'onboarding') {
       switch (currentKey) {
         case 'personal_info': return <OnPersonalInfo data={d} set={s} emp={emp} />;
-        case 'employment':    return <OnEmployment   data={d} set={s} emp={emp} />;
+        case 'employment':    return <OnEmployment   data={d} set={s} emp={emp} allEmps={allEmps} />;
         case 'documents':     return <OnDocuments    data={d} set={s} empId={emp.id} />;
         case 'education':     return <OnEducation    data={d} set={s} />;
         case 'experience':    return <OnExperience   data={d} set={s} />;
@@ -1448,14 +1461,16 @@ export default function Onboarding({ toast }) {
   const [showAddJoiner, setShowAddJoiner] = useState(false);
   const [depts, setDepts]           = useState([]);
   const [desigs, setDesigs]         = useState([]);
+  const [allEmps, setAllEmps]       = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [onRes, offRes, depsRes, desRes] = await Promise.allSettled([
+    const [onRes, offRes, depsRes, desRes, empsRes] = await Promise.allSettled([
       api('GET', '/api/onboarding/list'),
       api('GET', '/api/onboarding/offboarding/list'),
       api('GET', '/api/employees/departments'),
       api('GET', '/api/employees/designations'),
+      api('GET', '/api/employees?all=true'),
     ]);
     if (onRes.status  === 'fulfilled') setOnList(onRes.value);
     else toast(`Onboarding list: ${onRes.reason?.message || 'failed'}`, 'error');
@@ -1463,6 +1478,7 @@ export default function Onboarding({ toast }) {
     else toast(`Offboarding list: ${offRes.reason?.message || 'failed'}`, 'error');
     if (depsRes.status === 'fulfilled') { const d = depsRes.value; setDepts(Array.isArray(d) ? d : (d?.departments || [])); }
     if (desRes.status  === 'fulfilled') { const d = desRes.value;  setDesigs(Array.isArray(d) ? d : (d?.designations || [])); }
+    if (empsRes.status === 'fulfilled') { const d = empsRes.value; setAllEmps(Array.isArray(d) ? d : (d?.data || [])); }
     setLoading(false);
   }, []);
 
@@ -1562,7 +1578,7 @@ export default function Onboarding({ toast }) {
       </div>
 
       {selected && (
-        <WizardModal emp={selected} type={tab} onClose={() => { setSelected(null); load(); }} />
+        <WizardModal emp={selected} type={tab} allEmps={allEmps} onClose={() => { setSelected(null); load(); }} />
       )}
 
       {showAddJoiner && (
