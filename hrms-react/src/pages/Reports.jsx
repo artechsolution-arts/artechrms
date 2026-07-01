@@ -57,6 +57,15 @@ function fmtHours(h) {
   return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
 }
 
+function hoursToHM(h) {
+  const total = Math.round((h || 0) * 60);
+  return { h: Math.floor(total / 60), m: total % 60 };
+}
+
+function hmToHours(hm) {
+  return (parseInt(hm.h) || 0) + (parseInt(hm.m) || 0) / 60;
+}
+
 const STATUS_SHORT = { Present: 'P', Absent: 'A', 'On Leave': 'L', 'Half Day': 'HD', WFH: 'WFH' };
 const STATUS_COLOR = {
   Present:    { bg: '#dcfce7', fg: '#15803d' },
@@ -90,7 +99,7 @@ function exportToExcel(report, editedHoursMap) {
 
   const effHrs = (row) => {
     const v = editedHoursMap[row.employee_id];
-    return v !== undefined ? (parseFloat(v) || 0) : row.total_hours;
+    return v !== undefined ? hmToHours(v) : row.total_hours;
   };
 
   // ── Sheet 1: Summary ──────────────────────────────────────────
@@ -268,7 +277,7 @@ export default function Reports() {
   // ── Effective hours (edited or original) ──────────────────────
   const effectiveHours = (empId, orig) => {
     const v = editedHours[empId];
-    return v !== undefined ? (parseFloat(v) || 0) : orig;
+    return v !== undefined ? hmToHours(v) : orig;
   };
 
   // ── Per-employee required hours (adjusted for mid-period joining) ──
@@ -344,7 +353,7 @@ export default function Reports() {
       const savedEdits = {};
       (res.rows || []).forEach(r => {
         if (r.edited_hours !== null && r.edited_hours !== undefined) {
-          savedEdits[r.employee_id] = String(r.edited_hours);
+          savedEdits[r.employee_id] = hoursToHM(r.edited_hours);
         }
       });
       setEditedHours(savedEdits);
@@ -381,7 +390,7 @@ export default function Reports() {
         employee_id:    r.employee_id,
         original_hours: r.total_hours,
         edited_hours:   editedHours[r.employee_id] !== undefined
-          ? parseFloat(editedHours[r.employee_id]) || 0
+          ? hmToHours(editedHours[r.employee_id])
           : r.total_hours,
       }));
       await api('POST', '/api/reports/attendance/save-hours', {
@@ -403,7 +412,7 @@ export default function Reports() {
     const savedEdits = {};
     (report?.rows || []).forEach(r => {
       if (r.edited_hours !== null && r.edited_hours !== undefined) {
-        savedEdits[r.employee_id] = String(r.edited_hours);
+        savedEdits[r.employee_id] = hoursToHM(r.edited_hours);
       }
     });
     setEditedHours(savedEdits);
@@ -653,6 +662,13 @@ export default function Reports() {
                       const empReq   = getEmpReqHours(row);
                       const belowReq = empReq !== null && empReq > 0 && effH < empReq;
                       const rowBg    = ri % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/40 dark:bg-gray-800/20';
+                      const hm = editedHours[row.employee_id] !== undefined
+                        ? editedHours[row.employee_id]
+                        : hoursToHM(row.total_hours);
+                      const setHM = (field, val) => setEditedHours(prev => ({
+                        ...prev,
+                        [row.employee_id]: { ...hm, [field]: parseInt(val) || 0 },
+                      }));
                       return (
                         <tr
                           key={row.employee_id}
@@ -708,17 +724,22 @@ export default function Reports() {
                           {/* Adjusted Hours — editable in edit mode */}
                           <td className="px-3 py-2 text-right border-b border-gray-100 dark:border-gray-800">
                             {editMode ? (
-                              <input
-                                type="number"
-                                min="0"
-                                max="744"
-                                step="1"
-                                value={editedHours[row.employee_id] !== undefined
-                                  ? editedHours[row.employee_id]
-                                  : row.total_hours}
-                                onChange={e => setEditedHours(h => ({ ...h, [row.employee_id]: e.target.value }))}
-                                className="w-20 text-right bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded px-2 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-400"
-                              />
+                              <div className="flex items-center gap-0.5 justify-end">
+                                <input
+                                  type="number" min="0" max="999" step="1"
+                                  value={hm.h}
+                                  onChange={e => setHM('h', e.target.value)}
+                                  className="w-12 text-right bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded px-1.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                />
+                                <span className="text-[10px] text-gray-400">h</span>
+                                <input
+                                  type="number" min="0" max="59" step="1"
+                                  value={hm.m}
+                                  onChange={e => setHM('m', e.target.value)}
+                                  className="w-10 text-right bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded px-1.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                />
+                                <span className="text-[10px] text-gray-400">m</span>
+                              </div>
                             ) : (
                               <span className={`font-semibold tabular-nums whitespace-nowrap ${
                                 belowReq ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-200'
