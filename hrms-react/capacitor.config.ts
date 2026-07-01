@@ -14,27 +14,27 @@ const config: CapacitorConfig = {
   },
 
   android: {
-    backgroundColor: '#EEF3FC',
+    backgroundColor: '#ffffff',
     allowMixedContent: false,
     webContentsDebuggingEnabled: false,
   },
 
   ios: {
-    backgroundColor: '#EEF3FC',
+    backgroundColor: '#ffffff',
     contentInset: 'automatic',
     scrollEnabled: true,
   },
 
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1500,
+      launchShowDuration: 0,
       launchAutoHide: true,
-      backgroundColor: '#EEF3FC',
+      backgroundColor: '#2563EB',
       showSpinner: false,
     },
     StatusBar: {
       style: 'Default',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#2563EB',
     },
     Keyboard: {
       resize: 'body',

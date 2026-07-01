@@ -306,67 +306,6 @@ function EduCard({ item, onDelete }) {
           <Trash2 size={13} />
         </button>
       )}
-
-      {/* ── Event Detail Popup ── */}
-      {viewEvent && (() => {
-        const ev = viewEvent;
-        const m = EVENT_META[ev.change_type] || { icon: Clock, color: 'bg-gray-100 text-gray-600' };
-        const Icon = m.icon;
-        const showDesig  = ['Promotion','Demotion','Role Change','Joining'].includes(ev.change_type) || ev.from_designation || ev.to_designation;
-        const showDept   = ['Department Change','Transfer','Joining'].includes(ev.change_type) || ev.from_department || ev.to_department;
-        const showSalary = ev.change_type === 'Salary Hike' || ev.salary_before != null || ev.salary_after != null;
-        const showLwd    = ['Resignation','Notice Served'].includes(ev.change_type) || ev.last_working_date;
-        const Row = ({ label, value, highlight }) => value ? (
-          <div className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
-            <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
-            <span className={`text-xs font-semibold flex-1 ${highlight || 'text-gray-800 dark:text-gray-200'}`}>{value}</span>
-          </div>
-        ) : null;
-        const ChangeRow = ({ label, from, to, green }) => (
-          <div className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-            <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
-            <div className="flex-1 flex items-center gap-2 flex-wrap">
-              {from ? <span className="text-xs text-gray-400">{from}</span> : <span className="text-xs text-gray-300 dark:text-gray-600 italic">—</span>}
-              <span className="text-gray-300 dark:text-gray-600">→</span>
-              {to ? <span className={`text-xs font-semibold ${green ? 'text-green-600 dark:text-green-400' : 'text-gray-800 dark:text-gray-200'}`}>{to}</span> : <span className="text-xs text-gray-300 dark:text-gray-600 italic">—</span>}
-            </div>
-          </div>
-        );
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setViewEvent(null)}>
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-              <div className="px-5 py-4 flex items-center gap-3 border-b border-gray-100 dark:border-gray-800">
-                <div className={`w-9 h-9 rounded-full ${m.color} flex items-center justify-center flex-shrink-0`}>
-                  <Icon size={16} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">{ev.change_type === 'Joining' ? 'Hired' : ev.change_type}</p>
-                  <p className="text-xs text-gray-400">Effective {fmtDate(ev.effective_date)}</p>
-                </div>
-                <button onClick={() => setViewEvent(null)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {showDesig  && <ChangeRow label="Designation" from={ev.from_designation} to={ev.to_designation} />}
-                {showDept   && <ChangeRow label="Department"  from={ev.from_department}  to={ev.to_department} />}
-                {showSalary && <ChangeRow label="Salary"
-                  from={ev.salary_before != null ? `₹${Number(ev.salary_before).toLocaleString('en-IN')}` : null}
-                  to={ev.salary_after   != null ? `₹${Number(ev.salary_after).toLocaleString('en-IN')}` : null}
-                  green />}
-                {showLwd && <Row label="Last Working Date" value={ev.last_working_date ? fmtDate(ev.last_working_date) : '—'} highlight={ev.last_working_date ? 'text-red-500 dark:text-red-400' : 'text-gray-300 dark:text-gray-600 italic font-normal'} />}
-                <Row label="Approved By" value={ev.created_by || '—'} highlight={ev.created_by ? undefined : 'text-gray-300 dark:text-gray-600 italic font-normal'} />
-                <Row label="Remarks"     value={ev.remarks || '—'} highlight={ev.remarks ? 'text-gray-500 dark:text-gray-400 italic font-normal' : 'text-gray-300 dark:text-gray-600 italic font-normal'} />
-                <Row label="Logged On"   value={ev.created_at ? new Date(ev.created_at).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : null} highlight="text-gray-400 dark:text-gray-500 font-normal" />
-                {ev.updated_at && ev.updated_at !== ev.created_at && (
-                  <Row label="Last Edited" value={new Date(ev.updated_at).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })} highlight="text-gray-400 dark:text-gray-500 font-normal" />
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
