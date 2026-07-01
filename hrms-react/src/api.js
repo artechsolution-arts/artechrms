@@ -38,10 +38,21 @@ export async function api(method, path, body) {
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(err.detail || 'Request failed');
+    throw new Error(_fmtDetail(err.detail));
   }
   if (res.status === 204 || res.headers.get('content-length') === '0') return null;
   return res.json().catch(() => null);
+}
+
+function _fmtDetail(detail) {
+  if (!detail) return 'Request failed';
+  if (Array.isArray(detail)) {
+    return detail.map(d => {
+      const field = d.loc ? d.loc.slice(-1)[0] : null;
+      return field ? `${field}: ${d.msg}` : (d.msg || JSON.stringify(d));
+    }).join('; ');
+  }
+  return String(detail);
 }
 
 export async function apiForm(path, formData) {
@@ -55,7 +66,7 @@ export async function apiForm(path, formData) {
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(err.detail || 'Request failed');
+    throw new Error(_fmtDetail(err.detail));
   }
   if (res.status === 204 || res.headers.get('content-length') === '0') return null;
   return res.json().catch(() => null);
