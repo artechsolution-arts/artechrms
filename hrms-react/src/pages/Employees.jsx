@@ -396,17 +396,23 @@ function ExpCard({ item, onDelete }) {
   );
 }
 
+function toSafeArray(val) {
+  if (Array.isArray(val)) return val.filter(Boolean);
+  if (typeof val === 'string') { try { const p = JSON.parse(val); return Array.isArray(p) ? p.filter(Boolean) : []; } catch { return []; } }
+  return [];
+}
+
 function EmployeeEduExpTab({ emp, onSave, saving }) {
-  const [education, setEducation] = useState(emp?.education || []);
-  const [experience, setExperience] = useState(emp?.experience || []);
+  const [education, setEducation] = useState(() => toSafeArray(emp?.education));
+  const [experience, setExperience] = useState(() => toSafeArray(emp?.experience));
   const [addingEdu, setAddingEdu] = useState(false);
   const [addingExp, setAddingExp] = useState(false);
   const [eduForm, setEduForm] = useState({ degree: '', institution: '', start_year: '', end_year: '', grade: '' });
   const [expForm, setExpForm] = useState({ company: '', role: '', from_year: '', to_year: '', description: '' });
 
   useEffect(() => {
-    setEducation(emp?.education || []);
-    setExperience(emp?.experience || []);
+    setEducation(toSafeArray(emp?.education));
+    setExperience(toSafeArray(emp?.experience));
   }, [emp?.id]);
 
   const ef = v => setEduForm(p => ({ ...p, ...v }));
