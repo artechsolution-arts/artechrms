@@ -56,10 +56,8 @@ jobs:
       - name: Build desktop app (macOS)
         if: runner.os == 'macOS'
         shell: bash
-        env:
-          APP_URL: https://www.arpeopliz.com
         run: |
-          pake "$APP_URL" \
+          pake "https://www.arpeopliz.com" \
             --name "AR Peopliz" \
             --icon hrms-react/src-tauri/icons/icon-512.png \
             --width 1280 \
@@ -69,10 +67,8 @@ jobs:
       - name: Build desktop app (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        env:
-          APP_URL: https://www.arpeopliz.com
         run: |
-          pake "$env:APP_URL" --name "AR Peopliz" --icon hrms-react/src-tauri/icons/icon-512.png --width 1280 --height 800
+          pake "https://www.arpeopliz.com" --name "AR Peopliz" --icon hrms-react/src-tauri/icons/icon-512.png --width 1280 --height 800
           $exe = Get-ChildItem -Recurse -Filter "*.exe" | Where-Object { $_.Name -notlike "*pake*" } | Select-Object -First 1
           if ($exe) { Move-Item $exe.FullName "${{ matrix.artifact }}" }
 
