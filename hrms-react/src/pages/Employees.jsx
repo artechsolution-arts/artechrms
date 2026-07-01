@@ -599,6 +599,7 @@ export default function Employees({ toast }) {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [empItAccess, setEmpItAccess] = useState(null);
   const [empItAccessLoading, setEmpItAccessLoading] = useState(false);
+  const [confHolidays, setConfHolidays] = useState([]);
 
   // Auto-load history whenever the job-info tab is active
   useEffect(() => {
@@ -607,6 +608,28 @@ export default function Employees({ toast }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailTab, detailEmp?.id]);
+
+  const calcConfirmationDate = (joiningDateStr, holidays) => {
+    if (!joiningDateStr) return '';
+    const holidaySet = new Set((holidays || []).map(h => h.date));
+    const d = new Date(joiningDateStr);
+    d.setDate(d.getDate() + 90);
+    while (true) {
+      const day = d.getDay();
+      const dateStr = d.toISOString().split('T')[0];
+      if (day !== 0 && day !== 6 && !holidaySet.has(dateStr)) break;
+      d.setDate(d.getDate() + 1);
+    }
+    return d.toISOString().split('T')[0];
+  };
+
+  const fetchConfHolidays = async (year) => {
+    try {
+      const h = await api('GET', `/api/hrm/holidays?year=${year}`);
+      setConfHolidays(Array.isArray(h) ? h : []);
+      return Array.isArray(h) ? h : [];
+    } catch { return []; }
+  };
 
   const load = async (s = search, d = deptFilter, st = statusFilter, pg = page, jm = joinedMonthFilter) => {
     setLoading(true);
@@ -914,12 +937,14 @@ export default function Employees({ toast }) {
       pf_applicable: true, esi_applicable: true, pt_state: 'Karnataka',
       ec_name: '', ec_relationship: '', ec_phone: '', ec_id: null,
       reports_to_id: null, notice_period_days: null, probation_period_days: null, office_address: '', residential_address: '',
+      confirmation_date: '',
     });
     setEmpAssets([]);
     setShowAssetForm(false);
     setJoinDocs({});
     setFormErrors({});
     setModal({ mode: 'add' });
+    fetchConfHolidays(new Date().getFullYear());
   };
 
   const loadJoinDocs = async (empId) => {
@@ -978,6 +1003,8 @@ export default function Employees({ toast }) {
       setFormErrors({});
       setModal({ mode: 'edit', id });
       loadJoinDocs(id);
+      const yr = e.date_of_joining ? new Date(e.date_of_joining).getFullYear() : new Date().getFullYear();
+      fetchConfHolidays(yr);
     } catch (e) { toast(e.message, 'error'); }
   };
 
@@ -989,6 +1016,7 @@ export default function Employees({ toast }) {
       status: detailEmp.status || 'Active',
       reports_to_id: detailEmp.reports_to_id || null,
       date_of_joining: detailEmp.date_of_joining || '',
+      confirmation_date: detailEmp.confirmation_date || '',
       notice_period_days: detailEmp.notice_period_days ?? '',
       probation_period_days: detailEmp.probation_period_days ?? '',
       office_address: detailEmp.office_address || '',
@@ -996,6 +1024,8 @@ export default function Employees({ toast }) {
       change_reason: '',
     });
     setJobInfoEditOpen(true);
+    const yr = detailEmp.date_of_joining ? new Date(detailEmp.date_of_joining).getFullYear() : new Date().getFullYear();
+    fetchConfHolidays(yr);
   };
 
   const saveJobInfo = async () => {
@@ -1009,6 +1039,7 @@ export default function Employees({ toast }) {
         status: jobInfoForm.status,
         reports_to_id: jobInfoForm.reports_to_id || null,
         date_of_joining: jobInfoForm.date_of_joining || detailEmp.date_of_joining,
+        confirmation_date: jobInfoForm.confirmation_date || null,
         notice_period_days: jobInfoForm.notice_period_days !== '' ? parseInt(jobInfoForm.notice_period_days) : null,
         probation_period_days: jobInfoForm.probation_period_days !== '' ? parseInt(jobInfoForm.probation_period_days) : null,
         office_address: jobInfoForm.office_address,
@@ -1168,6 +1199,7 @@ export default function Employees({ toast }) {
           first_name: form.first_name, last_name: form.last_name || null,
           email: form.email, mobile: form.mobile || null,
           gender: form.gender || null, date_of_joining: form.date_of_joining,
+          confirmation_date: form.confirmation_date || null,
           date_of_birth: form.date_of_birth || null,
           employee_id: form.employee_id || null,
           department_id: form.department_id ? parseInt(form.department_id) : null,
@@ -1192,6 +1224,7 @@ export default function Employees({ toast }) {
           first_name: form.first_name, last_name: form.last_name || null,
           email: form.email || null, mobile: form.mobile || null,
           gender: form.gender || null, date_of_joining: form.date_of_joining,
+          confirmation_date: form.confirmation_date || null,
           date_of_birth: form.date_of_birth || null, status: form.status,
           employee_id: form.employee_id || null,
           department_id: form.department_id ? parseInt(form.department_id) : null,
@@ -2754,10 +2787,25 @@ export default function Employees({ toast }) {
             <Field label="Date of Joining">
               <DatePicker
                 value={jobInfoForm.date_of_joining || ''}
-                onChange={v => setJobInfoForm(p => ({ ...p, date_of_joining: v }))}
+                onChange={v => {
+                  const confDate = calcConfirmationDate(v, confHolidays);
+                  setJobInfoForm(p => ({ ...p, date_of_joining: v, confirmation_date: confDate }));
+                  if (v) {
+                    const yr = new Date(v).getFullYear();
+                    fetchConfHolidays(yr).then(h => {
+                      setJobInfoForm(p => ({ ...p, confirmation_date: calcConfirmationDate(v, h) }));
+                    });
+                  }
+                }}
               />
             </Field>
-            <div />
+            <Field label="Confirmation Date">
+              <DatePicker
+                value={jobInfoForm.confirmation_date || ''}
+                onChange={v => setJobInfoForm(p => ({ ...p, confirmation_date: v }))}
+                placeholder="Auto-calculated (91st day)"
+              />
+            </Field>
             <Field label="Notice Period (days)">
               <input
                 type="number"
@@ -2853,7 +2901,22 @@ export default function Employees({ toast }) {
               />
             </Field>
             <Field label="Date of Joining" required error={formErrors.date_of_joining}>
-              <DatePicker value={form.date_of_joining || ''} onChange={v => f({ date_of_joining: v })} placeholder="Select joining date" />
+              <DatePicker value={form.date_of_joining || ''} onChange={v => {
+                const confDate = calcConfirmationDate(v, confHolidays);
+                f({ date_of_joining: v, confirmation_date: confDate });
+                if (v) {
+                  const yr = new Date(v).getFullYear();
+                  fetchConfHolidays(yr).then(h => {
+                    f({ confirmation_date: calcConfirmationDate(v, h) });
+                  });
+                }
+              }} placeholder="Select joining date" />
+            </Field>
+            <Field label="Confirmation Date">
+              <DatePicker value={form.confirmation_date || ''} onChange={v => f({ confirmation_date: v })} placeholder="Auto-calculated (91st day)" />
+              {form.date_of_joining && !form.confirmation_date && (
+                <p className="text-xs text-gray-400 mt-1">Will be set to 91st working day from joining</p>
+              )}
             </Field>
             <Field label="Reporting Manager">
               <Select

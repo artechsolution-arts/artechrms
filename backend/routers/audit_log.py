@@ -5,21 +5,16 @@ from sqlalchemy import desc
 from typing import Optional
 from datetime import datetime
 from backend.database import get_db
-from backend.auth_utils import decode_token
-from backend.models.auth import User
 
 router = APIRouter(prefix="/api/audit", tags=["Audit Log"])
 
 
-def _require_access(request: Request, db: Session) -> User:
-    auth = request.headers.get("Authorization", "")
-    username = decode_token(auth[7:]) if auth.startswith("Bearer ") else None
-    if not username:
+def _require_access(request: Request) -> None:
+    role = getattr(request.state, "user_role", None)
+    if not role:
         raise HTTPException(401, "Not authenticated")
-    user = db.query(User).filter(User.username == username).first()
-    if not user or user.role not in ("CEO", "SuperAdmin", "HR"):
+    if role not in ("CEO", "SuperAdmin", "HR"):
         raise HTTPException(403, "Access denied")
-    return user
 
 
 def _fmt_money(val) -> str | None:
@@ -102,7 +97,7 @@ def get_audit_log(
     request: Request = None,
     db: Session = Depends(get_db),
 ):
-    _require_access(request, db)
+    _require_access(request)
 
     from backend.models.activity_log import ActivityLog
     from backend.models.hrm import EmployeeHistory
@@ -248,7 +243,7 @@ def get_audit_log(
 @router.get("/summary")
 def get_audit_summary(request: Request = None, db: Session = Depends(get_db)):
     """Quick stats for the audit log header."""
-    _require_access(request, db)
+    _require_access(request)
 
     from backend.models.activity_log import ActivityLog
     from backend.models.hrm import EmployeeHistory
