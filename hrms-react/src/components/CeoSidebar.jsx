@@ -2,7 +2,7 @@
 import {
   LayoutDashboard, Users, CalendarDays, Clock,
   ClipboardList, CalendarCheck2, X, LogOut, ChevronDown, ChevronRight,
-  Briefcase, IndianRupee, UserCheck,
+  Briefcase, IndianRupee, UserCheck, TrendingUp, ScrollText,
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -15,19 +15,21 @@ const CEO_PRIMARY = [
 ];
 
 export const CEO_NAV = [
-  { key: 'ceo-dashboard',     label: 'Dashboard',       icon: LayoutDashboard, section: null },
-  { key: 'ceo-employees',     label: 'Employees',        icon: Users,           section: 'People' },
-  { key: 'ceo-leaves',        label: 'Leave Approvals',  icon: CalendarDays,    section: 'Approvals' },
-  { key: 'ceo-work-mode',     label: 'Team Calendar',    icon: CalendarCheck2,  section: 'Approvals' },
-  { key: 'recruitment',       label: 'Job Openings',     icon: Briefcase,       section: 'Recruitment' },
-  { key: 'applicants',        label: 'Applicants',       icon: UserCheck,       section: 'Recruitment' },
-  { key: 'payroll',           label: 'Payroll',          icon: IndianRupee,     section: 'Finance' },
-  { key: 'salary-slips',      label: 'Salary Slips',     icon: ClipboardList,   section: 'Finance' },
-  { key: 'ceo-status-sheets', label: 'Status Sheets',    icon: ClipboardList,   section: 'Reports' },
-  { key: 'ceo-attendance',    label: 'Attendance',       icon: Clock,           section: 'Reports' },
+  { key: 'ceo-dashboard',          label: 'Dashboard',            icon: LayoutDashboard, section: null },
+  { key: 'compensation-planner',   label: 'Compensation Planner', icon: TrendingUp,      section: 'Intelligence' },
+  { key: 'ceo-audit-log',          label: 'Audit Log',            icon: ScrollText,      section: 'Intelligence' },
+  { key: 'ceo-employees',          label: 'Employees',            icon: Users,           section: 'People' },
+  { key: 'ceo-leaves',             label: 'Leave Approvals',      icon: CalendarDays,    section: 'Approvals' },
+  { key: 'ceo-work-mode',          label: 'Team Calendar',        icon: CalendarCheck2,  section: 'Approvals' },
+  { key: 'recruitment',            label: 'Job Openings',         icon: Briefcase,       section: 'Recruitment' },
+  { key: 'applicants',             label: 'Applicants',           icon: UserCheck,       section: 'Recruitment' },
+  { key: 'payroll',                label: 'Payroll',              icon: IndianRupee,     section: 'Finance' },
+  { key: 'salary-slips',           label: 'Salary Slips',         icon: ClipboardList,   section: 'Finance' },
+  { key: 'ceo-status-sheets',      label: 'Status Sheets',        icon: ClipboardList,   section: 'Reports' },
+  { key: 'ceo-attendance',         label: 'Attendance',           icon: Clock,           section: 'Reports' },
 ];
 
-const ALL_SECTIONS = ['People', 'Approvals', 'Recruitment', 'Finance', 'Reports'];
+const ALL_SECTIONS = ['Intelligence', 'People', 'Approvals', 'Recruitment', 'Finance', 'Reports'];
 
 function loadCollapsed() {
   try { return JSON.parse(localStorage.getItem('ceo-sidebar-collapsed') || '{}'); }

@@ -38,6 +38,7 @@ from backend.routers import biometric as biometric_router
 from backend.routers import reports as reports_router
 from backend.routers import health as health_router
 from backend.routers import approvals as approvals_router
+from backend.routers import audit_log as audit_log_router
 from backend.models import onboarding as _onboarding_models  # ensure tables created
 from backend.models import biometric as _biometric_models    # ensure tables created
 from backend.routers.reports import Report as _ReportModel  # ensure table created
@@ -527,6 +528,7 @@ app.include_router(onboarding_router.router)
 app.include_router(notice_period_config_router.router)
 app.include_router(biometric_router.router)
 app.include_router(reports_router.router)
+app.include_router(audit_log_router.router)
 
 # ── ZKTeco ADMS root-level paths ─────────────────────────────────────────────
 # ZKTeco firmware hardcodes /iclock/ and ignores any path prefix you configure.
