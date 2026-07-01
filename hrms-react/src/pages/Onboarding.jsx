@@ -1113,9 +1113,9 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
   const isSuperAdmin = userRole === 'superadmin';
   const allSteps = type === 'onboarding' ? ON_STEPS : OFF_STEPS;
   const restrictedKeys = type === 'onboarding' ? SUPERADMIN_ONLY_ON : SUPERADMIN_ONLY_OFF;
-  const steps = allSteps.filter(s =>
-    isSuperAdmin ? restrictedKeys.includes(s.key) : !restrictedKeys.includes(s.key)
-  );
+  const steps = isSuperAdmin
+    ? allSteps.filter(s => restrictedKeys.includes(s.key))
+    : allSteps;
   const [step, setStep]       = useState(0);
   const [sections, setSections] = useState({});
   const [history, setHistory]   = useState([]);
