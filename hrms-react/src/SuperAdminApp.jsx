@@ -1,5 +1,5 @@
 ﻿import { useState, useCallback } from 'react';
-import { ShieldCheck, Users, Key, LayoutDashboard, LogOut, X, Menu, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Users, Key, LayoutDashboard, LogOut, X, Menu, ChevronRight, BarChart2 } from 'lucide-react';
 import { useToast } from './hooks/useToast';
 import { useTheme } from './hooks/useTheme';
 import ToastContainer from './components/Toast';
@@ -8,17 +8,20 @@ import MobileBottomNav from './components/MobileBottomNav';
 import AdminOverview from './pages/superadmin/AdminOverview';
 import UserManagement from './pages/superadmin/UserManagement';
 import FeaturePermissions from './pages/superadmin/FeaturePermissions';
+import Reports from './pages/Reports';
 
 const NAV = [
   { key: 'overview',     label: 'Overview',           icon: LayoutDashboard },
   { key: 'users',        label: 'User Accounts',       icon: Users },
   { key: 'permissions',  label: 'Feature Permissions', icon: Key },
+  { key: 'reports',      label: 'Reports',             icon: BarChart2 },
 ];
 
 const PAGES = {
   overview:    AdminOverview,
   users:       UserManagement,
   permissions: FeaturePermissions,
+  reports:     Reports,
 };
 
 export default function SuperAdminApp({ user, logout }) {
