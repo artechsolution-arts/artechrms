@@ -711,11 +711,11 @@ export default function Reports() {
                               <input
                                 type="number"
                                 min="0"
-                                max="168"
-                                step="0.25"
+                                max="744"
+                                step="1"
                                 value={editedHours[row.employee_id] !== undefined
                                   ? editedHours[row.employee_id]
-                                  : row.total_hours}
+                                  : Math.round(row.total_hours)}
                                 onChange={e => setEditedHours(h => ({ ...h, [row.employee_id]: e.target.value }))}
                                 className="w-20 text-right bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded px-2 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-400"
                               />
