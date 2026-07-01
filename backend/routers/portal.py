@@ -1524,6 +1524,110 @@ Please sign and return this letter as your acceptance.</p>
     raise HTTPException(404, "No template for this step")
 
 
+
+# ── Employee self-service offboarding portal ──────────────────────────────────
+
+_OFF_PORTAL_SECTIONS = [
+    {"key": "notice_period",    "label": "Notice Period",        "group": "Your Responsibilities", "desc": "Confirm your last working day and notice period details"},
+    {"key": "knowledge_transfer","label": "Knowledge Transfer",   "group": "Your Responsibilities", "desc": "Document handover and confirm KT completion"},
+    {"key": "assets_return",    "label": "Assets to Return",     "group": "Your Responsibilities", "desc": "List all company assets you will hand back"},
+    {"key": "exit_interview",   "label": "Exit Feedback",        "group": "Your Responsibilities", "desc": "Share your feedback and reason for leaving"},
+    {"key": "final_settlement", "label": "Bank & PF Details",    "group": "Settlement",            "desc": "Provide bank account details for final settlement"},
+]
+_OFF_ALLOWED_KEYS = {s["key"] for s in _OFF_PORTAL_SECTIONS}
+
+
+@router.get("/offboarding")
+def get_portal_offboarding(request: Request, db: Session = Depends(get_db)):
+    from backend.models.resignation import Resignation
+    from backend.models.onboarding import OffboardingChecklist
+    emp = _get_employee(request, db)
+
+    resignation = (
+        db.query(Resignation)
+        .filter(Resignation.employee_id == emp.id, Resignation.status == "Approved")
+        .order_by(Resignation.id.desc())
+        .first()
+    )
+    if not resignation:
+        raise HTTPException(404, "No active offboarding")
+
+    checklist = db.query(OffboardingChecklist).filter(OffboardingChecklist.employee_id == emp.id).first()
+    sections_data = {}
+    if checklist:
+        try:
+            items = _json.loads(checklist.items or "{}")
+            sections_data = items.get("__sections__", {})
+        except Exception:
+            pass
+
+    lwd = str(resignation.approved_last_working_date or resignation.last_working_date or "")
+    exit_reason = sections_data.get("exit_details", {}).get("data", {}).get("reason", "Resignation")
+
+    steps = []
+    for s in _OFF_PORTAL_SECTIONS:
+        sec = sections_data.get(s["key"], {})
+        steps.append({
+            **s,
+            "status": "submitted" if sec.get("data") else "pending",
+            "data": sec.get("data", {}),
+            "saved_at": sec.get("saved_at"),
+        })
+
+    return {
+        "employee": {
+            "id": emp.id,
+            "full_name": emp.full_name,
+            "employee_id": emp.employee_id,
+            "designation": emp.designation_rel.name if emp.designation_rel else None,
+            "department": emp.department_rel.name if emp.department_rel else None,
+        },
+        "last_working_day": lwd,
+        "reason": exit_reason,
+        "steps": steps,
+        "completed": sum(1 for s in steps if s["status"] == "submitted"),
+        "total": len(steps),
+    }
+
+
+class OffboardingStepIn(BaseModel):
+    key: str
+    data: dict = {}
+
+
+@router.put("/offboarding/step")
+def save_portal_offboarding_step(body: OffboardingStepIn, request: Request, db: Session = Depends(get_db)):
+    from backend.models.resignation import Resignation
+    from backend.models.onboarding import OffboardingChecklist
+    emp = _get_employee(request, db)
+
+    resignation = (
+        db.query(Resignation)
+        .filter(Resignation.employee_id == emp.id, Resignation.status == "Approved")
+        .first()
+    )
+    if not resignation:
+        raise HTTPException(404, "No active offboarding")
+    if body.key not in _OFF_ALLOWED_KEYS:
+        raise HTTPException(400, "Invalid section key")
+
+    checklist = db.query(OffboardingChecklist).filter(OffboardingChecklist.employee_id == emp.id).first()
+    if not checklist:
+        raise HTTPException(404, "Offboarding checklist not found — please contact HR")
+
+    try:
+        items = _json.loads(checklist.items or "{}")
+    except Exception:
+        items = {}
+
+    sections = items.get("__sections__", {})
+    sections[body.key] = {"data": body.data, "saved_at": _datetime.utcnow().isoformat()}
+    items["__sections__"] = sections
+    checklist.items = _json.dumps(items)
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/my-history")
 def get_my_history(request: Request, db: Session = Depends(get_db)):
     from backend.models.hrm import EmployeeHistory

@@ -2,7 +2,7 @@
 import {
   LayoutDashboard, User, CalendarDays, Clock,
   DollarSign, Star, X, LogOut, Megaphone, Gift, Monitor, FileDown,
-  ClipboardList, CalendarCheck2, FilePenLine, LogOut as ResignIcon
+  ClipboardList, CalendarCheck2, FilePenLine, LogOut as ResignIcon, UserMinus
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -33,13 +33,18 @@ const EMP_NAV = [
 
 export { EMP_NAV };
 
-export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout, allowedFeatures }) {
+export default function EmployeeSidebar({ current, onNavigate, mobileOpen, onClose, user, onLogout, allowedFeatures, hasOffboarding }) {
   const [confirmLogout, setConfirmLogout] = useState(false);
+
+  // Extend nav with offboarding item when active
+  const baseNAV = hasOffboarding
+    ? [...EMP_NAV, { key: 'emp-offboarding', label: 'My Exit Checklist', icon: UserMinus, section: 'Self Service' }]
+    : EMP_NAV;
 
   // Filter by allowed features — dashboard always visible
   const visibleNAV = allowedFeatures
-    ? EMP_NAV.filter(item => !item.key || item.key === 'emp-dashboard' || allowedFeatures.includes(item.key))
-    : EMP_NAV;
+    ? baseNAV.filter(item => !item.key || item.key === 'emp-dashboard' || allowedFeatures.includes(item.key) || item.key === 'emp-offboarding')
+    : baseNAV;
 
   const grouped = [];
   let lastSection = null;

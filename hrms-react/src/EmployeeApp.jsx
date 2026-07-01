@@ -22,6 +22,7 @@ import EmpStatus          from './pages/employee/EmpStatus';
 import EmpWorkMode        from './pages/employee/EmpWorkMode';
 import EmpEditRequests    from './pages/employee/EmpEditRequests';
 import EmpResignation     from './pages/employee/EmpResignation';
+import EmpOffboarding     from './pages/employee/EmpOffboarding';
 
 const EMP_PAGES = {
   'emp-dashboard':      EmpDashboard,
@@ -38,12 +39,14 @@ const EMP_PAGES = {
   'emp-work-mode':      EmpWorkMode,
   'emp-edit-requests':  EmpEditRequests,
   'emp-resignation':    EmpResignation,
+  'emp-offboarding':    EmpOffboarding,
 };
 
 export default function EmployeeApp({ user, logout }) {
   const [page, setPage] = useState('emp-dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userState, setUserState] = useState(user);
+  const [hasOffboarding, setHasOffboarding] = useState(false);
   const { toasts, toast } = useToast();
   useTheme();
 
@@ -61,6 +64,9 @@ export default function EmployeeApp({ user, logout }) {
   useEffect(() => {
     api('GET', '/api/portal/profile')
       .then(emp => setUserState(prev => ({ ...prev, profile_photo: emp.profile_photo })))
+      .catch(() => {});
+    api('GET', '/api/portal/offboarding')
+      .then(() => setHasOffboarding(true))
       .catch(() => {});
   }, []);
 
@@ -80,6 +86,7 @@ export default function EmployeeApp({ user, logout }) {
         user={userState}
         onLogout={logout}
         allowedFeatures={allowed === '*' ? null : allowed}
+        hasOffboarding={hasOffboarding}
       />
 
       <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[margin] duration-200 lg:ml-[220px]`}>
