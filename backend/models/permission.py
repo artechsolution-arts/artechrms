@@ -29,10 +29,13 @@ EMP_FEATURES = list(PORTAL_FEATURES)
 
 ALL_FEATURES = sorted(set(HR_FEATURES + EMP_FEATURES + ["ceo-dashboard", "compensation-planner"]))
 
+# HR management features without self-service portal
+HR_MGMT_FEATURES = [f for f in HR_FEATURES if f not in PORTAL_FEATURES]
+
 DEFAULT_PERMISSIONS = {
     "HR": HR_FEATURES,
-    # CEO gets everything HR has, plus CEO-specific pages
-    "CEO": sorted(set(HR_FEATURES + ["ceo-dashboard", "compensation-planner"])),
+    # CEO gets all HR management features + CEO-specific pages, but NOT self-service portal
+    "CEO": sorted(set(HR_MGMT_FEATURES + ["ceo-dashboard", "compensation-planner"])),
     "Employee": EMP_FEATURES,
 }
 

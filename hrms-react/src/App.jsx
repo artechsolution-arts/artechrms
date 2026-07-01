@@ -192,7 +192,7 @@ export default function App() {
   }
 
   // SuperAdmin admin pages + shared management pages accessible to both SuperAdmin and HR
-  const SUPERADMIN_FEATURES = ['admin-overview', 'admin-users', 'admin-permissions', 'assets', 'activity-log'];
+  const SUPERADMIN_FEATURES = ['admin-overview', 'admin-users', 'admin-permissions', 'assets', 'activity-log', 'reports'];
   const isSuperAdmin = user?.role === 'SuperAdmin';
   const sidebarFeatures = isSuperAdmin ? SUPERADMIN_FEATURES : (allowed === '*' ? null : allowed);
 
