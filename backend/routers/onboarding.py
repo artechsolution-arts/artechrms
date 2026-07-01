@@ -231,7 +231,7 @@ def update_onboarding_item(employee_id: int, data: ChecklistUpdate, db: Session 
 def list_offboarding(db: Session = Depends(get_db)):
     # Show employees who are resigned / left / have offboarding checklists
     from backend.models.resignation import Resignation
-    resigned_ids = {r.employee_id for r in db.query(Resignation.employee_id).all()}
+    resigned_ids = {r[0] for r in db.query(Resignation.employee_id).all()}
     left_ids     = {e.id for e in db.query(Employee).filter(Employee.status.in_(["Inactive", "Left"])).all()}
     target_ids   = resigned_ids | left_ids
 

@@ -309,6 +309,21 @@ with engine.connect() as _conn:
         "CREATE INDEX IF NOT EXISTS idx_act_log_action ON activity_logs(action)",
         "CREATE INDEX IF NOT EXISTS idx_act_log_entity ON activity_logs(entity_type)",
         "CREATE INDEX IF NOT EXISTS idx_act_log_time   ON activity_logs(created_at DESC)",
+        # dedup_key on notifications — prevents duplicate push notifications
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS dedup_key VARCHAR(200)",
+        "CREATE INDEX IF NOT EXISTS idx_notif_dedup ON notifications(recipient_user_id, dedup_key)",
+        # report_hour_overrides — persists HR-edited attendance hours per period
+        """CREATE TABLE IF NOT EXISTS report_hour_overrides (
+            id           SERIAL PRIMARY KEY,
+            employee_id  INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+            period_start DATE NOT NULL,
+            period_end   DATE NOT NULL,
+            original_hours FLOAT NOT NULL DEFAULT 0,
+            edited_hours FLOAT NOT NULL,
+            saved_at     TIMESTAMP DEFAULT NOW(),
+            saved_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            CONSTRAINT uq_emp_period_override UNIQUE (employee_id, period_start, period_end)
+        )""",
     ]:
         try:
             _conn.execute(text(_stmt))
