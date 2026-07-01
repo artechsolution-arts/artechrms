@@ -76,22 +76,27 @@ def _run_weekly_check(week_label: str) -> int:
                         priority="medium",
                         send_email=True,
                         email_html=f"<p>{msg}</p><p>Please ensure your attendance is recorded correctly.</p>",
+                        dedup_key=f"weekly_hours_{emp.id}_{week_label}",
                     )
 
                 # CC HR
                 from backend.services.notification_service import push_to_role
-                push_to_role(
-                    db,
-                    "HR",
-                    entity_type="work_hours",
-                    entity_id=emp.id,
-                    title=f"Low Hours Alert — {emp.full_name}",
-                    message=f"{emp.full_name} logged only {total:.1f}h last week (min {_WEEKLY_MIN:.0f}h).",
-                    notif_type="alert",
-                    action="employees",
-                    priority="low",
-                    is_cc=True,
-                )
+                from backend.models.auth import User as _User
+                hr_users = db.query(_User).filter(_User.role == "HR", _User.is_active == True).all()  # noqa: E712
+                for hr_user in hr_users:
+                    push(
+                        db,
+                        hr_user.id,
+                        entity_type="work_hours",
+                        entity_id=emp.id,
+                        title=f"Low Hours Alert — {emp.full_name}",
+                        message=f"{emp.full_name} logged only {total:.1f}h last week (min {_WEEKLY_MIN:.0f}h).",
+                        notif_type="alert",
+                        action="employees",
+                        priority="low",
+                        is_cc=True,
+                        dedup_key=f"weekly_hours_hr_{hr_user.id}_{emp.id}_{week_label}",
+                    )
 
                 db.commit()
                 alerted += 1
@@ -161,20 +166,25 @@ def _run_monthly_check(month_label: str) -> int:
                         priority="high",
                         send_email=True,
                         email_html=f"<p>{msg}</p><p>Please contact HR if there is a discrepancy.</p>",
+                        dedup_key=f"monthly_hours_{emp.id}_{month_label}",
                     )
 
-                push_to_role(
-                    db,
-                    "HR",
-                    entity_type="work_hours",
-                    entity_id=emp.id,
-                    title=f"Monthly Low Hours — {emp.full_name}",
-                    message=f"{emp.full_name} logged only {total:.1f}h in {period} (min {_MONTHLY_MIN:.0f}h).",
-                    notif_type="alert",
-                    action="employees",
-                    priority="medium",
-                    is_cc=True,
-                )
+                from backend.models.auth import User as _User
+                hr_users = db.query(_User).filter(_User.role == "HR", _User.is_active == True).all()  # noqa: E712
+                for hr_user in hr_users:
+                    push(
+                        db,
+                        hr_user.id,
+                        entity_type="work_hours",
+                        entity_id=emp.id,
+                        title=f"Monthly Low Hours — {emp.full_name}",
+                        message=f"{emp.full_name} logged only {total:.1f}h in {period} (min {_MONTHLY_MIN:.0f}h).",
+                        notif_type="alert",
+                        action="employees",
+                        priority="medium",
+                        is_cc=True,
+                        dedup_key=f"monthly_hours_hr_{hr_user.id}_{emp.id}_{month_label}",
+                    )
 
                 db.commit()
                 alerted += 1

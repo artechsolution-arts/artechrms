@@ -112,6 +112,7 @@ def create_request(
             notif_type="info",
             action="approvals",
             priority="low",
+            dedup_key=f"approval_cc_{req.id}_{cc_role}",
             is_cc=True,
         )
     db.commit()
@@ -285,6 +286,7 @@ def _notify_approvers(db: Session, req: ApprovalRequest, wf: ApprovalWorkflow, l
         notif_type="approval_request",
         action="approvals",
         priority="high",
+        dedup_key=f"approval_req_{req.id}_l{level}",
     )
     db.commit()
 
@@ -304,6 +306,7 @@ def _notify_requester(db: Session, req: ApprovalRequest, action: str, remarks: s
         notif_type="approval_result",
         action="approvals",
         priority="high" if action == "rejected" else "medium",
+        dedup_key=f"approval_result_{req.id}_{action}",
     )
     db.commit()
 

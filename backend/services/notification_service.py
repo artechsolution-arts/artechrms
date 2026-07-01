@@ -22,8 +22,25 @@ def push(
     is_cc: bool = False,
     send_email: bool = False,
     email_html: str = None,
+    dedup_key: str = None,
 ) -> Notification:
-    """Create one persistent in-app notification. Optionally fires an email."""
+    """Create one persistent in-app notification. Optionally fires an email.
+
+    If dedup_key is provided and a notification with the same key already exists
+    for this user, the existing notification is returned without creating a duplicate.
+    """
+    if dedup_key:
+        existing = (
+            db.query(Notification)
+            .filter(
+                Notification.recipient_user_id == recipient_user_id,
+                Notification.dedup_key == dedup_key,
+            )
+            .first()
+        )
+        if existing:
+            return existing
+
     notif = Notification(
         recipient_user_id=recipient_user_id,
         entity_type=entity_type,
@@ -34,6 +51,7 @@ def push(
         action=action,
         priority=priority,
         is_cc=is_cc,
+        dedup_key=dedup_key,
     )
     db.add(notif)
     db.flush()
@@ -52,9 +70,14 @@ def push_to_role(
     message: str,
     *,
     exclude_user_id: int = None,
+    dedup_key: str = None,
     **kwargs,
 ) -> list:
-    """Push a notification to every active user with the given role(s)."""
+    """Push a notification to every active user with the given role(s).
+
+    If dedup_key is provided, each user gets a per-user key (<dedup_key>_u<user_id>)
+    so the dedup check is scoped per recipient.
+    """
     if isinstance(roles, str):
         roles = [roles]
     users = (
@@ -66,7 +89,8 @@ def push_to_role(
     for user in users:
         if exclude_user_id and user.id == exclude_user_id:
             continue
-        n = push(db, user.id, entity_type, title, message, **kwargs)
+        user_dedup_key = f"{dedup_key}_u{user.id}" if dedup_key else None
+        n = push(db, user.id, entity_type, title, message, dedup_key=user_dedup_key, **kwargs)
         notifs.append(n)
     return notifs
 
@@ -77,10 +101,18 @@ def push_many(
     entity_type: str,
     title: str,
     message: str,
+    *,
+    dedup_key: str = None,
     **kwargs,
 ) -> list:
     """Push to a specific list of user IDs."""
-    return [push(db, uid, entity_type, title, message, **kwargs) for uid in user_ids if uid]
+    results = []
+    for uid in user_ids:
+        if not uid:
+            continue
+        user_dedup_key = f"{dedup_key}_u{uid}" if dedup_key else None
+        results.append(push(db, uid, entity_type, title, message, dedup_key=user_dedup_key, **kwargs))
+    return results
 
 
 def mark_read(db: Session, notification_id: int, user_id: int) -> bool:

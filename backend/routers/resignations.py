@@ -33,7 +33,8 @@ def _send_resignation_status_notif(db, r: "Resignation", actioned_by_email: str 
         _notif.push(db, emp.user_id, "resignation", title, msg,
                     entity_id=r.id,
                     notif_type="info" if approved else "warning",
-                    priority="high")
+                    priority="high",
+                    dedup_key=f"resignation_result_{r.id}_{'approved' if approved else 'rejected'}")
         db.commit()
 
     # Email to employee — FROM the HR user who actioned

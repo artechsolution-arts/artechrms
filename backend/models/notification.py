@@ -19,3 +19,5 @@ class Notification(Base):
     is_read = Column(Boolean, default=False, index=True)
     is_cc = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Deduplication key — if set, prevents duplicate notifications with the same key per user
+    dedup_key = Column(String(200), nullable=True, index=True)

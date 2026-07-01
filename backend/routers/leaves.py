@@ -213,17 +213,20 @@ def create_leave(data: LeaveAppIn, db: Session = Depends(get_db)):
                 db, "CEO", "leave", f"Leave Request — {emp_name}",
                 notif_msg,
                 entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
+                dedup_key=f"leave_req_{leave.id}",
             )
         else:
             _notif.push_to_role(
                 db, "HR", "leave", f"Leave Request — {emp_name}",
                 notif_msg,
                 entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
+                dedup_key=f"leave_req_{leave.id}",
             )
             _notif.push_to_role(
                 db, "CEO", "leave", f"[CC] Leave Request — {emp_name}",
                 notif_msg,
                 entity_id=leave.id, notif_type="info", action="leaves", priority="low", is_cc=True,
+                dedup_key=f"leave_req_cc_{leave.id}",
             )
         db.commit()
 
@@ -412,6 +415,7 @@ def _notify_leave_status(leave, status: str, db: Session, actioned_by_email: str
                 notif_type="approval_result",
                 action="emp-leaves",
                 priority="high" if status == "Rejected" else "medium",
+                dedup_key=f"leave_result_{leave.id}_{status.lower()}",
             )
             db.commit()
 
