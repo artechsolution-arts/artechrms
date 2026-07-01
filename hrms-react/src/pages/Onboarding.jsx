@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, apiForm } from '../api';
 import { fmtDate } from '../utils/date';
+import { useAuth } from '../hooks/useAuth';
 import EmpAvatar from '../components/EmpAvatar';
 import ConfirmModal from '../components/ConfirmModal';
 import DatePicker from '../components/DatePicker';
@@ -1105,7 +1106,9 @@ function ActivityLog({ sections, steps, history = [] }) {
 /* ══════════════════════════════════════════════
    WIZARD MODAL
 ══════════════════════════════════════════════ */
-function WizardModal({ emp, type, onClose, allEmps = [] }) {
+const SUPERADMIN_ONLY = ['assets', 'it_access'];
+
+function WizardModal({ emp, type, onClose, allEmps = [], userRole = '' }) {
   const steps   = type === 'onboarding' ? ON_STEPS : OFF_STEPS;
   const [step, setStep]       = useState(0);
   const [sections, setSections] = useState({});
@@ -1190,8 +1193,9 @@ function WizardModal({ emp, type, onClose, allEmps = [] }) {
 
   const completedCount = steps.filter(s => sections[s.key]?.saved_at).length;
   const pct = Math.round(completedCount / steps.length * 100);
-  const isActivityLog = steps[step].key === 'activity_log';
-  const isEmpInfo     = steps[step].key === 'employee_info';
+  const isActivityLog    = steps[step].key === 'activity_log';
+  const isEmpInfo        = steps[step].key === 'employee_info';
+  const isSuperAdminOnly = SUPERADMIN_ONLY.includes(currentKey) && userRole !== 'superadmin';
 
   const renderStepContent = () => {
     const d = sectionData;
@@ -1317,17 +1321,23 @@ function WizardModal({ emp, type, onClose, allEmps = [] }) {
                 className="btn btn-secondary btn-sm gap-1.5" style={{ opacity: step === 0 ? 0.4 : 1 }}>
                 <ChevronLeft size={13} /> Previous
               </button>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {saved && <span style={{ fontSize: 12, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={13} /> Saved!</span>}
-                <button onClick={saveSection} disabled={saving} className="btn btn-secondary btn-sm gap-1.5">
-                  <Save size={13} /> {saving ? 'Saving…' : 'Save'}
-                </button>
-                <button onClick={saveAndNext} disabled={saving || step === steps.length - 1}
-                  className="btn btn-primary btn-sm gap-1.5"
-                  style={{ opacity: step === steps.length - 1 ? 0.4 : 1 }}>
-                  Save & Next <ChevronRight size={13} />
-                </button>
-              </div>
+              {isSuperAdminOnly ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '6px 12px' }}>
+                  🔒 Only Super Admin can edit this section
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {saved && <span style={{ fontSize: 12, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={13} /> Saved!</span>}
+                  <button onClick={saveSection} disabled={saving} className="btn btn-secondary btn-sm gap-1.5">
+                    <Save size={13} /> {saving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button onClick={saveAndNext} disabled={saving || step === steps.length - 1}
+                    className="btn btn-primary btn-sm gap-1.5"
+                    style={{ opacity: step === steps.length - 1 ? 0.4 : 1 }}>
+                    Save & Next <ChevronRight size={13} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1480,6 +1490,7 @@ function NewJoinerModal({ depts, desigs, onClose, onCreated, toast }) {
    MAIN PAGE
 ══════════════════════════════════════════════ */
 export default function Onboarding({ toast }) {
+  const { user } = useAuth();
   const [tab, setTab]               = useState('onboarding');
   const [onList, setOnList]         = useState([]);
   const [offList, setOffList]       = useState([]);
@@ -1606,7 +1617,7 @@ export default function Onboarding({ toast }) {
       </div>
 
       {selected && (
-        <WizardModal emp={selected} type={tab} allEmps={allEmps} onClose={() => { setSelected(null); load(); }} />
+        <WizardModal emp={selected} type={tab} allEmps={allEmps} userRole={user?.role} onClose={() => { setSelected(null); load(); }} />
       )}
 
       {showAddJoiner && (
