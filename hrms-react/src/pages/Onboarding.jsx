@@ -1356,10 +1356,10 @@ function WizardModal({ emp, type, onClose, allEmps = [], userRole = '', toast })
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {saved && <span style={{ fontSize: 12, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={13} /> Saved!</span>}
                 {saveError && <span style={{ fontSize: 11, color: '#DC2626', maxWidth: 200 }} title={saveError}>Save failed — {saveError.slice(0, 40)}</span>}
-                <button onClick={saveSection} disabled={saving} className="btn btn-secondary btn-sm gap-1.5">
+                <button onClick={() => saveSection()} disabled={saving} className="btn btn-secondary btn-sm gap-1.5">
                   <Save size={13} /> {saving ? 'Saving…' : 'Save'}
                 </button>
-                <button onClick={saveAndNext} disabled={saving || step === steps.length - 1}
+                <button onClick={() => saveAndNext()} disabled={saving || step === steps.length - 1}
                   className="btn btn-primary btn-sm gap-1.5"
                   style={{ opacity: step === steps.length - 1 ? 0.4 : 1 }}>
                   Save & Next <ChevronRight size={13} />
