@@ -266,7 +266,8 @@ def approve_leave(leave_id: int, request: Request, db: Session = Depends(get_db)
         bal.used = round(bal.used + leave.total_days, 2)
     from backend.models.employee import Employee as _Emp
     _leave_emp = db.query(_Emp).filter(_Emp.id == leave.employee_id).first()
-    _leave_name = f"{_leave_emp.full_name if _leave_emp else leave.employee_id} — {leave.leave_type} ({leave.total_days}d)"
+    _lt_name = leave.leave_type_rel.name if leave.leave_type_rel else "Leave"
+    _leave_name = f"{_leave_emp.full_name if _leave_emp else leave.employee_id} — {_lt_name} ({leave.total_days}d)"
     log_activity(db, request, "APPROVE", "Leave",
                  entity_id=leave.id,
                  entity_name=_leave_name,
@@ -289,7 +290,8 @@ def reject_leave(leave_id: int, request: Request, db: Session = Depends(get_db))
     db.query(WorkModeEntry).filter(WorkModeEntry.leave_id == leave_id).delete()
     from backend.models.employee import Employee as _Emp
     _leave_emp = db.query(_Emp).filter(_Emp.id == leave.employee_id).first()
-    _leave_name = f"{_leave_emp.full_name if _leave_emp else leave.employee_id} — {leave.leave_type} ({leave.total_days}d)"
+    _lt_name = leave.leave_type_rel.name if leave.leave_type_rel else "Leave"
+    _leave_name = f"{_leave_emp.full_name if _leave_emp else leave.employee_id} — {_lt_name} ({leave.total_days}d)"
     log_activity(db, request, "REJECT", "Leave",
                  entity_id=leave.id,
                  entity_name=_leave_name,
