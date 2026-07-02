@@ -1022,6 +1022,14 @@ export default function Employees({ toast }) {
       notice_period_days: detailEmp.notice_period_days ?? '',
       probation_period_days: detailEmp.probation_period_days ?? '',
       office_address: detailEmp.office_address || '',
+      basic_salary: detailEmp.basic_salary || '',
+      hra_percent: detailEmp.hra_percent ?? 20,
+      special_allowance: detailEmp.special_allowance || 0,
+      lta: detailEmp.lta || 0,
+      other_allowance: detailEmp.other_allowance || 0,
+      pf_applicable: detailEmp.pf_applicable ?? false,
+      esi_applicable: detailEmp.esi_applicable ?? false,
+      pt_state: detailEmp.pt_state || 'Telangana',
       effective_date: new Date().toISOString().slice(0, 10),
       change_reason: '',
     });
@@ -1045,6 +1053,14 @@ export default function Employees({ toast }) {
         notice_period_days: jobInfoForm.notice_period_days !== '' ? parseInt(jobInfoForm.notice_period_days) : null,
         probation_period_days: jobInfoForm.probation_period_days !== '' ? parseInt(jobInfoForm.probation_period_days) : null,
         office_address: jobInfoForm.office_address,
+        basic_salary: jobInfoForm.basic_salary !== '' ? parseFloat(jobInfoForm.basic_salary) : detailEmp.basic_salary,
+        hra_percent: parseFloat(jobInfoForm.hra_percent) || 20.0,
+        special_allowance: parseFloat(jobInfoForm.special_allowance) || 0,
+        lta: parseFloat(jobInfoForm.lta) || 0,
+        other_allowance: parseFloat(jobInfoForm.other_allowance) || 0,
+        pf_applicable: jobInfoForm.pf_applicable !== false && jobInfoForm.pf_applicable !== 'false',
+        esi_applicable: jobInfoForm.esi_applicable !== false && jobInfoForm.esi_applicable !== 'false',
+        pt_state: jobInfoForm.pt_state || 'Telangana',
       });
 
       // Auto-detect what changed and log history events
@@ -1082,6 +1098,17 @@ export default function Employees({ toast }) {
           change_type: 'Status Change',
           effective_date: today,
           remarks: `Employment type: ${detailEmp.employment_type} → ${jobInfoForm.employment_type}${jobInfoForm.change_reason ? `. ${jobInfoForm.change_reason}` : ''}`,
+        });
+      }
+      const newSalary = jobInfoForm.basic_salary !== '' ? parseFloat(jobInfoForm.basic_salary) : null;
+      const oldSalary = parseFloat(detailEmp.basic_salary) || null;
+      if (newSalary && newSalary !== oldSalary) {
+        await api('POST', `/api/hrm/employees/${detailEmp.id}/history`, {
+          change_type: 'Salary Hike',
+          effective_date: today,
+          salary_before: oldSalary,
+          salary_after: newSalary,
+          remarks: jobInfoForm.change_reason || null,
         });
       }
 
@@ -3062,6 +3089,46 @@ export default function Employees({ toast }) {
                 placeholder="e.g. 90"
                 min={0}
               />
+            </Field>
+          </FormGrid>
+        </FormSection>
+        <FormSection title="Compensation">
+          <FormGrid cols={2}>
+            <Field label="Basic Salary (₹)">
+              <input type="number" className="form-input w-full" value={jobInfoForm.basic_salary || ''} onChange={e => setJobInfoForm(p => ({ ...p, basic_salary: e.target.value }))} placeholder="e.g. 30000" min="0" />
+            </Field>
+            <Field label="HRA % (of Basic)">
+              <input type="number" className="form-input w-full" value={jobInfoForm.hra_percent ?? 20} onChange={e => setJobInfoForm(p => ({ ...p, hra_percent: e.target.value }))} placeholder="20" min="0" max="100" step="0.1" />
+            </Field>
+            <Field label="Special Allowance (₹)">
+              <input type="number" className="form-input w-full" value={jobInfoForm.special_allowance || 0} onChange={e => setJobInfoForm(p => ({ ...p, special_allowance: e.target.value }))} min="0" />
+            </Field>
+            <Field label="LTA (₹)">
+              <input type="number" className="form-input w-full" value={jobInfoForm.lta || 0} onChange={e => setJobInfoForm(p => ({ ...p, lta: e.target.value }))} min="0" />
+            </Field>
+            <Field label="Other Allowance (₹)">
+              <input type="number" className="form-input w-full" value={jobInfoForm.other_allowance || 0} onChange={e => setJobInfoForm(p => ({ ...p, other_allowance: e.target.value }))} min="0" />
+            </Field>
+            <Field label="PT State">
+              <Select value={jobInfoForm.pt_state || 'Telangana'} onChange={v => setJobInfoForm(p => ({ ...p, pt_state: v }))} options={PT_STATES} />
+            </Field>
+            <Field label="PF Applicable">
+              <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
+                <div className={`relative w-10 h-5 rounded-full transition-colors ${jobInfoForm.pf_applicable !== false && jobInfoForm.pf_applicable !== 'false' ? 'bg-blue-600' : 'bg-gray-300'}`}
+                  onClick={() => setJobInfoForm(p => ({ ...p, pf_applicable: !(p.pf_applicable !== false && p.pf_applicable !== 'false') }))}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${jobInfoForm.pf_applicable !== false && jobInfoForm.pf_applicable !== 'false' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300">{jobInfoForm.pf_applicable !== false && jobInfoForm.pf_applicable !== 'false' ? 'Yes' : 'No'}</span>
+              </label>
+            </Field>
+            <Field label="ESI Applicable">
+              <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
+                <div className={`relative w-10 h-5 rounded-full transition-colors ${jobInfoForm.esi_applicable !== false && jobInfoForm.esi_applicable !== 'false' ? 'bg-blue-600' : 'bg-gray-300'}`}
+                  onClick={() => setJobInfoForm(p => ({ ...p, esi_applicable: !(p.esi_applicable !== false && p.esi_applicable !== 'false') }))}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${jobInfoForm.esi_applicable !== false && jobInfoForm.esi_applicable !== 'false' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300">{jobInfoForm.esi_applicable !== false && jobInfoForm.esi_applicable !== 'false' ? 'Yes (if gross ≤ ₹21,000)' : 'No'}</span>
+              </label>
             </Field>
           </FormGrid>
         </FormSection>
