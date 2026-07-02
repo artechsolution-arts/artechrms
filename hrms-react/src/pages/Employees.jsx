@@ -2105,7 +2105,9 @@ export default function Employees({ toast }) {
                                     <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                                       <button title="Edit" className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-300 hover:text-blue-500 transition-colors"
                                         onClick={() => {
-                                          if (ev._synthetic) {
+                                          if (isHire) {
+                                            openJobInfoEdit();
+                                          } else if (ev._synthetic) {
                                             setUpdateEventType('Joining');
                                             setUpdateForm({
                                               effective_date:   ev.effective_date || detailEmp.date_of_joining || '',
