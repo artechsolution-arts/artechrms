@@ -568,7 +568,8 @@ export default function Employees({ toast }) {
   const [editEventId, setEditEventId] = useState(null);
   const [editEventForm, setEditEventForm] = useState({});
   const [editEventSaving, setEditEventSaving] = useState(false);
-  const [viewEvent, setViewEvent]   = useState(null);
+  const [viewEvent, setViewEvent]       = useState(null);
+  const [showHireDetail, setShowHireDetail] = useState(false);
   const [empDocs, setEmpDocs] = useState([]);
   const [empDocsLoading, setEmpDocsLoading] = useState(false);
   const [empDocUpload, setEmpDocUpload] = useState(false);
@@ -1936,6 +1937,34 @@ export default function Employees({ toast }) {
                         )}
                       </div>}
 
+                      {/* ── HIRE RECORD ── */}
+                      {detailEmp.date_of_joining && (() => {
+                        const joiningEv = allEvDesc.find(e => e.change_type === 'Joining') || null;
+                        const joinDesig = joiningEv?.to_designation || detailEmp.designation || '—';
+                        const joinDept  = joiningEv?.to_department  || detailEmp.department  || '—';
+                        return (
+                          <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <CheckCircle2 size={11} /> Hire Record
+                              </span>
+                            </div>
+                            <div
+                              onClick={() => setShowHireDetail(true)}
+                              className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
+                              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center flex-shrink-0">
+                                <CheckCircle2 size={14} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Hired · {fmtDate(detailEmp.date_of_joining)}</p>
+                                <p className="text-[11px] text-gray-400 mt-0.5">{joinDesig} · {joinDept}</p>
+                              </div>
+                              <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* ── ALL EVENTS TIMELINE ── */}
                       <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
                         <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
@@ -3231,6 +3260,76 @@ export default function Employees({ toast }) {
           </FormSection>
         )}
       </Modal>
+
+      {/* ── Hire Detail Modal ── */}
+      {showHireDetail && detailEmp && (() => {
+        const emp = detailEmp;
+        const basic  = parseFloat(emp.basic_salary) || 0;
+        const pay    = basic > 0 ? calcLivePayroll(emp) : null;
+        const fmtRs  = n => `₹${Number(n).toLocaleString('en-IN')} / mo`;
+        const Row = ({ label, value, accent }) => value ? (
+          <div className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
+            <span className="text-xs text-gray-400 dark:text-gray-500 w-40 flex-shrink-0 pt-0.5">{label}</span>
+            <span className={`text-xs font-semibold flex-1 ${accent || 'text-gray-800 dark:text-gray-200'}`}>{value}</span>
+          </div>
+        ) : null;
+        const Section = ({ title }) => (
+          <div className="px-4 pt-3 pb-1">
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{title}</p>
+          </div>
+        );
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowHireDetail(false)}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="px-5 py-4 flex items-center gap-3 border-b border-gray-100 dark:border-gray-800 bg-green-50 dark:bg-green-900/20 flex-shrink-0">
+                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">Hire Record</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Effective {fmtDate(emp.date_of_joining)}</p>
+                </div>
+                <button onClick={() => setShowHireDetail(false)} className="p-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-gray-800 text-gray-400 transition-colors">
+                  <X size={14} />
+                </button>
+              </div>
+              {/* Scrollable body */}
+              <div className="overflow-y-auto flex-1 divide-y divide-gray-100 dark:divide-gray-800">
+                <Section title="Worker Information" />
+                <Row label="Full Name"        value={emp.full_name} />
+                <Row label="Employee Code"    value={emp.employee_id} />
+                <Row label="Date of Joining"  value={fmtDate(emp.date_of_joining)} accent="text-green-600 dark:text-green-400" />
+                <Row label="Employment Type"  value={emp.employment_type} />
+                <Row label="Status"           value={emp.status || 'Active'} />
+
+                <Section title="Position" />
+                <Row label="Designation"      value={emp.designation} />
+                <Row label="Department"       value={emp.department} />
+                <Row label="Reporting Manager" value={emp.reporting_manager} />
+                <Row label="Work Location"    value={emp.office_address?.split(',')[0] || emp.work_location} />
+
+                <Section title="Compensation" />
+                <Row label="Basic Salary"     value={basic > 0 ? fmtRs(basic) : null} />
+                {pay?.gross > 0 && <Row label="Gross Salary"  value={fmtRs(pay.gross)} />}
+                {pay?.net   > 0 && <Row label="Net Take-Home" value={fmtRs(pay.net)} accent="text-green-600 dark:text-green-400" />}
+                {emp.hra_percent > 0 && <Row label="HRA" value={`${emp.hra_percent}%`} />}
+                {emp.special_allowance > 0 && <Row label="Special Allowance" value={fmtRs(emp.special_allowance)} />}
+                {emp.lta > 0 && <Row label="LTA" value={fmtRs(emp.lta)} />}
+                {emp.other_allowance > 0 && <Row label="Other Allowance" value={fmtRs(emp.other_allowance)} />}
+
+                <Section title="Service Conditions" />
+                <Row label="Notice Period"    value={emp.notice_period_days ? `${emp.notice_period_days} days` : null} />
+                <Row label="Probation Period" value={emp.probation_period_days ? `${emp.probation_period_days} days` : null} />
+                <Row label="Confirmation Date" value={fmtDate(emp.confirmation_date)} />
+                <Row label="PF Enrolled"      value={emp.pf_applicable ? 'Yes' : null} />
+                <Row label="ESI Eligible"     value={emp.esi_applicable ? 'Yes' : null} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── View Event Detail Modal ── */}
       {viewEvent && (() => {
