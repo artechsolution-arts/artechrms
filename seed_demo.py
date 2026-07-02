@@ -17,6 +17,11 @@ from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+# Force psycopg3 dialect so the script runs without psycopg2 installed
+_url = os.environ.get("DATABASE_URL", "")
+if _url.startswith("postgresql://") and not _url.startswith("postgresql+"):
+    os.environ["DATABASE_URL"] = _url.replace("postgresql://", "postgresql+psycopg://", 1)
+
 # Register all models before create_all
 from backend.database import engine, SessionLocal, Base
 import backend.models  # noqa: F401
@@ -28,7 +33,11 @@ from backend.models.leave import LeaveType, LeaveApplication, Attendance
 from backend.models.hrm import LeaveBalance, Holiday, EmployeeAsset, Announcement
 from backend.models.payroll import SalarySlip, PayrollRules
 from backend.models.permission import RolePermission, DEFAULT_PERMISSIONS
-from backend.auth_utils import get_password_hash
+
+# Inline password hashing — avoids pulling in python-jose via auth_utils
+from passlib.context import CryptContext
+_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def get_password_hash(p): return _pwd.hash(p)
 
 
 # ── Constants ─────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { downloadAuthFile } from '../utils/download';
 import Badge from '../components/Badge';
 import Modal, { FormSection, FormGrid, Field } from '../components/Modal';
 import { Plus, RefreshCw, Eye, Printer, FileDown } from 'lucide-react';
@@ -183,20 +184,7 @@ export default function SalarySlips({ toast }) {
 
   const downloadPdf = async (slipId, slipRef) => {
     try {
-      const token = localStorage.getItem('artech_hrms_token');
-      const res = await fetch(`/api/payroll/slips/${slipId}/pdf`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('PDF generation failed');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Payslip_${slipRef || slipId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      await downloadAuthFile(`/api/payroll/slips/${slipId}/pdf`, `Payslip_${slipRef || slipId}.pdf`);
     } catch (e) { toast(e.message, 'error'); }
   };
 

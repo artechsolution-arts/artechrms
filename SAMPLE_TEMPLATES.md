@@ -112,7 +112,7 @@ AR Tech Solutions
 
 ---
 
-### 3. Appointment Letter
+### 3. Appointment Letter (with salary table)
 
 ```
 Date: {{Letter Date}}
@@ -132,10 +132,19 @@ Employee ID      : {{Employee ID}}
 Designation      : {{Designation}}
 Department       : {{Department}}
 Date of Joining  : {{Date of Joining}}
-Annual CTC       : INR {{Annual CTC}} per annum
 Work Location    : {{Work Location}}
 Probation Period : 6 months from date of joining
 Notice Period    : {{Notice Period}}
+
+Your compensation package is as follows:
+
+COMPONENTS                  | PER MONTH          | PER ANNUM
+----------------------------|--------------------|--------------------
+Basic Salary                | {{Basic Salary PM}}| {{Basic Salary PA}}
+HRA                         | {{HRA PM}}         | {{HRA PA}}
+Conveyance Allowance (CA)   | {{Conveyance PM}}  | {{Conveyance PA}}
+Other Allowances            | {{Other Allowances PM}} | {{Other Allowances PA}}
+Total CTC                   | {{Total CTC PM}}   | {{Total CTC PA}}
 
 Please sign and return a copy of this letter to confirm your acceptance.
 
@@ -145,6 +154,25 @@ For AR Tech Solutions,
 {{HR Designation}}
 Human Resources
 ```
+
+**Variables HR fills in for the salary table:**
+
+| Variable | What to enter |
+|---|---|
+| `{{Basic Salary PM}}` | e.g. 25,000 |
+| `{{Basic Salary PA}}` | e.g. 3,00,000 |
+| `{{HRA PM}}` | e.g. 10,000 |
+| `{{HRA PA}}` | e.g. 1,20,000 |
+| `{{Conveyance PM}}` | e.g. 3,000 |
+| `{{Conveyance PA}}` | e.g. 36,000 |
+| `{{Other Allowances PM}}` | e.g. 5,000 |
+| `{{Other Allowances PA}}` | e.g. 60,000 |
+| `{{Total CTC PM}}` | e.g. 43,000 |
+| `{{Total CTC PA}}` | e.g. 5,16,000 |
+
+> **Tip for Word DOCX:** In your actual Word file, put these `{{Variable}}` placeholders
+> inside the empty table cells. The system will detect each one and show HR a text box
+> to enter the amount before generating the PDF.
 
 ---
 
@@ -380,10 +408,11 @@ Human Resources
 ### Method A — Upload your Word file directly
 1. Write your letter in Microsoft Word
 2. Use `{{Variable Name}}` wherever HR should fill something in
-3. Save as `.docx`
-4. In HRMS → Company Docs → Document Templates → New Template → Upload file
-5. System detects all `{{variables}}` automatically, converts to snake_case
-6. Review detected variables → Save
+3. **For tables with empty cells:** type `{{Variable Name}}` directly inside each empty cell
+4. Save as `.docx`
+5. In HRMS → Company Docs → Document Templates → New Template → Upload file
+6. System detects all `{{variables}}` automatically, converts to snake_case
+7. Review detected variables → Save
 
 ### Method B — Paste text directly
 1. Copy any template above
@@ -391,6 +420,18 @@ Human Resources
 3. Paste into the Content box
 4. Variables are detected live as you type
 5. Save
+
+### Working with salary tables in Word
+
+Empty cells in a table are **not** detected automatically. You must put a `{{Variable}}` inside each cell you want HR to fill:
+
+| What you type in Word cell | Variable created | HR form shows |
+|---|---|---|
+| `{{Basic Salary PM}}` | `basic_salary_pm` | "Basic Salary Pm" text box |
+| `{{HRA PM}}` | `hra_pm` | "Hra Pm" text box |
+| `{{Total CTC PA}}` | `total_ctc_pa` | "Total Ctc Pa" text box |
+
+The variables can be named anything — keep them short and descriptive.
 
 ---
 

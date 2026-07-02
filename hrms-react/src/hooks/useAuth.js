@@ -24,6 +24,13 @@ export function useAuth() {
     setUser(null);
   };
 
+  // Receive the session-expired signal from api.js (replaces window.location.reload)
+  useEffect(() => {
+    const onExpired = () => { setToken(null); setUser(null); };
+    window.addEventListener('artech:session-expired', onExpired);
+    return () => window.removeEventListener('artech:session-expired', onExpired);
+  }, []);
+
   return { token, user, login, logout, isAuthenticated: !!token };
 }
 
