@@ -276,15 +276,18 @@ def _notify_approvers(db: Session, req: ApprovalRequest, wf: ApprovalWorkflow, l
     lv_cfg = next((lv for lv in wf.levels if lv["level"] == level), None)
     if not lv_cfg:
         return
+    # Route to the role-specific approvals page
+    _role = lv_cfg["role"]
+    _action = "ceo-approvals" if _role == "CEO" else "approvals"
     push_to_role(
         db,
-        lv_cfg["role"],
+        _role,
         entity_type=req.module,
         entity_id=req.entity_id,
         title=f"Approval Required — {_label(req.module)}",
         message=f"A {_label(req.module)} request (#{req.id}) is waiting for your approval.",
         notif_type="approval_request",
-        action="approvals",
+        action=_action,
         priority="high",
         dedup_key=f"approval_req_{req.id}_l{level}",
     )

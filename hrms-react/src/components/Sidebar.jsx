@@ -6,7 +6,7 @@ import {
   Monitor, BookOpen, FileDown, UserCircle, Receipt, Wallet, ClipboardList, CalendarCheck2,
   ChevronDown, ChevronRight, FilePenLine, UserMinus, FolderOpen, ClipboardCheck,
   ShieldCheck, Key, Crown, Settings as SettingsIcon, ChevronRight as ChevronRightIcon,
-  BarChart2, Activity, ScrollText,
+  BarChart2, Activity, ScrollText, BadgeCheck,
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import MobileBottomNav from './MobileBottomNav';
@@ -29,8 +29,9 @@ const NAV = [
   { key: 'admin-permissions', label: 'Feature Permissions',       icon: Key,             section: 'Admin' },
   { key: 'activity-log',      label: 'Activity Log',              icon: Activity,        section: 'Admin' },
   // ── CEO ─────────────────────────────────────────────────
-  { key: 'ceo-dashboard',          label: 'Dashboard',            icon: Crown,      section: 'CEO' },
+  { key: 'ceo-dashboard',          label: 'Dashboard',            icon: Crown,       section: 'CEO' },
   { key: 'compensation-planner',   label: 'Compensation Planner', icon: BarChart2,   section: 'CEO' },
+  { key: 'ceo-approvals',          label: 'Approvals',            icon: BadgeCheck,  section: 'CEO' },
   { key: 'ceo-audit-log',          label: 'Audit Log',            icon: ScrollText,  section: 'CEO' },
   // ── HR Dashboard (null = always top, filtered by allowedFeatures) ──
   { key: 'dashboard',         label: 'Dashboard',                 icon: LayoutDashboard, section: null },

@@ -27,7 +27,7 @@ HR_FEATURES = [
 # Employee-portal features
 EMP_FEATURES = list(PORTAL_FEATURES)
 
-ALL_FEATURES = sorted(set(HR_FEATURES + EMP_FEATURES + ["ceo-dashboard", "compensation-planner", "ceo-audit-log"]))
+ALL_FEATURES = sorted(set(HR_FEATURES + EMP_FEATURES + ["ceo-dashboard", "compensation-planner", "ceo-approvals", "ceo-audit-log"]))
 
 # HR management features without self-service portal
 HR_MGMT_FEATURES = [f for f in HR_FEATURES if f not in PORTAL_FEATURES]
@@ -35,7 +35,7 @@ HR_MGMT_FEATURES = [f for f in HR_FEATURES if f not in PORTAL_FEATURES]
 DEFAULT_PERMISSIONS = {
     "HR": HR_FEATURES,
     # CEO gets all HR management features + CEO-specific pages, but NOT self-service portal
-    "CEO": sorted(set(HR_MGMT_FEATURES + ["ceo-dashboard", "compensation-planner", "ceo-audit-log"])),
+    "CEO": sorted(set(HR_MGMT_FEATURES + ["ceo-dashboard", "compensation-planner", "ceo-approvals", "ceo-audit-log"])),
     "Employee": EMP_FEATURES,
 }
 
