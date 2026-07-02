@@ -634,6 +634,7 @@ def portal_leave_types(request: Request, db: Session = Depends(get_db)):
 @router.get("/leave-balances")
 def portal_leave_balances(request: Request, db: Session = Depends(get_db)):
     from backend.models.hrm import LeaveBalance
+    from sqlalchemy import func, extract
     emp = _get_employee(request, db)
     year = _datetime.utcnow().year
     balances = (
@@ -641,14 +642,27 @@ def portal_leave_balances(request: Request, db: Session = Depends(get_db)):
         .filter(LeaveBalance.employee_id == emp.id, LeaveBalance.year == year)
         .all()
     )
+    # Compute used days live from approved leaves so the count is always accurate
+    # regardless of whether LeaveBalance.used was properly incremented.
+    approved_rows = (
+        db.query(LeaveApplication.leave_type_id, func.coalesce(func.sum(LeaveApplication.total_days), 0))
+        .filter(
+            LeaveApplication.employee_id == emp.id,
+            LeaveApplication.status == "Approved",
+            extract("year", LeaveApplication.from_date) == year,
+        )
+        .group_by(LeaveApplication.leave_type_id)
+        .all()
+    )
+    used_by_type = {lt_id: float(days) for lt_id, days in approved_rows}
     return [
         {
-            "leave_type_id": b.leave_type_id,
-            "leave_type":    b.leave_type_rel.name if b.leave_type_rel else "",
-            "allocated":     b.allocated,
-            "used":          b.used,
+            "leave_type_id":   b.leave_type_id,
+            "leave_type":      b.leave_type_rel.name if b.leave_type_rel else "",
+            "allocated":       b.allocated,
+            "used":            used_by_type.get(b.leave_type_id, 0),
             "carried_forward": b.carried_forward,
-            "available":     round(b.allocated + b.carried_forward - b.used, 2),
+            "available":       round(b.allocated + b.carried_forward - used_by_type.get(b.leave_type_id, 0), 2),
         }
         for b in balances
     ]
