@@ -245,6 +245,7 @@ def get_history(
             "module": req.module,
             "module_label": _label(req.module),
             "entity_id": req.entity_id,
+            "context": _enrich_entity(db, req),
             "status": req.status,
             "current_level": req.current_level,
             "payload": req.payload,

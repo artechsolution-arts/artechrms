@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api';
 import Badge from '../../components/Badge';
 import DatePicker from '../../components/DatePicker';
+import Modal from '../../components/Modal';
 import {
   CheckCircle, XCircle, IndianRupee,
   ChevronDown, ChevronUp, Calendar, UserMinus, RefreshCw,
@@ -28,6 +29,10 @@ function fmtSalary(key, val) {
   return `₹${Math.round(n).toLocaleString('en-IN')}`;
 }
 
+function cap(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
 // ── Type config ────────────────────────────────────────────────────────────────
 
 const TYPE_META = {
@@ -37,9 +42,9 @@ const TYPE_META = {
 };
 
 const SECTION_META = {
-  salary:      { label: 'Salary Changes',      barCls: 'bg-indigo-500', cntCls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
-  leave:       { label: 'Leave Requests',       barCls: 'bg-green-500',  cntCls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
-  resignation: { label: 'Resignations',         barCls: 'bg-orange-500', cntCls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
+  salary:      { label: 'Salary Changes', barCls: 'bg-indigo-500', cntCls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
+  leave:       { label: 'Leave Requests', barCls: 'bg-green-500',  cntCls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+  resignation: { label: 'Resignations',   barCls: 'bg-orange-500', cntCls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
 };
 
 // ── Shared primitives ──────────────────────────────────────────────────────────
@@ -67,40 +72,283 @@ function SectionHead({ type, count }) {
   );
 }
 
-function ActionRow({ onApprove, onReject, acting, approveLabel = 'Approve', rejectLabel = 'Reject' }) {
-  const [localActing, setLocalActing] = useState(null);
-  async function handle(which, fn) {
-    setLocalActing(which);
-    try { await fn(); } finally { setLocalActing(null); }
+// ── Salary detail modal (pending) ──────────────────────────────────────────────
+
+function SalaryDetailModal({ item, onClose, onAction, acting }) {
+  const [remarks,    setRemarks]    = useState('');
+  const [employee,   setEmployee]   = useState(null);
+  const [loadingEmp, setLoadingEmp] = useState(true);
+  const [localAct,   setLocalAct]   = useState(null);
+
+  const ctx    = item.context || {};
+  const fields = Object.entries(item.payload || {}).filter(([k]) => SALARY_LABELS[k]);
+
+  useEffect(() => {
+    api('GET', `/api/employees/${item.entity_id}`)
+      .then(setEmployee)
+      .catch(() => {})
+      .finally(() => setLoadingEmp(false));
+  }, [item.entity_id]);
+
+  async function handle(action) {
+    setLocalAct(action);
+    try { await onAction(action, { remarks }); }
+    finally { setLocalAct(null); }
   }
+
   return (
-    <div className="flex gap-3">
-      <button onClick={() => handle('approve', onApprove)} disabled={!!localActing || acting}
-        className="btn btn-approve flex-1 justify-center gap-2">
-        <CheckCircle size={14} />
-        {localActing === 'approve' ? `${approveLabel.replace(/e$/, '')}ing…` : approveLabel}
-      </button>
-      <button onClick={() => handle('reject', onReject)} disabled={!!localActing || acting}
-        className="btn btn-reject flex-1 justify-center gap-2">
-        <XCircle size={14} />
-        {localActing === 'reject' ? 'Rejecting…' : rejectLabel}
-      </button>
-    </div>
+    <Modal open title={`Salary Change — ${ctx.employee_name || `Employee #${item.entity_id}`}`} onClose={onClose} hideSave wide>
+      <div className="space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          <InfoBlock label="Employee"     value={ctx.employee_name || `#${item.entity_id}`} />
+          <InfoBlock label="Employee Code" value={ctx.employee_code || '—'} />
+          <InfoBlock label="Requested On" value={item.created_at?.slice(0, 10) || '—'} />
+        </div>
+
+        {fields.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Proposed Changes</p>
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th className="text-right">Current Value</th>
+                    <th className="text-center w-6"></th>
+                    <th className="text-right">Proposed Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fields.map(([key, newVal]) => {
+                    const oldVal = employee?.[key];
+                    return (
+                      <tr key={key}>
+                        <td className="font-medium">{SALARY_LABELS[key]}</td>
+                        <td className="text-right text-gray-500 dark:text-gray-400">
+                          {loadingEmp
+                            ? <span className="text-gray-300 text-xs">loading…</span>
+                            : oldVal != null ? fmtSalary(key, oldVal) : '—'}
+                        </td>
+                        <td className="text-center text-gray-300">→</td>
+                        <td className="text-right">
+                          <span className="inline-block bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs font-semibold px-2 py-0.5 rounded border border-green-200 dark:border-green-800">
+                            {fmtSalary(key, newVal)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+            Remarks <span className="font-normal text-gray-400">(optional)</span>
+          </label>
+          <textarea value={remarks} onChange={e => setRemarks(e.target.value)}
+            placeholder="Add a note…" rows={2} className="form-input resize-y" />
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={() => handle('approve')} disabled={!!localAct || acting}
+            className="btn btn-approve flex-1 justify-center gap-2">
+            <CheckCircle size={14} />
+            {localAct === 'approve' ? 'Approving…' : 'Approve'}
+          </button>
+          <button onClick={() => handle('reject')} disabled={!!localAct || acting}
+            className="btn btn-reject flex-1 justify-center gap-2">
+            <XCircle size={14} />
+            {localAct === 'reject' ? 'Rejecting…' : 'Reject'}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
-// ── Card shell ─────────────────────────────────────────────────────────────────
+// ── History detail modal ───────────────────────────────────────────────────────
+
+function HistoryDetailModal({ item, type, onClose }) {
+  if (!item) return null;
+
+  if (type === 'salary') {
+    const empName = item.context?.employee_name || `Employee #${item.entity_id}`;
+    const fields  = Object.entries(item.payload || {}).filter(([k]) => SALARY_LABELS[k]);
+    return (
+      <Modal open title={`Salary Change #${item.id} — ${empName}`} onClose={onClose} hideSave wide>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <InfoBlock label="Employee"    value={empName} />
+            <InfoBlock label="Status"      value={<Badge text={cap(item.status)} />} />
+            <InfoBlock label="Submitted"   value={item.created_at?.slice(0, 16)?.replace('T', ' ') || '—'} />
+            <InfoBlock label="Last Updated" value={item.updated_at?.slice(0, 16)?.replace('T', ' ') || '—'} />
+          </div>
+
+          {fields.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Changes Requested</p>
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead><tr><th>Field</th><th className="text-right">Proposed Value</th></tr></thead>
+                  <tbody>
+                    {fields.map(([key, val]) => (
+                      <tr key={key}>
+                        <td className="font-medium">{SALARY_LABELS[key]}</td>
+                        <td className="text-right font-semibold">{fmtSalary(key, val)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {item.remarks && (
+            <InfoBlock label="Remarks" value={item.remarks} />
+          )}
+
+          {item.steps?.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Approval Trail</p>
+              <div className="space-y-2">
+                {item.steps.map((step, i) => (
+                  <div key={i} className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                    <Badge text={cap(step.status)} />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Level {step.level} · {step.approver_role}</span>
+                    {step.remarks && <span className="text-xs text-gray-500 italic">"{step.remarks}"</span>}
+                    {step.actioned_at && (
+                      <span className="text-xs text-gray-400 ml-auto">{step.actioned_at.slice(0, 16).replace('T', ' ')}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+    );
+  }
+
+  if (type === 'leave') {
+    return (
+      <Modal open title={`Leave Request — ${item.employee_name || '—'}`} onClose={onClose} hideSave>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <InfoBlock label="Employee"   value={item.employee_name || '—'} />
+            <InfoBlock label="Status"     value={<Badge text={item.status} />} />
+            <InfoBlock label="Leave Type" value={item.leave_type} />
+            <InfoBlock label="Days"       value={`${item.total_days}d${item.half_day ? ' (half)' : ''}`} />
+            <InfoBlock label="From"       value={item.from_date} />
+            <InfoBlock label="To"         value={item.to_date} />
+            {item.leave_category && <InfoBlock label="Category" value={item.leave_category} />}
+            {item.created_at     && <InfoBlock label="Applied On" value={item.created_at?.slice(0, 16)?.replace('T', ' ')} />}
+          </div>
+          {item.reason && (
+            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg px-4 py-3">
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Reason</div>
+              <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
+            </div>
+          )}
+        </div>
+      </Modal>
+    );
+  }
+
+  if (type === 'resignation') {
+    return (
+      <Modal open title={`Resignation — ${item.employee_name || '—'}`} onClose={onClose} hideSave>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <InfoBlock label="Employee"    value={item.employee_name || '—'} />
+            <InfoBlock label="Status"      value={<Badge text={item.status} />} />
+            {item.department  && <InfoBlock label="Department"  value={item.department} />}
+            {item.designation && <InfoBlock label="Designation" value={item.designation} />}
+            <InfoBlock label="Requested LWD" value={item.last_working_date || '—'} />
+            <InfoBlock label="Approved LWD"  value={item.approved_last_working_date || '—'} />
+            {item.notice_period_days != null && <InfoBlock label="Notice Period" value={`${item.notice_period_days} days`} />}
+            {item.created_at && <InfoBlock label="Submitted" value={item.created_at?.slice(0, 16)?.replace('T', ' ')} />}
+          </div>
+          {item.reason && (
+            <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-3">
+              <div className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1">Reason</div>
+              <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
+            </div>
+          )}
+          {item.hr_remarks && <InfoBlock label="HR Remarks" value={item.hr_remarks} />}
+        </div>
+      </Modal>
+    );
+  }
+
+  return null;
+}
+
+// ── Salary card (compact — click name to open modal) ──────────────────────────
+
+function SalaryCard({ item, onAction, acting }) {
+  const [open, setOpen] = useState(false);
+  const ctx = item.context || {};
+  const m   = TYPE_META.salary;
+  return (
+    <>
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${m.iconCls}`}>
+              <m.Icon size={17} />
+            </div>
+            <div className="min-w-0">
+              <button
+                onClick={() => setOpen(true)}
+                className="text-sm font-bold text-left hover:underline truncate block"
+                style={{ color: 'var(--accent)' }}>
+                {ctx.employee_name || `Employee #${item.entity_id}`}
+              </button>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {ctx.employee_code && <span className="mr-2 font-medium">{ctx.employee_code}</span>}
+                Salary Change Request · #{item.approval_request_id}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${m.tagCls}`}>{m.label}</span>
+            <Badge text="Pending" />
+            {item.created_at && <span className="text-[11px] text-gray-400">{item.created_at.slice(0, 10)}</span>}
+            <button onClick={() => setOpen(true)} className="btn btn-secondary btn-xs gap-1">
+              View Details
+            </button>
+          </div>
+        </div>
+      </div>
+      {open && (
+        <SalaryDetailModal
+          item={item}
+          acting={acting}
+          onClose={() => setOpen(false)}
+          onAction={async (action, body) => {
+            await onAction('salary', item.approval_request_id, action, body);
+            setOpen(false);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+// ── Leave card (inline expand) ─────────────────────────────────────────────────
 
 function CardShell({ type, name, code, subtitle, date, children }) {
   const [open, setOpen] = useState(false);
   const m = TYPE_META[type];
-  const { Icon } = m;
   return (
     <div className="card overflow-hidden">
       <div className="flex items-center justify-between gap-3 px-5 py-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${m.iconCls}`}>
-            <Icon size={17} />
+            <m.Icon size={17} />
           </div>
           <div className="min-w-0">
             <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{name}</div>
@@ -129,54 +377,27 @@ function CardShell({ type, name, code, subtitle, date, children }) {
   );
 }
 
-// ── Salary card ────────────────────────────────────────────────────────────────
-
-function SalaryCard({ item, onAction, acting }) {
-  const [remarks, setRemarks] = useState('');
-  const ctx    = item.context || {};
-  const fields = Object.entries(item.payload || {}).filter(([k]) => SALARY_LABELS[k]);
+function ActionRow({ onApprove, onReject, acting, approveLabel = 'Approve', rejectLabel = 'Reject' }) {
+  const [localActing, setLocalActing] = useState(null);
+  async function handle(which, fn) {
+    setLocalActing(which);
+    try { await fn(); } finally { setLocalActing(null); }
+  }
   return (
-    <CardShell type="salary" name={ctx.employee_name || `Employee #${item.entity_id}`} code={ctx.employee_code}
-      subtitle={`Salary Change Request · #${item.approval_request_id}`} date={item.created_at?.slice(0, 10)}>
-      {fields.length > 0 && (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Field</th>
-                <th className="text-right">New Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fields.map(([key, val]) => (
-                <tr key={key}>
-                  <td className="font-medium">{SALARY_LABELS[key]}</td>
-                  <td className="text-right">
-                    <span className="inline-block bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs font-semibold px-2 py-0.5 rounded border border-green-200 dark:border-green-800">
-                      {fmtSalary(key, val)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <div>
-        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-          Remarks <span className="font-normal text-gray-400">(optional)</span>
-        </label>
-        <textarea value={remarks} onChange={e => setRemarks(e.target.value)}
-          placeholder="Add a note…" rows={2} className="form-input resize-y" />
-      </div>
-      <ActionRow acting={acting}
-        onApprove={() => onAction('salary', item.approval_request_id, 'approve', { remarks })}
-        onReject={()  => onAction('salary', item.approval_request_id, 'reject',  { remarks })} />
-    </CardShell>
+    <div className="flex gap-3">
+      <button onClick={() => handle('approve', onApprove)} disabled={!!localActing || acting}
+        className="btn btn-approve flex-1 justify-center gap-2">
+        <CheckCircle size={14} />
+        {localActing === 'approve' ? `${approveLabel.replace(/e$/, '')}ing…` : approveLabel}
+      </button>
+      <button onClick={() => handle('reject', onReject)} disabled={!!localActing || acting}
+        className="btn btn-reject flex-1 justify-center gap-2">
+        <XCircle size={14} />
+        {localActing === 'reject' ? 'Rejecting…' : rejectLabel}
+      </button>
+    </div>
   );
 }
-
-// ── Leave card ─────────────────────────────────────────────────────────────────
 
 function LeaveCard({ item, onAction, acting }) {
   const isHR     = item.requester_role === 'HR';
@@ -205,8 +426,6 @@ function LeaveCard({ item, onAction, acting }) {
     </CardShell>
   );
 }
-
-// ── Resignation card ───────────────────────────────────────────────────────────
 
 function ResignationCard({ item, onAction, acting }) {
   const [remarks,     setRemarks]     = useState('');
@@ -260,6 +479,7 @@ export default function CeoApprovals({ toast }) {
   const [loading,        setLoading]        = useState(true);
   const [acting,         setActing]         = useState(false);
   const [tab,            setTab]            = useState('pending');
+  const [detailModal,    setDetailModal]    = useState(null); // { item, type }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -386,6 +606,7 @@ export default function CeoApprovals({ toast }) {
         ) : (
           /* History tab */
           <div className="flex flex-col gap-5">
+
             {salaryHistory.length > 0 && (
               <div>
                 <SectionHead type="salary" count={salaryHistory.length} />
@@ -402,10 +623,13 @@ export default function CeoApprovals({ toast }) {
                     </thead>
                     <tbody>
                       {salaryHistory.map(r => (
-                        <tr key={r.id}>
+                        <tr key={r.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                          onClick={() => setDetailModal({ item: r, type: 'salary' })}>
                           <td className="text-gray-400 text-xs">#{r.id}</td>
-                          <td className="font-semibold">Employee #{r.entity_id}</td>
-                          <td><Badge text={r.status.charAt(0).toUpperCase() + r.status.slice(1)} /></td>
+                          <td className="font-semibold" style={{ color: 'var(--accent)' }}>
+                            {r.context?.employee_name || `Employee #${r.entity_id}`}
+                          </td>
+                          <td><Badge text={cap(r.status)} /></td>
                           <td className="text-gray-500 text-xs max-w-[200px] truncate">{r.remarks || '—'}</td>
                           <td className="text-gray-400 text-xs whitespace-nowrap">{(r.updated_at || r.created_at)?.slice(0, 10)}</td>
                         </tr>
@@ -432,8 +656,9 @@ export default function CeoApprovals({ toast }) {
                     </thead>
                     <tbody>
                       {leaveHistory.map(r => (
-                        <tr key={r.id}>
-                          <td className="font-semibold">{r.employee_name || `#${r.employee_id}`}</td>
+                        <tr key={r.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                          onClick={() => setDetailModal({ item: r, type: 'leave' })}>
+                          <td className="font-semibold" style={{ color: 'var(--accent)' }}>{r.employee_name || `#${r.employee_id}`}</td>
                           <td>{r.leave_type}</td>
                           <td className="text-gray-500 text-xs">{r.from_date} → {r.to_date}</td>
                           <td>{r.total_days}d</td>
@@ -462,8 +687,9 @@ export default function CeoApprovals({ toast }) {
                     </thead>
                     <tbody>
                       {resignHistory.map(r => (
-                        <tr key={r.id}>
-                          <td className="font-semibold">{r.employee_name || `#${r.employee_id}`}</td>
+                        <tr key={r.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                          onClick={() => setDetailModal({ item: r, type: 'resignation' })}>
+                          <td className="font-semibold" style={{ color: 'var(--accent)' }}>{r.employee_name || `#${r.employee_id}`}</td>
                           <td className="text-xs">{r.approved_last_working_date || r.last_working_date || '—'}</td>
                           <td className="text-gray-500 text-xs max-w-[180px] truncate">{r.hr_remarks || '—'}</td>
                           <td><Badge text={r.status} /></td>
@@ -485,6 +711,15 @@ export default function CeoApprovals({ toast }) {
           </div>
         )}
       </div>
+
+      {/* History detail modal */}
+      {detailModal && (
+        <HistoryDetailModal
+          item={detailModal.item}
+          type={detailModal.type}
+          onClose={() => setDetailModal(null)}
+        />
+      )}
     </div>
   );
 }
