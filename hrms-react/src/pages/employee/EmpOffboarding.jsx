@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api';
 import SelectComp from '../../components/Select';
+import DatePicker from '../../components/DatePicker';
 import {
   Clock, CheckCircle2, X, Save, ChevronRight, AlertTriangle,
   ClipboardList, BookOpen, Package, MessageSquare, Landmark,
@@ -36,6 +37,8 @@ const Inp = ({ label, value, onChange, type = 'text', placeholder, required, row
     {rows ? (
       <textarea value={value || ''} onChange={e => onChange(e.target.value)}
         rows={rows} placeholder={placeholder} className="form-textarea" style={{ fontSize: 13 }} />
+    ) : type === 'date' ? (
+      <DatePicker value={value || ''} onChange={onChange} />
     ) : (
       <input type={type} value={value || ''} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} className="form-input" style={{ fontSize: 13 }} />

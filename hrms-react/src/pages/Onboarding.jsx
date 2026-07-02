@@ -294,32 +294,14 @@ function OnDocuments({ data, set, empId }) {
   };
 
   const STATUS_OPTIONS = ['Pending', 'Submitted', 'Verified', 'Not Applicable'];
-  const STATUS_COLORS = {
-    'Verified':       { background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' },
-    'Not Applicable': { background: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' },
-    'Submitted':      { background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' },
-    'Pending':        { background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' },
-  };
-  const StatusBadge = ({ val, onChange }) => {
-    const v = val || 'Pending';
-    const style = STATUS_COLORS[v] || STATUS_COLORS['Pending'];
-    return (
-      <div style={{ position: 'relative', width: 140 }}>
-        <select
-          value={v}
-          onChange={e => onChange(e.target.value)}
-          style={{
-            width: '100%', fontSize: 11.5, fontWeight: 600, padding: '4px 22px 4px 8px',
-            borderRadius: 20, cursor: 'pointer', appearance: 'none', outline: 'none',
-            ...style,
-          }}
-        >
-          {STATUS_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-        <span style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: 9, color: style.color }}>▼</span>
-      </div>
-    );
-  };
+  const StatusBadge = ({ val, onChange }) => (
+    <SelectDS
+      value={val || 'Pending'}
+      onChange={onChange}
+      options={STATUS_OPTIONS}
+      size="sm"
+    />
+  );
 
   const DocRow = ({ label, fieldKey, placeholder }) => (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, alignItems: 'end' }}>

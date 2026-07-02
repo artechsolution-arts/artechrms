@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api';
+import Select from '../../components/Select';
 import { Activity, RefreshCw, Search, Filter } from 'lucide-react';
 
 const ACTION_COLORS = {
@@ -124,24 +125,20 @@ export default function ActivityLog({ toast }) {
 
         <div className="flex flex-col gap-1 min-w-[140px]">
           <label className="text-xs text-[var(--text-muted)] font-medium">Action</label>
-          <select
+          <Select
             value={action}
-            onChange={e => setAction(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)]"
-          >
-            {ACTIONS.map(a => <option key={a} value={a}>{a || 'All actions'}</option>)}
-          </select>
+            onChange={setAction}
+            options={ACTIONS.map(a => ({ value: a, label: a || 'All actions' }))}
+          />
         </div>
 
         <div className="flex flex-col gap-1 min-w-[140px]">
           <label className="text-xs text-[var(--text-muted)] font-medium">Entity type</label>
-          <select
+          <Select
             value={entityType}
-            onChange={e => setEntityType(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)]"
-          >
-            {ENTITY_TYPES.map(t => <option key={t} value={t}>{t || 'All types'}</option>)}
-          </select>
+            onChange={setEntityType}
+            options={ENTITY_TYPES.map(t => ({ value: t, label: t || 'All types' }))}
+          />
         </div>
 
         <button

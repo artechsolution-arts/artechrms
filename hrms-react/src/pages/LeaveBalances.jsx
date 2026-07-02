@@ -218,11 +218,11 @@ function EmployeeCard({ empId, name, photo, balances, leaveTypes, colorIdx, year
                     <div className="flex flex-col items-center gap-0.5">
                       <input
                         type="number" min={0} step={0.5}
-                        className="w-14 text-xs text-center border border-amber-300 dark:border-amber-700 rounded-md px-1 py-0.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        className="w-14 text-xs text-center border border-gray-200 dark:border-gray-600 rounded-md px-1 py-0.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                         value={editVals[`used_${lt.id}`] ?? (b ? b.used : 0)}
                         onChange={e => setEditVals(prev => ({ ...prev, [`used_${lt.id}`]: e.target.value }))}
                       />
-                      <span className="text-[9px] text-amber-500">taken</span>
+                      <span className="text-[9px] text-gray-400">taken</span>
                     </div>
                     <div className="flex flex-col items-center gap-0.5">
                       <input

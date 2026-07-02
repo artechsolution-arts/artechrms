@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../../api';
+import Select from '../../components/Select';
+import DatePicker from '../../components/DatePicker';
 import {
   Search, Filter, Download, RefreshCw, Clock, User, Shield,
   ArrowRight, ChevronLeft, ChevronRight as ChevronRightIcon,
@@ -143,54 +145,66 @@ function Filters({ filters, onChange, onReset }) {
           value={filters.search}
           onChange={e => onChange('search', e.target.value)}
           placeholder="Search actor or entity…"
-          style={{ width: '100%', paddingLeft: 32, paddingRight: 10, height: 34, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', color: '#111827', boxSizing: 'border-box' }}
+          className="form-input pl-8"
+          style={{ paddingLeft: 32 }}
         />
       </div>
 
       {/* Role */}
-      <select value={filters.actor_role} onChange={e => onChange('actor_role', e.target.value)}
-        style={{ height: 34, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, padding: '0 10px', background: '#fff', color: '#374151', cursor: 'pointer' }}>
-        <option value="">All Roles</option>
-        <option value="HR">HR</option>
-        <option value="Employee">Employee</option>
-        <option value="SuperAdmin">Super Admin</option>
-        <option value="CEO">CEO</option>
-      </select>
+      <div style={{ minWidth: 130 }}>
+        <Select value={filters.actor_role} onChange={v => onChange('actor_role', v)}
+          options={[
+            { value: '', label: 'All Roles' },
+            { value: 'HR', label: 'HR' },
+            { value: 'Employee', label: 'Employee' },
+            { value: 'SuperAdmin', label: 'Super Admin' },
+            { value: 'CEO', label: 'CEO' },
+          ]}
+        />
+      </div>
 
       {/* Action */}
-      <select value={filters.action} onChange={e => onChange('action', e.target.value)}
-        style={{ height: 34, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, padding: '0 10px', background: '#fff', color: '#374151', cursor: 'pointer' }}>
-        <option value="">All Actions</option>
-        <option value="CREATE">Created</option>
-        <option value="UPDATE">Updated</option>
-        <option value="DELETE">Deleted</option>
-        <option value="APPROVE">Approved</option>
-        <option value="REJECT">Rejected</option>
-        <option value="LOGIN">Login</option>
-        <option value="RUN_PAYROLL">Payroll Run</option>
-        <option value="PROFILE_UPDATE">Profile Edit</option>
-        <option value="PROMOTION">Promotion</option>
-        <option value="TRANSFER">Transfer</option>
-        <option value="DEMOTION">Demotion</option>
-        <option value="RESET_PASSWORD">Password Reset</option>
-      </select>
+      <div style={{ minWidth: 150 }}>
+        <Select value={filters.action} onChange={v => onChange('action', v)}
+          options={[
+            { value: '', label: 'All Actions' },
+            { value: 'CREATE', label: 'Created' },
+            { value: 'UPDATE', label: 'Updated' },
+            { value: 'DELETE', label: 'Deleted' },
+            { value: 'APPROVE', label: 'Approved' },
+            { value: 'REJECT', label: 'Rejected' },
+            { value: 'LOGIN', label: 'Login' },
+            { value: 'RUN_PAYROLL', label: 'Payroll Run' },
+            { value: 'PROFILE_UPDATE', label: 'Profile Edit' },
+            { value: 'PROMOTION', label: 'Promotion' },
+            { value: 'TRANSFER', label: 'Transfer' },
+            { value: 'DEMOTION', label: 'Demotion' },
+            { value: 'RESET_PASSWORD', label: 'Password Reset' },
+          ]}
+        />
+      </div>
 
       {/* Source */}
-      <select value={filters.source} onChange={e => onChange('source', e.target.value)}
-        style={{ height: 34, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, padding: '0 10px', background: '#fff', color: '#374151', cursor: 'pointer' }}>
-        <option value="">All Sources</option>
-        <option value="activity">System Log</option>
-        <option value="history">HR Actions</option>
-        <option value="profile">Employee Self-Edits</option>
-      </select>
+      <div style={{ minWidth: 150 }}>
+        <Select value={filters.source} onChange={v => onChange('source', v)}
+          options={[
+            { value: '', label: 'All Sources' },
+            { value: 'activity', label: 'System Log' },
+            { value: 'history', label: 'HR Actions' },
+            { value: 'profile', label: 'Employee Self-Edits' },
+          ]}
+        />
+      </div>
 
       {/* Date from */}
-      <input type="date" value={filters.from_date} onChange={e => onChange('from_date', e.target.value)}
-        style={{ height: 34, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, padding: '0 10px', background: '#fff', color: '#374151', cursor: 'pointer' }} />
+      <div style={{ minWidth: 150 }}>
+        <DatePicker value={filters.from_date} onChange={v => onChange('from_date', v)} placeholder="From date" />
+      </div>
 
       {/* Date to */}
-      <input type="date" value={filters.to_date} onChange={e => onChange('to_date', e.target.value)}
-        style={{ height: 34, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, padding: '0 10px', background: '#fff', color: '#374151', cursor: 'pointer' }} />
+      <div style={{ minWidth: 150 }}>
+        <DatePicker value={filters.to_date} onChange={v => onChange('to_date', v)} placeholder="To date" />
+      </div>
 
       {/* Reset */}
       <button onClick={onReset}

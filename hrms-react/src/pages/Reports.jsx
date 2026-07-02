@@ -741,14 +741,14 @@ export default function Reports() {
                                   type="number" min="0" max="999" step="1"
                                   value={hm.h}
                                   onChange={e => setHM('h', e.target.value)}
-                                  className="w-12 text-right bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded px-1.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                  className="w-12 text-right bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded px-1.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                                 />
                                 <span className="text-[10px] text-gray-400">h</span>
                                 <input
                                   type="number" min="0" max="59" step="1"
                                   value={hm.m}
                                   onChange={e => setHM('m', e.target.value)}
-                                  className="w-10 text-right bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded px-1.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                  className="w-10 text-right bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded px-1.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                                 />
                                 <span className="text-[10px] text-gray-400">m</span>
                               </div>
