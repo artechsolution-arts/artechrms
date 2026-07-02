@@ -179,7 +179,7 @@ def process(
         req.status = "approved"
         req.remarks = remarks
         db.commit()
-        _apply_on_approve(db, req)
+        _apply_on_approve(db, req, approver_user)
         _notify_requester(db, req, "approved", remarks)
 
     return req
@@ -315,23 +315,43 @@ def _notify_requester(db: Session, req: ApprovalRequest, action: str, remarks: s
     db.commit()
 
 
-def _apply_on_approve(db: Session, req: ApprovalRequest):
+def _apply_on_approve(db: Session, req: ApprovalRequest, approver_user=None):
     """Apply pending changes after final approval. Currently handles salary_change."""
     if req.module != "salary_change" or not req.entity_id or not req.payload:
         return
 
     from backend.models.employee import Employee
+    from backend.models.hrm import EmployeeHistory
+    from datetime import date
+
     emp = db.query(Employee).filter(Employee.id == req.entity_id).first()
     if not emp:
         return
 
     # Payload may be {"new": {...}, "old": {...}} (new format) or flat dict (legacy)
-    new_values = req.payload.get("new", req.payload) if isinstance(req.payload, dict) else req.payload
+    payload = req.payload if isinstance(req.payload, dict) else {}
+    new_values = payload.get("new", payload)
+    old_values = payload.get("old", {})
 
     _SALARY_FIELDS = {"basic_salary", "hra_percent", "special_allowance", "lta", "other_allowance", "ca_allowance"}
     for field, value in new_values.items():
         if field in _SALARY_FIELDS:
             setattr(emp, field, value)
+    db.commit()
+
+    # Auto-create a history event so Worker History is always complete (like Oracle HCM)
+    approver_name = None
+    if approver_user:
+        approver_name = getattr(approver_user, "full_name", None) or getattr(approver_user, "email", None)
+    db.add(EmployeeHistory(
+        employee_id=emp.id,
+        change_type="Salary Hike",
+        effective_date=date.today(),
+        salary_before=old_values.get("basic_salary"),
+        salary_after=new_values.get("basic_salary"),
+        remarks=f"Approved via salary change request #{req.id}",
+        created_by=approver_name,
+    ))
     db.commit()
 
     # Notify the employee that their salary changed

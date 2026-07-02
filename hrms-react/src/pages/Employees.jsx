@@ -1981,6 +1981,90 @@ export default function Employees({ toast }) {
                         )}
                       </div>}
 
+                      {/* ── COMPENSATION HISTORY ── */}
+                      {(() => {
+                        // All events that have salary data, sorted oldest→newest
+                        const salEvAsc = [...allEv]
+                          .filter(e => e.salary_before != null || e.salary_after != null)
+                          .sort((a, b) => new Date(a.effective_date) - new Date(b.effective_date));
+
+                        // Seed with hire salary if no Joining salary event exists
+                        const hireSnap = getSnap(_sortedAsc[0]) || {};
+                        if (salEvAsc.length === 0 && hireSnap.salary != null) {
+                          // Show at least the starting salary from snapshot
+                          salEvAsc.push({
+                            _synthetic: true, id: '__hire_sal__',
+                            change_type: 'Joining',
+                            effective_date: detailEmp.date_of_joining,
+                            salary_before: null,
+                            salary_after: hireSnap.salary,
+                          });
+                        }
+                        if (salEvAsc.length === 0) return null;
+
+                        const fmtRs = n => `₹${Number(n).toLocaleString('en-IN')}`;
+                        return (
+                          <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <IndianRupee size={11} /> Compensation History
+                              </span>
+                              <span className="text-[10px] text-gray-400">{salEvAsc.length} record{salEvAsc.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="table-wrap">
+                              <table className="data-table text-xs">
+                                <thead>
+                                  <tr>
+                                    <th>Effective Date</th>
+                                    <th>Salary</th>
+                                    <th>Change</th>
+                                    <th>% Increase</th>
+                                    <th>Trigger</th>
+                                    <th>Approved By</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {salEvAsc.map((ev, i) => {
+                                    const sal    = ev.salary_after ?? ev.salary_before;
+                                    const diff   = ev.salary_after != null && ev.salary_before != null
+                                      ? ev.salary_after - ev.salary_before : null;
+                                    const pct    = diff != null && ev.salary_before > 0
+                                      ? ((diff / ev.salary_before) * 100).toFixed(1) : null;
+                                    const isFirst = i === 0;
+                                    return (
+                                      <tr key={ev.id || i}
+                                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                                        onClick={() => !ev._synthetic && setViewEvent({ ...ev, _snap: getSnap(ev) })}>
+                                        <td className="text-gray-600 dark:text-gray-400">{fmtDate(ev.effective_date)}</td>
+                                        <td className="font-semibold text-gray-800 dark:text-gray-200">
+                                          {sal != null ? `${fmtRs(sal)}/mo` : '—'}
+                                        </td>
+                                        <td>
+                                          {isFirst || diff == null
+                                            ? <span className="text-gray-400 text-[11px]">Starting salary</span>
+                                            : <span className={diff >= 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-500'}>
+                                                {diff >= 0 ? '+' : ''}{fmtRs(diff)}
+                                              </span>}
+                                        </td>
+                                        <td>
+                                          {!isFirst && pct != null
+                                            ? <span className={`font-medium text-[11px] px-1.5 py-0.5 rounded ${Number(pct) >= 0 ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-600'}`}>
+                                                {Number(pct) >= 0 ? '+' : ''}{pct}%
+                                              </span>
+                                            : <span className="text-gray-300">—</span>}
+                                        </td>
+                                        <td className="text-gray-500">{ev.change_type === 'Joining' ? 'Hired' : ev.change_type}</td>
+                                        <td className="text-gray-400">{ev.created_by || '—'}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* ── WORKER HISTORY ── */}
                       <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
                         <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
