@@ -570,6 +570,7 @@ export default function Employees({ toast }) {
   const [editEventSaving, setEditEventSaving] = useState(false);
   const [viewEvent, setViewEvent]       = useState(null);
   const [showHireDetail, setShowHireDetail] = useState(false);
+  const [hireSnapshot, setHireSnapshot] = useState(null);
   const [empDocs, setEmpDocs] = useState([]);
   const [empDocsLoading, setEmpDocsLoading] = useState(false);
   const [empDocUpload, setEmpDocUpload] = useState(false);
@@ -1745,6 +1746,33 @@ export default function Employees({ toast }) {
                   // All events sorted newest first
                   const allEvDesc = allEv.slice().sort((a,b) => new Date(b.effective_date)-new Date(a.effective_date));
 
+                  // Build per-event full-state snapshots (Oracle-style: state as of each event date)
+                  const _sortedAsc = [...allEv].sort((a,b) => new Date(a.effective_date)-new Date(b.effective_date));
+                  const _first = _sortedAsc[0] || {};
+                  // Seed the starting salary from the earliest salary reference in events
+                  const _seedSalary = (() => {
+                    for (const e of _sortedAsc) {
+                      if (e.salary_before != null) return e.salary_before;
+                      if (e.salary_after  != null) return e.salary_after;
+                    }
+                    return detailEmp.basic_salary ?? null;
+                  })();
+                  let _run = {
+                    designation: _first.from_designation || _first.to_designation || detailEmp.designation,
+                    department:  _first.from_department  || _first.to_department  || detailEmp.department,
+                    salary:      _seedSalary,
+                    manager:     detailEmp.reporting_manager,
+                    location:    detailEmp.work_location || (detailEmp.office_address?.split(',')[0] ?? null),
+                  };
+                  const _snapMap = new Map();
+                  for (const ev of _sortedAsc) {
+                    if (ev.to_designation) _run = { ..._run, designation: ev.to_designation };
+                    if (ev.to_department)  _run = { ..._run, department:  ev.to_department  };
+                    if (ev.salary_after != null) _run = { ..._run, salary: ev.salary_after };
+                    _snapMap.set(ev.id ?? `__s_${ev.effective_date}`, { ..._run });
+                  }
+                  const getSnap = ev => _snapMap.get(ev.id ?? `__s_${ev.effective_date}`) || null;
+
                   return (
                     <div className="p-6 space-y-5">
 
@@ -1965,7 +1993,7 @@ export default function Employees({ toast }) {
                                   </div>
                                   <div
                                     className="flex-1 min-w-0 cursor-pointer"
-                                    onClick={() => isHire ? setShowHireDetail(true) : setViewEvent(ev)}>
+                                    onClick={() => { const snap = getSnap(ev); if (isHire) { setHireSnapshot(snap); setShowHireDetail(true); } else setViewEvent({ ...ev, _snap: snap }); }}>
                                     <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{isHire ? 'Hired' : ev.change_type}</p>
                                     <p className="text-[11px] text-gray-400 mt-0.5">{fmtDate(ev.effective_date)}{summary ? ` · ${summary}` : ''}</p>
                                   </div>
@@ -2035,7 +2063,7 @@ export default function Employees({ toast }) {
                                         <Icon size={14} />
                                       </div>
                                       <div
-                                        onClick={() => setViewEvent(ev)}
+                                        onClick={() => setViewEvent({ ...ev, _snap: getSnap(ev) })}
                                         className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 min-w-0 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
                                         <div className="flex items-start justify-between gap-2">
                                           <div className="flex-1 min-w-0">
@@ -3350,15 +3378,16 @@ export default function Employees({ toast }) {
                 <Row label="Status"           value={emp.status || 'Active'} />
 
                 <Section title="Position" />
-                <Row label="Designation"      value={emp.designation} />
-                <Row label="Department"       value={emp.department} />
-                <Row label="Reporting Manager" value={emp.reporting_manager} />
-                <Row label="Work Location"    value={emp.office_address?.split(',')[0] || emp.work_location} />
+                <Row label="Designation"      value={hireSnapshot?.designation || emp.designation} />
+                <Row label="Department"       value={hireSnapshot?.department  || emp.department} />
+                <Row label="Reporting Manager" value={hireSnapshot?.manager    || emp.reporting_manager} />
+                <Row label="Work Location"    value={hireSnapshot?.location || emp.office_address?.split(',')[0] || emp.work_location} />
 
-                <Section title="Compensation" />
-                <Row label="Basic Salary"     value={basic > 0 ? fmtRs(basic) : null} />
-                {pay?.gross > 0 && <Row label="Gross Salary"  value={fmtRs(pay.gross)} />}
-                {pay?.net   > 0 && <Row label="Net Take-Home" value={fmtRs(pay.net)} accent="text-green-600 dark:text-green-400" />}
+                <Section title="Starting Compensation" />
+                {(() => {
+                  const startBasic = hireSnapshot?.salary != null ? parseFloat(hireSnapshot.salary) : basic;
+                  return startBasic > 0 ? <Row label="Basic Salary" value={fmtRs(startBasic)} /> : null;
+                })()}
                 {emp.hra_percent > 0 && <Row label="HRA" value={`${emp.hra_percent}%`} />}
                 {emp.special_allowance > 0 && <Row label="Special Allowance" value={fmtRs(emp.special_allowance)} />}
                 {emp.lta > 0 && <Row label="LTA" value={fmtRs(emp.lta)} />}
@@ -3424,8 +3453,27 @@ export default function Employees({ toast }) {
                     </div>
                   </div>
                 );
+                const snap = ev._snap;
+                const fmtSal = n => n != null ? `₹${Number(n).toLocaleString('en-IN')} / mo` : null;
+                const SectionHdr = ({ title }) => (
+                  <div className="px-4 pt-3 pb-1">
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{title}</p>
+                  </div>
+                );
+                const hasChanges = showDesig || showDept || showSalary || showLwd;
                 return (
                   <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {/* Full employee state as of this event date */}
+                    {snap && (<>
+                      <SectionHdr title="State as of this date" />
+                      {snap.designation && <Row label="Designation"  value={snap.designation} />}
+                      {snap.department  && <Row label="Department"   value={snap.department} />}
+                      {snap.salary != null && <Row label="Basic Salary" value={fmtSal(snap.salary)} highlight="text-blue-600 dark:text-blue-400" />}
+                      {snap.manager   && <Row label="Reporting Manager" value={snap.manager}   highlight="text-gray-500 dark:text-gray-400 font-normal" />}
+                      {snap.location  && <Row label="Work Location"     value={snap.location}  highlight="text-gray-500 dark:text-gray-400 font-normal" />}
+                    </>)}
+                    {/* What changed in this event */}
+                    {hasChanges && <SectionHdr title="What changed" />}
                     {showDesig && <ChangeRow label="Designation" from={ev.from_designation} to={ev.to_designation} />}
                     {showDept  && <ChangeRow label="Department"  from={ev.from_department}  to={ev.to_department} />}
                     {showSalary && <ChangeRow label="Salary"
@@ -3433,6 +3481,8 @@ export default function Employees({ toast }) {
                       to={ev.salary_after != null ? `₹${Number(ev.salary_after).toLocaleString('en-IN')}` : null}
                       green />}
                     {showLwd && <Row label="Last Working Date" value={ev.last_working_date ? fmtDate(ev.last_working_date) : '—'} highlight={ev.last_working_date ? 'text-red-500 dark:text-red-400' : 'text-gray-300 dark:text-gray-600 italic font-normal'} />}
+                    {/* Details */}
+                    <SectionHdr title="Details" />
                     <Row label="Approved By" value={ev.created_by || '—'} highlight={ev.created_by ? undefined : 'text-gray-300 dark:text-gray-600 italic font-normal'} />
                     <Row label="Remarks"     value={ev.remarks || '—'} highlight={ev.remarks ? 'text-gray-500 dark:text-gray-400 italic font-normal' : 'text-gray-300 dark:text-gray-600 italic font-normal'} />
                     <Row label="Logged On"   value={ev.created_at ? new Date(ev.created_at).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : null} highlight="text-gray-400 dark:text-gray-500 font-normal" />
