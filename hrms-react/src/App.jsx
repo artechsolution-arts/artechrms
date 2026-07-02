@@ -61,6 +61,7 @@ import EmpResignation    from './pages/employee/EmpResignation';
 // ── CEO pages ──────────────────────────────────────────────────
 import CeoDashboard          from './pages/ceo/CeoDashboard';
 import CompensationPlanner   from './pages/ceo/CompensationPlanner';
+import CeoAuditLog           from './pages/ceo/CeoAuditLog';
 
 // ── SuperAdmin pages ───────────────────────────────────────────
 import AdminOverview     from './pages/superadmin/AdminOverview';
@@ -116,6 +117,7 @@ const PAGES = {
   // ── CEO ──
   'ceo-dashboard':          CeoDashboard,
   'compensation-planner':   CompensationPlanner,
+  'ceo-audit-log':          CeoAuditLog,
   // ── SuperAdmin ──
   'admin-overview':    AdminOverview,
   'admin-users':       UserManagement,
