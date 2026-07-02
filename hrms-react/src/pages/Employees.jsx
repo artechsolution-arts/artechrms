@@ -2069,7 +2069,7 @@ export default function Employees({ toast }) {
                       <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
                         <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
                           <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <Briefcase size={11} /> Worker History
+                            <Briefcase size={11} /> Employment History
                           </span>
                         </div>
                         {historyLoading ? (
