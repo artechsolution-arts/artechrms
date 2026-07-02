@@ -38,6 +38,7 @@ export default function Leaves({ toast }) {
   const [form, setForm] = useState({});
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [formErrors, setFormErrors] = useState({});
+  const [selectedLeave, setSelectedLeave] = useState(null);
 
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('artech_hrms_user') || '{}'); } catch { return {}; } })();
   const myRole = currentUser.role || '';
@@ -65,6 +66,21 @@ export default function Leaves({ toast }) {
       .then(([t, e]) => { setTypes(t); setEmps(e); load(initStatus || statusFilter); })
       .catch(e => toast(e.message, 'error'));
   }, []);
+  // Deep-link: auto-open leave detail modal when arriving from a notification
+  useEffect(() => {
+    if (loading) return;
+    const raw = sessionStorage.getItem('notif-deeplink');
+    if (!raw) return;
+    sessionStorage.removeItem('notif-deeplink');
+    try {
+      const { entityId, entityType } = JSON.parse(raw);
+      if (entityType === 'leave') {
+        const match = allRows.find(r => String(r.id) === String(entityId));
+        if (match) { setStatusFilter('Pending'); setSelectedLeave(match); }
+      }
+    } catch {}
+  }, [loading]);
+
   useRefreshOnFocus(load);
 
   const f = (v) => { setForm(prev => ({ ...prev, ...v })); const key = Object.keys(v)[0]; if (key) setFormErrors(prev => ({ ...prev, [key]: '' })); };
@@ -406,6 +422,50 @@ export default function Leaves({ toast }) {
           </FormGrid>
         </FormSection>
       </Modal>
+
+      {/* Leave detail modal — auto-opened from notification deep-link */}
+      {selectedLeave && (
+        <Modal open title={`Leave Request — ${selectedLeave.employee_name || '—'}`}
+          onClose={() => setSelectedLeave(null)} hideSave>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                ['Employee',   selectedLeave.employee_name || '—'],
+                ['Leave Type', selectedLeave.leave_type    || '—'],
+                ['From',       fmtDate(selectedLeave.from_date)],
+                ['To',         fmtDate(selectedLeave.to_date)],
+                ['Duration',   `${selectedLeave.total_days} day${selectedLeave.total_days !== 1 ? 's' : ''}`],
+                ['Status',     selectedLeave.status || '—'],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg px-3 py-2 border bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700">
+                  <div className="text-[10px] font-bold uppercase tracking-wide mb-0.5 text-gray-400">{label}</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{value}</div>
+                </div>
+              ))}
+            </div>
+            {selectedLeave.reason && (
+              <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg px-4 py-3">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Reason</div>
+                <div className="text-sm text-gray-700 dark:text-gray-300">{selectedLeave.reason}</div>
+              </div>
+            )}
+            {selectedLeave.status === 'Pending' && canApprove(myRole, selectedLeave.requester_role || 'Employee') && (
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={async () => { await approve(selectedLeave.id); setSelectedLeave(null); }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors">
+                  <CheckCircle size={14} /> Approve
+                </button>
+                <button
+                  onClick={async () => { await reject(selectedLeave.id); setSelectedLeave(null); }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-xl transition-colors">
+                  <XCircle size={14} /> Reject
+                </button>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

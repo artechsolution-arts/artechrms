@@ -343,9 +343,8 @@ function HistoryDetailModal({ item, type, onClose }) {
 
 // ── Pending item cards ─────────────────────────────────────────────────────────
 
-function SalaryCard({ item, onAction, acting, autoOpen }) {
+function SalaryCard({ item, onAction, acting }) {
   const [open, setOpen] = useState(false);
-  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
   const ctx = item.context || {};
   const t   = TYPES.salary;
   return (
@@ -496,9 +495,8 @@ function ResignationDetailModal({ item, onClose, onAction, acting }) {
 
 // ── Compact pending cards (click name → modal) ────────────────────────────────
 
-function LeaveCard({ item, onAction, acting, autoOpen }) {
+function LeaveCard({ item, onAction, acting }) {
   const [open, setOpen] = useState(false);
-  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
   const isHR = item.requester_role === 'HR';
   const days = item.total_days;
   const t    = TYPES.leave;
@@ -541,9 +539,8 @@ function LeaveCard({ item, onAction, acting, autoOpen }) {
   );
 }
 
-function ResignationCard({ item, onAction, acting, autoOpen }) {
+function ResignationCard({ item, onAction, acting }) {
   const [open, setOpen] = useState(false);
-  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
   const t = TYPES.resignation;
   return (
     <>
@@ -758,12 +755,9 @@ export default function CeoApprovals({ toast }) {
                   const domId = `approval-item-${item._type}-${item.id ?? item.approval_request_id}`;
                   return (
                     <div key={domId} id={domId} className="rounded-xl transition-all duration-300">
-                      {item._type === 'salary'      && <SalaryCard      item={item} onAction={handleAction} acting={acting}
-                        autoOpen={pendingOpen?.type === 'salary'      && String(pendingOpen.id) === String(item.id ?? item.approval_request_id)} />}
-                      {item._type === 'leave'       && <LeaveCard       item={item} onAction={handleAction} acting={acting}
-                        autoOpen={pendingOpen?.type === 'leave'       && String(pendingOpen.id) === String(item.id)} />}
-                      {item._type === 'resignation' && <ResignationCard item={item} onAction={handleAction} acting={acting}
-                        autoOpen={pendingOpen?.type === 'resignation' && String(pendingOpen.id) === String(item.id)} />}
+                      {item._type === 'salary'      && <SalaryCard      item={item} onAction={handleAction} acting={acting} />}
+                      {item._type === 'leave'       && <LeaveCard       item={item} onAction={handleAction} acting={acting} />}
+                      {item._type === 'resignation' && <ResignationCard item={item} onAction={handleAction} acting={acting} />}
                     </div>
                   );
                 })}
@@ -842,6 +836,30 @@ export default function CeoApprovals({ toast }) {
           onClose={() => setDetailModal(null)}
         />
       )}
+
+      {/* Deep-link modal: auto-opened when arriving from a notification click */}
+      {(() => {
+        if (!pendingOpen) return null;
+        const dlItem = allPending.find(i =>
+          i._type === pendingOpen.type &&
+          String(i.id ?? i.approval_request_id) === String(pendingOpen.id)
+        );
+        if (!dlItem) return null;
+        const close = () => setPendingOpen(null);
+        if (dlItem._type === 'salary') return (
+          <SalaryDetailModal key={dlItem.id} item={dlItem} acting={acting} onClose={close}
+            onAction={async (action, body) => { await handleAction('salary', dlItem.approval_request_id, action, body); close(); }} />
+        );
+        if (dlItem._type === 'leave') return (
+          <LeaveDetailModal key={dlItem.id} item={dlItem} acting={acting} onClose={close}
+            onAction={async (action) => { await handleAction('leave', dlItem.id, action, {}); close(); }} />
+        );
+        if (dlItem._type === 'resignation') return (
+          <ResignationDetailModal key={dlItem.id} item={dlItem} acting={acting} onClose={close}
+            onAction={async (action, body) => { await handleAction('resignation', dlItem.id, action, body); close(); }} />
+        );
+        return null;
+      })()}
     </div>
   );
 }

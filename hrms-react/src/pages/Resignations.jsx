@@ -135,6 +135,28 @@ export default function Resignations({ toast }) {
 
   useEffect(() => { load(); }, []);
 
+  // Deep-link: expand and scroll to the resignation when arriving from a notification
+  useEffect(() => {
+    if (loading) return;
+    const raw = sessionStorage.getItem('notif-deeplink');
+    if (!raw) return;
+    sessionStorage.removeItem('notif-deeplink');
+    try {
+      const { entityId, entityType } = JSON.parse(raw);
+      if (entityType === 'resignation') {
+        const match = rows.find(r => String(r.id) === String(entityId));
+        if (match) {
+          setStatusTab('Pending');
+          setExpanded(match.id);
+          setTimeout(() => {
+            const el = document.getElementById(`resignation-card-${match.id}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
+      }
+    } catch {}
+  }, [loading]);
+
   const filtered = statusTab === 'All' ? rows : rows.filter(r => r.status === statusTab);
 
   const openAction = (row, mode) => {
@@ -215,7 +237,7 @@ export default function Resignations({ toast }) {
               <p className="text-sm text-gray-400">No resignations found</p>
             </div>
           ) : filtered.map(r => (
-            <div key={r.id} className="card overflow-hidden">
+            <div key={r.id} id={`resignation-card-${r.id}`} className="card overflow-hidden">
               {/* Header row */}
               <div className="flex items-start gap-4 p-4">
                 {/* Avatar */}
