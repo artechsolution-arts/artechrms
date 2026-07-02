@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api';
+import Badge from '../../components/Badge';
+import DatePicker from '../../components/DatePicker';
 import {
-  CheckCircle, XCircle, Clock, IndianRupee,
-  ChevronDown, ChevronUp, Calendar, UserMinus,
+  CheckCircle, XCircle, IndianRupee,
+  ChevronDown, ChevronUp, Calendar, UserMinus, RefreshCw,
 } from 'lucide-react';
 
-// ── Salary change helpers ──────────────────────────────────────────────────────
+// ── Salary helpers ─────────────────────────────────────────────────────────────
 
 const SALARY_LABELS = {
   basic_salary:      'Basic Salary',
@@ -26,53 +28,41 @@ function fmtSalary(key, val) {
   return `₹${Math.round(n).toLocaleString('en-IN')}`;
 }
 
-// ── TYPE CONFIG ────────────────────────────────────────────────────────────────
+// ── Type config ────────────────────────────────────────────────────────────────
 
 const TYPE_META = {
-  salary:      { label: 'Salary Change',  Icon: IndianRupee, bg: '#EEF2FF', color: '#4F46E5', badge: '#E0E7FF', badgeText: '#3730A3' },
-  leave:       { label: 'Leave Request',  Icon: Calendar,    bg: '#F0FDF4', color: '#16A34A', badge: '#DCFCE7', badgeText: '#15803D' },
-  resignation: { label: 'Resignation',    Icon: UserMinus,   bg: '#FFF7ED', color: '#EA580C', badge: '#FFEDD5', badgeText: '#C2410C' },
+  salary:      { label: 'Salary Change', Icon: IndianRupee, iconCls: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400', tagCls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
+  leave:       { label: 'Leave Request', Icon: Calendar,    iconCls: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400',   tagCls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+  resignation: { label: 'Resignation',   Icon: UserMinus,   iconCls: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400', tagCls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
 };
 
-// ── Card shell ─────────────────────────────────────────────────────────────────
+const SECTION_META = {
+  salary:      { label: 'Salary Changes',      barCls: 'bg-indigo-500', cntCls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
+  leave:       { label: 'Leave Requests',       barCls: 'bg-green-500',  cntCls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+  resignation: { label: 'Resignations',         barCls: 'bg-orange-500', cntCls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
+};
 
-function CardShell({ type, name, code, subtitle, date, children }) {
-  const [open, setOpen] = useState(false);
-  const m = TYPE_META[type];
-  const { Icon } = m;
+// ── Shared primitives ──────────────────────────────────────────────────────────
+
+function InfoBlock({ label, value, highlight }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB', boxShadow: '0 1px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <div style={{ width: 42, height: 42, borderRadius: '50%', background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Icon size={18} color={m.color} />
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-              {code && <span style={{ marginRight: 8 }}>{code}</span>}
-              {subtitle}
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: m.badge, color: m.badgeText }}>{m.label}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Clock size={10} />Pending
-          </span>
-          {date && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{date}</div>}
-          <button onClick={() => setOpen(o => !o)}
-            style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: '#6B7280' }}>
-            {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {open ? 'Hide' : 'Review'}
-          </button>
-        </div>
-      </div>
-      {open && (
-        <div style={{ borderTop: '1px solid #F3F4F6', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {children}
-        </div>
-      )}
+    <div className={`rounded-lg px-3 py-2 border ${highlight
+      ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700'}`}>
+      <div className="text-[10px] font-bold uppercase tracking-wide mb-0.5 text-gray-400">{label}</div>
+      <div className={`text-sm font-semibold ${highlight ? 'text-amber-800 dark:text-amber-300' : 'text-gray-900 dark:text-gray-100'}`}>{value}</div>
+    </div>
+  );
+}
+
+function SectionHead({ type, count }) {
+  const m = SECTION_META[type];
+  if (!count) return null;
+  return (
+    <div className="flex items-center gap-2 mt-1 mb-0.5">
+      <div className={`w-0.5 h-4 rounded-full ${m.barCls}`} />
+      <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{m.label}</span>
+      <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${m.cntCls}`}>{count}</span>
     </div>
   );
 }
@@ -84,15 +74,57 @@ function ActionRow({ onApprove, onReject, acting, approveLabel = 'Approve', reje
     try { await fn(); } finally { setLocalActing(null); }
   }
   return (
-    <div style={{ display: 'flex', gap: 10 }}>
+    <div className="flex gap-3">
       <button onClick={() => handle('approve', onApprove)} disabled={!!localActing || acting}
-        style={{ flex: 1, padding: '10px 20px', background: localActing === 'approve' ? '#15803D' : '#16A34A', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: localActing || acting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, opacity: localActing && localActing !== 'approve' ? 0.5 : 1, fontFamily: 'inherit', transition: 'background 0.15s' }}>
-        <CheckCircle size={15} />{localActing === 'approve' ? `${approveLabel.replace(/e$/, '')}ing…` : approveLabel}
+        className="btn btn-approve flex-1 justify-center gap-2">
+        <CheckCircle size={14} />
+        {localActing === 'approve' ? `${approveLabel.replace(/e$/, '')}ing…` : approveLabel}
       </button>
       <button onClick={() => handle('reject', onReject)} disabled={!!localActing || acting}
-        style={{ flex: 1, padding: '10px 20px', background: localActing === 'reject' ? '#B91C1C' : '#DC2626', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: localActing || acting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, opacity: localActing && localActing !== 'reject' ? 0.5 : 1, fontFamily: 'inherit', transition: 'background 0.15s' }}>
-        <XCircle size={15} />{localActing === 'reject' ? 'Rejecting…' : rejectLabel}
+        className="btn btn-reject flex-1 justify-center gap-2">
+        <XCircle size={14} />
+        {localActing === 'reject' ? 'Rejecting…' : rejectLabel}
       </button>
+    </div>
+  );
+}
+
+// ── Card shell ─────────────────────────────────────────────────────────────────
+
+function CardShell({ type, name, code, subtitle, date, children }) {
+  const [open, setOpen] = useState(false);
+  const m = TYPE_META[type];
+  const { Icon } = m;
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-5 py-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${m.iconCls}`}>
+            <Icon size={17} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{name}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {code && <span className="mr-2 font-medium">{code}</span>}
+              {subtitle}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${m.tagCls}`}>{m.label}</span>
+          <Badge text="Pending" />
+          {date && <span className="text-[11px] text-gray-400">{date}</span>}
+          <button onClick={() => setOpen(o => !o)} className="btn btn-secondary btn-xs gap-1">
+            {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            {open ? 'Hide' : 'Review'}
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -101,28 +133,28 @@ function ActionRow({ onApprove, onReject, acting, approveLabel = 'Approve', reje
 
 function SalaryCard({ item, onAction, acting }) {
   const [remarks, setRemarks] = useState('');
-  const ctx     = item.context || {};
-  const payload = item.payload || {};
-  const fields  = Object.entries(payload).filter(([k]) => SALARY_LABELS[k]);
+  const ctx    = item.context || {};
+  const fields = Object.entries(item.payload || {}).filter(([k]) => SALARY_LABELS[k]);
   return (
     <CardShell type="salary" name={ctx.employee_name || `Employee #${item.entity_id}`} code={ctx.employee_code}
       subtitle={`Salary Change Request · #${item.approval_request_id}`} date={item.created_at?.slice(0, 10)}>
       {fields.length > 0 && (
-        <div style={{ border: '1px solid #E5E7EB', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '8px 14px', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>Proposed Changes</div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <div className="table-wrap">
+          <table className="data-table">
             <thead>
-              <tr style={{ background: '#F9FAFB' }}>
-                <th style={{ padding: '7px 14px', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: 12, borderBottom: '1px solid #E5E7EB' }}>Field</th>
-                <th style={{ padding: '7px 14px', textAlign: 'right', fontWeight: 600, color: '#15803D', fontSize: 12, borderBottom: '1px solid #E5E7EB' }}>New Value</th>
+              <tr>
+                <th>Field</th>
+                <th className="text-right">New Value</th>
               </tr>
             </thead>
             <tbody>
-              {fields.map(([key, val], i) => (
-                <tr key={key} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA', borderBottom: i < fields.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
-                  <td style={{ padding: '9px 14px', color: '#374151', fontWeight: 500 }}>{SALARY_LABELS[key]}</td>
-                  <td style={{ padding: '9px 14px', textAlign: 'right' }}>
-                    <span style={{ background: '#F0FDF4', color: '#15803D', padding: '2px 8px', borderRadius: 6, fontWeight: 600, border: '1px solid #BBF7D0' }}>{fmtSalary(key, val)}</span>
+              {fields.map(([key, val]) => (
+                <tr key={key}>
+                  <td className="font-medium">{SALARY_LABELS[key]}</td>
+                  <td className="text-right">
+                    <span className="inline-block bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs font-semibold px-2 py-0.5 rounded border border-green-200 dark:border-green-800">
+                      {fmtSalary(key, val)}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -131,9 +163,11 @@ function SalaryCard({ item, onAction, acting }) {
         </div>
       )}
       <div>
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Remarks <span style={{ fontWeight: 400, color: '#9CA3AF' }}>(optional)</span></label>
-        <textarea value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Add a note…" rows={2}
-          style={{ width: '100%', padding: '8px 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, resize: 'vertical', fontFamily: 'inherit', outline: 'none', color: '#111827', boxSizing: 'border-box' }} />
+        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+          Remarks <span className="font-normal text-gray-400">(optional)</span>
+        </label>
+        <textarea value={remarks} onChange={e => setRemarks(e.target.value)}
+          placeholder="Add a note…" rows={2} className="form-input resize-y" />
       </div>
       <ActionRow acting={acting}
         onApprove={() => onAction('salary', item.approval_request_id, 'approve', { remarks })}
@@ -145,25 +179,24 @@ function SalaryCard({ item, onAction, acting }) {
 // ── Leave card ─────────────────────────────────────────────────────────────────
 
 function LeaveCard({ item, onAction, acting }) {
-  const isHR    = item.requester_role === 'HR';
-  const days    = item.total_days;
-  const dateRange = `${item.from_date} → ${item.to_date}`;
-  const subtitle = `${item.leave_type} · ${days}d · ${dateRange}${isHR ? ' · HR Staff' : ''}`;
+  const isHR     = item.requester_role === 'HR';
+  const days     = item.total_days;
+  const subtitle = `${item.leave_type} · ${days}d · ${item.from_date} → ${item.to_date}${isHR ? ' · HR Staff' : ''}`;
   return (
     <CardShell type="leave" name={item.employee_name || `Employee #${item.employee_id}`}
       subtitle={subtitle} date={item.from_date}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <InfoBlock label="Leave Type"  value={item.leave_type} />
-        <InfoBlock label="Duration"    value={`${days} day${days !== 1 ? 's' : ''}${item.half_day ? ' (half day)' : ''}`} />
-        <InfoBlock label="From"        value={item.from_date} />
-        <InfoBlock label="To"          value={item.to_date} />
+      <div className="grid grid-cols-2 gap-2">
+        <InfoBlock label="Leave Type" value={item.leave_type} />
+        <InfoBlock label="Duration"   value={`${days} day${days !== 1 ? 's' : ''}${item.half_day ? ' (half day)' : ''}`} />
+        <InfoBlock label="From"       value={item.from_date} />
+        <InfoBlock label="To"         value={item.to_date} />
         {item.leave_category && <InfoBlock label="Category" value={item.leave_category} />}
         {isHR && <InfoBlock label="Requested by" value="HR Staff" highlight />}
       </div>
       {item.reason && (
-        <div style={{ background: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: 8, padding: '10px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Reason</div>
-          <div style={{ fontSize: 13, color: '#374151' }}>{item.reason}</div>
+        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg px-4 py-3">
+          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Reason</div>
+          <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
         </div>
       )}
       <ActionRow acting={acting}
@@ -176,77 +209,42 @@ function LeaveCard({ item, onAction, acting }) {
 // ── Resignation card ───────────────────────────────────────────────────────────
 
 function ResignationCard({ item, onAction, acting }) {
-  const [remarks, setRemarks]  = useState('');
+  const [remarks,     setRemarks]     = useState('');
   const [approvedLwd, setApprovedLwd] = useState(item.last_working_date || '');
-  const subtitle = `${item.designation || 'Employee'} · ${item.department || ''} · Requested LWD: ${item.last_working_date || '—'}`;
+  const subtitle = `${item.designation || 'Employee'} · ${item.department || ''} · LWD: ${item.last_working_date || '—'}`;
   return (
     <CardShell type="resignation" name={item.employee_name || `Employee #${item.employee_id}`} code={item.employee_code}
       subtitle={subtitle} date={item.created_at}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {item.department   && <InfoBlock label="Department"  value={item.department} />}
-        {item.designation  && <InfoBlock label="Designation" value={item.designation} />}
+      <div className="grid grid-cols-2 gap-2">
+        {item.department      && <InfoBlock label="Department"    value={item.department} />}
+        {item.designation     && <InfoBlock label="Designation"   value={item.designation} />}
         {item.date_of_joining && <InfoBlock label="Date of Joining" value={item.date_of_joining} />}
         <InfoBlock label="Requested LWD" value={item.last_working_date || '—'} />
         {item.notice_period_days != null && <InfoBlock label="Notice Period" value={`${item.notice_period_days} days`} />}
       </div>
       {item.reason && (
-        <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 8, padding: '10px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#C2410C', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Reason for Resignation</div>
-          <div style={{ fontSize: 13, color: '#374151' }}>{item.reason}</div>
+        <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-3">
+          <div className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1">Reason for Resignation</div>
+          <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
         </div>
       )}
       <div>
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Approved Last Working Day</label>
-        <input type="date" value={approvedLwd} onChange={e => setApprovedLwd(e.target.value)}
-          style={{ width: '100%', padding: '8px 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#111827', boxSizing: 'border-box' }} />
+        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+          Approved Last Working Day
+        </label>
+        <DatePicker value={approvedLwd} onChange={setApprovedLwd} placeholder="Select approved last working day" />
       </div>
       <div>
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Remarks <span style={{ fontWeight: 400, color: '#9CA3AF' }}>(optional)</span></label>
-        <textarea value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Add a note for the employee…" rows={2}
-          style={{ width: '100%', padding: '8px 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, resize: 'vertical', fontFamily: 'inherit', outline: 'none', color: '#111827', boxSizing: 'border-box' }} />
+        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+          Remarks <span className="font-normal text-gray-400">(optional)</span>
+        </label>
+        <textarea value={remarks} onChange={e => setRemarks(e.target.value)}
+          placeholder="Add a note for the employee…" rows={2} className="form-input resize-y" />
       </div>
       <ActionRow acting={acting} approveLabel="Accept" rejectLabel="Not Accept"
         onApprove={() => onAction('resignation', item.id, 'approve', { hr_remarks: remarks, approved_last_working_date: approvedLwd || item.last_working_date })}
         onReject={()  => onAction('resignation', item.id, 'reject',  { hr_remarks: remarks })} />
     </CardShell>
-  );
-}
-
-function InfoBlock({ label, value, highlight }) {
-  return (
-    <div style={{ background: highlight ? '#FEF3C7' : '#F9FAFB', border: `1px solid ${highlight ? '#FDE68A' : '#F3F4F6'}`, borderRadius: 8, padding: '8px 12px' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: highlight ? '#92400E' : '#111827' }}>{value}</div>
-    </div>
-  );
-}
-
-// ── Status badge ───────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }) {
-  const colors = {
-    approved: { bg: '#D1FAE5', text: '#065F46' },
-    rejected:  { bg: '#FEE2E2', text: '#991B1B' },
-    pending:   { bg: '#FEF3C7', text: '#92400E' },
-  };
-  const c = colors[status?.toLowerCase()] || colors.pending;
-  return (
-    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 20, background: c.bg, color: c.text }}>
-      {status ? status.charAt(0).toUpperCase() + status.slice(1) : '—'}
-    </span>
-  );
-}
-
-// ── Section heading ─────────────────────────────────────────────────────────────
-
-function SectionHead({ label, count, color }) {
-  if (!count) return null;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, marginBottom: 2 }}>
-      <div style={{ width: 3, height: 18, borderRadius: 2, background: color }} />
-      <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-      <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: color + '22', color }}>{count}</span>
-    </div>
   );
 }
 
@@ -299,8 +297,7 @@ export default function CeoApprovals({ toast }) {
       } else if (type === 'resignation') {
         await api('PUT', `/api/resignations/${id}/${action}`, body);
       }
-      const verb = action === 'approve' || action === 'accept' ? 'approved' : 'rejected';
-      toast?.(`Request ${verb} successfully`, 'success');
+      toast?.(`Request ${action === 'approve' ? 'approved' : 'rejected'} successfully`, 'success');
       load();
     } catch (e) {
       toast?.(e.message, 'error');
@@ -321,85 +318,96 @@ export default function CeoApprovals({ toast }) {
       <div className="page-head">
         <div>
           <h1 className="page-title">Approvals</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Salary changes, leaves and resignations waiting for your decision</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Salary changes, leaves and resignations waiting for your decision
+          </p>
         </div>
-        <button onClick={load} style={{ padding: '7px 16px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer', fontFamily: 'inherit' }}>
-          Refresh
+        <button onClick={load} className="btn btn-secondary btn-sm gap-1.5">
+          <RefreshCw size={13} /> Refresh
         </button>
       </div>
 
       <div className="page-content space-y-5">
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, background: '#F3F4F6', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              style={{ padding: '6px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', background: tab === t.key ? '#fff' : 'transparent', color: tab === t.key ? '#111827' : '#6B7280', boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+              className={`px-5 py-1.5 rounded-lg text-sm font-semibold transition-all ${tab === t.key
+                ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
               {t.label}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, gap: 10, color: '#9CA3AF' }}>
-            <div style={{ width: 20, height: 20, border: '2px solid #E5E7EB', borderTopColor: '#6366F1', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+          <div className="flex items-center justify-center gap-3 py-20 text-gray-400">
+            <div className="w-5 h-5 rounded-full border-2 border-gray-200 border-t-indigo-500 animate-spin" />
             Loading…
           </div>
         ) : tab === 'pending' ? (
           totalPending === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9CA3AF' }}>
-              <CheckCircle size={48} style={{ color: '#D1FAE5', margin: '0 auto 12px' }} />
-              <div style={{ fontSize: 15, fontWeight: 600, color: '#374151' }}>All clear!</div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>No pending approval requests</div>
+            <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
+              <CheckCircle size={48} className="text-green-200 dark:text-green-900" />
+              <div className="text-center">
+                <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">All clear!</div>
+                <div className="text-xs mt-0.5">No pending approval requests</div>
+              </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {salaryPending.length > 0 && <>
-                <SectionHead label="Salary Changes" count={salaryPending.length} color="#4F46E5" />
-                {salaryPending.map(item => (
-                  <SalaryCard key={item.approval_request_id} item={item} onAction={handleAction} acting={acting} />
-                ))}
-              </>}
-
-              {leavePending.length > 0 && <>
-                <SectionHead label="Leave Requests" count={leavePending.length} color="#16A34A" />
-                {leavePending.map(item => (
-                  <LeaveCard key={item.id} item={item} onAction={handleAction} acting={acting} />
-                ))}
-              </>}
-
-              {resignPending.length > 0 && <>
-                <SectionHead label="Resignations" count={resignPending.length} color="#EA580C" />
-                {resignPending.map(item => (
-                  <ResignationCard key={item.id} item={item} onAction={handleAction} acting={acting} />
-                ))}
-              </>}
+            <div className="flex flex-col gap-3">
+              {salaryPending.length > 0 && (
+                <>
+                  <SectionHead type="salary" count={salaryPending.length} />
+                  {salaryPending.map(item => (
+                    <SalaryCard key={item.approval_request_id} item={item} onAction={handleAction} acting={acting} />
+                  ))}
+                </>
+              )}
+              {leavePending.length > 0 && (
+                <>
+                  <SectionHead type="leave" count={leavePending.length} />
+                  {leavePending.map(item => (
+                    <LeaveCard key={item.id} item={item} onAction={handleAction} acting={acting} />
+                  ))}
+                </>
+              )}
+              {resignPending.length > 0 && (
+                <>
+                  <SectionHead type="resignation" count={resignPending.length} />
+                  {resignPending.map(item => (
+                    <ResignationCard key={item.id} item={item} onAction={handleAction} acting={acting} />
+                  ))}
+                </>
+              )}
             </div>
           )
         ) : (
           /* History tab */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Salary change history */}
+          <div className="flex flex-col gap-5">
             {salaryHistory.length > 0 && (
               <div>
-                <SectionHead label="Salary Changes" count={salaryHistory.length} color="#4F46E5" />
-                <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #F3F4F6', overflow: 'hidden', marginTop: 8 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <SectionHead type="salary" count={salaryHistory.length} />
+                <div className="table-wrap mt-2">
+                  <table className="data-table">
                     <thead>
-                      <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                        {['#', 'Employee', 'Status', 'Remarks', 'Date'].map(h => (
-                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
-                        ))}
+                      <tr>
+                        <th>#</th>
+                        <th>Employee</th>
+                        <th>Status</th>
+                        <th>Remarks</th>
+                        <th>Date</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {salaryHistory.map((r, i) => (
-                        <tr key={r.id} style={{ borderBottom: i < salaryHistory.length - 1 ? '1px solid #F3F4F6' : 'none', background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                          <td style={{ padding: '10px 14px', color: '#9CA3AF', fontSize: 12 }}>#{r.id}</td>
-                          <td style={{ padding: '10px 14px', fontWeight: 600, color: '#111827' }}>Employee #{r.entity_id}</td>
-                          <td style={{ padding: '10px 14px' }}><StatusBadge status={r.status} /></td>
-                          <td style={{ padding: '10px 14px', color: '#6B7280', fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.remarks || '—'}</td>
-                          <td style={{ padding: '10px 14px', color: '#9CA3AF', fontSize: 12, whiteSpace: 'nowrap' }}>{(r.updated_at || r.created_at)?.slice(0, 10)}</td>
+                      {salaryHistory.map(r => (
+                        <tr key={r.id}>
+                          <td className="text-gray-400 text-xs">#{r.id}</td>
+                          <td className="font-semibold">Employee #{r.entity_id}</td>
+                          <td><Badge text={r.status.charAt(0).toUpperCase() + r.status.slice(1)} /></td>
+                          <td className="text-gray-500 text-xs max-w-[200px] truncate">{r.remarks || '—'}</td>
+                          <td className="text-gray-400 text-xs whitespace-nowrap">{(r.updated_at || r.created_at)?.slice(0, 10)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -408,27 +416,28 @@ export default function CeoApprovals({ toast }) {
               </div>
             )}
 
-            {/* Leave history */}
             {leaveHistory.length > 0 && (
               <div>
-                <SectionHead label="Leave Decisions" count={leaveHistory.length} color="#16A34A" />
-                <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #F3F4F6', overflow: 'hidden', marginTop: 8 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <SectionHead type="leave" count={leaveHistory.length} />
+                <div className="table-wrap mt-2">
+                  <table className="data-table">
                     <thead>
-                      <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                        {['Employee', 'Leave Type', 'Dates', 'Days', 'Status'].map(h => (
-                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
-                        ))}
+                      <tr>
+                        <th>Employee</th>
+                        <th>Leave Type</th>
+                        <th>Dates</th>
+                        <th>Days</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {leaveHistory.map((r, i) => (
-                        <tr key={r.id} style={{ borderBottom: i < leaveHistory.length - 1 ? '1px solid #F3F4F6' : 'none', background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                          <td style={{ padding: '10px 14px', fontWeight: 600, color: '#111827' }}>{r.employee_name || `#${r.employee_id}`}</td>
-                          <td style={{ padding: '10px 14px', color: '#374151' }}>{r.leave_type}</td>
-                          <td style={{ padding: '10px 14px', color: '#6B7280', fontSize: 12 }}>{r.from_date} → {r.to_date}</td>
-                          <td style={{ padding: '10px 14px', color: '#374151' }}>{r.total_days}d</td>
-                          <td style={{ padding: '10px 14px' }}><StatusBadge status={r.status} /></td>
+                      {leaveHistory.map(r => (
+                        <tr key={r.id}>
+                          <td className="font-semibold">{r.employee_name || `#${r.employee_id}`}</td>
+                          <td>{r.leave_type}</td>
+                          <td className="text-gray-500 text-xs">{r.from_date} → {r.to_date}</td>
+                          <td>{r.total_days}d</td>
+                          <td><Badge text={r.status} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -437,27 +446,28 @@ export default function CeoApprovals({ toast }) {
               </div>
             )}
 
-            {/* Resignation history */}
             {resignHistory.length > 0 && (
               <div>
-                <SectionHead label="Resignation Decisions" count={resignHistory.length} color="#EA580C" />
-                <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #F3F4F6', overflow: 'hidden', marginTop: 8 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <SectionHead type="resignation" count={resignHistory.length} />
+                <div className="table-wrap mt-2">
+                  <table className="data-table">
                     <thead>
-                      <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                        {['Employee', 'Last Working Day', 'Remarks', 'Status', 'Date'].map(h => (
-                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
-                        ))}
+                      <tr>
+                        <th>Employee</th>
+                        <th>Last Working Day</th>
+                        <th>Remarks</th>
+                        <th>Status</th>
+                        <th>Date</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {resignHistory.map((r, i) => (
-                        <tr key={r.id} style={{ borderBottom: i < resignHistory.length - 1 ? '1px solid #F3F4F6' : 'none', background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                          <td style={{ padding: '10px 14px', fontWeight: 600, color: '#111827' }}>{r.employee_name || `#${r.employee_id}`}</td>
-                          <td style={{ padding: '10px 14px', color: '#374151', fontSize: 12 }}>{r.approved_last_working_date || r.last_working_date || '—'}</td>
-                          <td style={{ padding: '10px 14px', color: '#6B7280', fontSize: 12, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.hr_remarks || '—'}</td>
-                          <td style={{ padding: '10px 14px' }}><StatusBadge status={r.status} /></td>
-                          <td style={{ padding: '10px 14px', color: '#9CA3AF', fontSize: 12 }}>{r.actioned_at || r.created_at || '—'}</td>
+                      {resignHistory.map(r => (
+                        <tr key={r.id}>
+                          <td className="font-semibold">{r.employee_name || `#${r.employee_id}`}</td>
+                          <td className="text-xs">{r.approved_last_working_date || r.last_working_date || '—'}</td>
+                          <td className="text-gray-500 text-xs max-w-[180px] truncate">{r.hr_remarks || '—'}</td>
+                          <td><Badge text={r.status} /></td>
+                          <td className="text-gray-400 text-xs">{r.actioned_at || r.created_at || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -467,15 +477,14 @@ export default function CeoApprovals({ toast }) {
             )}
 
             {salaryHistory.length === 0 && leaveHistory.length === 0 && resignHistory.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9CA3AF' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>No history yet</div>
+              <div className="flex flex-col items-center justify-center py-20 gap-2 text-gray-400">
+                <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">No history yet</div>
+                <div className="text-xs">Approved and rejected requests will appear here</div>
               </div>
             )}
           </div>
         )}
       </div>
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
