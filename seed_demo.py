@@ -25,12 +25,13 @@ if _url.startswith("postgresql://") and not _url.startswith("postgresql+"):
 # Register all models before create_all
 from backend.database import engine, SessionLocal, Base
 import backend.models  # noqa: F401
-from backend.models.activity_log import ActivityLog  # noqa: F401
+from backend.models.activity_log import ActivityLog
+from backend.models.profile_update_log import ProfileUpdateLog
 
 from backend.models.auth import User
 from backend.models.employee import Employee, Department, Designation
 from backend.models.leave import LeaveType, LeaveApplication, Attendance
-from backend.models.hrm import LeaveBalance, Holiday, EmployeeAsset, Announcement
+from backend.models.hrm import LeaveBalance, Holiday, EmployeeAsset, Announcement, EmployeeHistory
 from backend.models.payroll import SalarySlip, PayrollRules
 from backend.models.permission import RolePermission, DEFAULT_PERMISSIONS
 
@@ -52,6 +53,8 @@ random.seed(42)
 
 WIPE_TABLES = [
     "activity_logs",
+    "profile_update_logs",
+    "employee_history",
     "salary_slips",
     "payroll_entries",
     "employee_assets",
@@ -390,6 +393,83 @@ def seed(db):
     # ── 14. Feature Permissions ───────────────────────────────
     for role, features in DEFAULT_PERMISSIONS.items():
         db.add(RolePermission(role=role, allowed_features=features))
+    db.flush()
+
+    # ── 15. Audit Log — ActivityLog entries ───────────────────
+    from datetime import datetime, timezone, timedelta
+    def _dt(days_ago=0, hour=9, minute=0):
+        return datetime.now(timezone.utc) - timedelta(days=days_ago, hours=0) \
+               + timedelta(hours=hour - datetime.now(timezone.utc).hour, minutes=minute - datetime.now(timezone.utc).minute)
+
+    activity_entries = [
+        # Today
+        dict(actor="hr_priya",   actor_role="HR",         action="APPROVE",   entity_type="Leave",    entity_name="Arjun Mehta — Casual Leave",   changes={"status": "Approved"},     ip_address="192.168.1.10", created_at=_dt(0, 10, 15)),
+        dict(actor="hr_priya",   actor_role="HR",         action="UPDATE",    entity_type="Employee", entity_name="Rohan Das",                     changes={"basic_salary": {"old": "42000", "new": "46000"}}, ip_address="192.168.1.10", created_at=_dt(0, 9, 45)),
+        dict(actor="ceo_vivek",  actor_role="CEO",        action="LOGIN",     entity_type="Auth",     entity_name="Vivek Jeevan",                  changes=None,                        ip_address="103.45.12.8",  created_at=_dt(0, 9, 5)),
+        dict(actor="hr_priya",   actor_role="HR",         action="LOGIN",     entity_type="Auth",     entity_name="Priya Sharma",                  changes=None,                        ip_address="192.168.1.10", created_at=_dt(0, 8, 58)),
+        # Yesterday
+        dict(actor="hr_priya",   actor_role="HR",         action="RUN_PAYROLL", entity_type="Payroll",  entity_name="June 2025 Payroll — 5 employees", changes={"month": "June 2025", "employees_processed": "5", "total_net": "₹2,27,500"}, ip_address="192.168.1.10", created_at=_dt(1, 16, 30)),
+        dict(actor="hr_priya",   actor_role="HR",         action="REJECT",    entity_type="Leave",    entity_name="Neha Reddy — Sick Leave",       changes={"status": "Rejected", "reason": "Insufficient balance"}, ip_address="192.168.1.10", created_at=_dt(1, 14, 20)),
+        dict(actor="emp_arjun",  actor_role="Employee",   action="LOGIN",     entity_type="Auth",     entity_name="Arjun Mehta",                   changes=None,                        ip_address="49.36.118.22", created_at=_dt(1, 9, 10)),
+        dict(actor="emp_neha",   actor_role="Employee",   action="LOGIN",     entity_type="Auth",     entity_name="Neha Reddy",                    changes=None,                        ip_address="49.36.118.23", created_at=_dt(1, 9, 3)),
+        # 3 days ago
+        dict(actor="hr_priya",   actor_role="HR",         action="CREATE",    entity_type="Employee", entity_name="Suresh Pillai",                 changes={"employee_id": "JVN-0005", "department": "Operations", "designation": "Operations Executive", "salary": "35000"}, ip_address="192.168.1.10", created_at=_dt(3, 11, 45)),
+        dict(actor="hr_priya",   actor_role="HR",         action="UPDATE",    entity_type="Employee", entity_name="Kavya Nair",                    changes={"designation": {"old": "Sales Executive", "new": "Sales Manager"}}, ip_address="192.168.1.10", created_at=_dt(3, 15, 0)),
+        dict(actor="superadmin", actor_role="SuperAdmin", action="RESET_PASSWORD", entity_type="User", entity_name="emp_rohan",                  changes={"username": "emp_rohan"},   ip_address="127.0.0.1",    created_at=_dt(3, 10, 5)),
+        # 5 days ago
+        dict(actor="hr_priya",   actor_role="HR",         action="APPROVE",   entity_type="Leave",    entity_name="Kavya Nair — Earned Leave",     changes={"status": "Approved", "days": "3"}, ip_address="192.168.1.10", created_at=_dt(5, 14, 30)),
+        dict(actor="hr_priya",   actor_role="HR",         action="CREATE",    entity_type="Announcement", entity_name="Q2 Performance Review Dates", changes={"title": "Q2 Performance Review Dates", "audience": "All"}, ip_address="192.168.1.10", created_at=_dt(5, 10, 20)),
+        dict(actor="ceo_vivek",  actor_role="CEO",        action="LOGIN",     entity_type="Auth",     entity_name="Vivek Jeevan",                  changes=None,                        ip_address="103.45.12.8",  created_at=_dt(5, 9, 0)),
+        # 10 days ago
+        dict(actor="superadmin", actor_role="SuperAdmin", action="UPDATE",    entity_type="Permissions", entity_name="CEO Role Permissions",       changes={"added": "ceo-audit-log"},  ip_address="127.0.0.1",    created_at=_dt(10, 11, 0)),
+        dict(actor="hr_priya",   actor_role="HR",         action="APPROVE",   entity_type="Leave",    entity_name="Rohan Das — Sick Leave",        changes={"status": "Approved", "days": "2"}, ip_address="192.168.1.10", created_at=_dt(10, 15, 45)),
+        dict(actor="hr_priya",   actor_role="HR",         action="DELETE",    entity_type="Asset",    entity_name="Laptop #A-2021-005",            changes={"reason": "Returned on resignation"}, ip_address="192.168.1.10", created_at=_dt(10, 13, 0)),
+        # 20 days ago
+        dict(actor="hr_priya",   actor_role="HR",         action="RUN_PAYROLL", entity_type="Payroll",  entity_name="May 2025 Payroll — 5 employees", changes={"month": "May 2025", "employees_processed": "5", "total_net": "₹2,15,000"}, ip_address="192.168.1.10", created_at=_dt(20, 16, 0)),
+        dict(actor="hr_priya",   actor_role="HR",         action="UPDATE",    entity_type="Employee", entity_name="Arjun Mehta",                   changes={"mobile": {"old": "9876543210", "new": "9988776655"}}, ip_address="192.168.1.10", created_at=_dt(20, 11, 30)),
+        # 35 days ago
+        dict(actor="superadmin", actor_role="SuperAdmin", action="CREATE",    entity_type="User",     entity_name="hr_priya",                      changes={"role": "HR", "email": "priya@jeevan.demo"}, ip_address="127.0.0.1",    created_at=_dt(35, 10, 0)),
+        dict(actor="hr_priya",   actor_role="HR",         action="APPROVE",   entity_type="Leave",    entity_name="Suresh Pillai — Casual Leave",  changes={"status": "Approved", "days": "1"}, ip_address="192.168.1.10", created_at=_dt(35, 14, 0)),
+    ]
+    for e in activity_entries:
+        created = e.pop("created_at")
+        al = ActivityLog(**e)
+        db.add(al)
+        db.flush()
+        # Set created_at directly
+        from sqlalchemy import update as sa_update
+        db.execute(sa_update(ActivityLog).where(ActivityLog.id == al.id).values(created_at=created))
+    db.flush()
+
+    # ── 16. Audit Log — EmployeeHistory entries ───────────────
+    emp_arjun  = emp_objs["emp_arjun"]
+    emp_neha   = emp_objs["emp_neha"]
+    emp_rohan  = emp_objs["emp_rohan"]
+    emp_kavya  = emp_objs["emp_kavya"]
+    emp_suresh = emp_objs["emp_suresh"]
+
+    history_entries = [
+        dict(employee_id=emp_arjun.id,  change_type="Promotion",         from_designation="Software Engineer",    to_designation="Senior Software Engineer", from_department="Engineering", to_department="Engineering", effective_date=date(2023, 4, 1),  salary_before=42000, salary_after=55000, remarks="Annual promotion — exceptional performance"),
+        dict(employee_id=emp_kavya.id,  change_type="Promotion",         from_designation="Sales Executive",      to_designation="Sales Manager",            from_department="Sales",       to_department="Sales",       effective_date=TODAY - timedelta(days=3), salary_before=45000, salary_after=60000, remarks="Promoted after closing Q1 targets"),
+        dict(employee_id=emp_rohan.id,  change_type="Transfer",          from_designation="Software Engineer",    to_designation="Software Engineer",         from_department="Operations",  to_department="Engineering", effective_date=date(2023, 9, 1),  salary_before=42000, salary_after=42000, remarks="Moved to Engineering team per request"),
+        dict(employee_id=emp_neha.id,   change_type="Department Change", from_designation="HR Executive",         to_designation="HR Executive",              from_department="Engineering", to_department="Human Resources", effective_date=date(2023, 2, 1), salary_before=38000, salary_after=38000, remarks="Joining HR department"),
+        dict(employee_id=emp_suresh.id, change_type="Joining",           from_designation=None,                   to_designation="Operations Executive",      from_department=None,          to_department="Operations",  effective_date=date(2022, 8, 5),  salary_before=None,  salary_after=35000, remarks="New hire — onboarded"),
+        dict(employee_id=emp_arjun.id,  change_type="Transfer",          from_designation="Senior Software Engineer", to_designation="Team Lead",             from_department="Engineering", to_department="Engineering", effective_date=TODAY - timedelta(days=15), salary_before=55000, salary_after=62000, remarks="Leadership role — team expansion"),
+    ]
+    for h in history_entries:
+        db.add(EmployeeHistory(**h))
+    db.flush()
+
+    # ── 17. Audit Log — ProfileUpdateLog entries ──────────────
+    profile_updates = [
+        dict(employee_id=emp_arjun.id,  changes={"mobile": {"old": "9876543210", "new": "9988776655"}, "emergency_contact_name": {"old": None, "new": "Meera Mehta"}}, seen_by_hr=True),
+        dict(employee_id=emp_neha.id,   changes={"address": {"old": None, "new": "14, MG Road, Bengaluru 560001"}, "blood_group": {"old": None, "new": "B+"}}, seen_by_hr=True),
+        dict(employee_id=emp_rohan.id,  changes={"mobile": {"old": "9876543212", "new": "9090909090"}}, seen_by_hr=False),
+        dict(employee_id=emp_kavya.id,  changes={"linkedin": {"old": None, "new": "linkedin.com/in/kavyanair"}, "profile_photo": {"old": None, "new": "updated"}}, seen_by_hr=True),
+        dict(employee_id=emp_suresh.id, changes={"bank_account_number": {"old": "12345678901", "new": "98765432100"}, "bank_name": {"old": "SBI", "new": "HDFC"}}, seen_by_hr=False),
+    ]
+    for p in profile_updates:
+        db.add(ProfileUpdateLog(**p))
     db.flush()
 
     db.commit()

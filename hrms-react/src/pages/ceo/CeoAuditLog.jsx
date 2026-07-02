@@ -339,8 +339,21 @@ export default function CeoAuditLog({ toast }) {
   const total   = data?.total   || 0;
   const pages   = Math.ceil(total / LIMIT);
 
-  const StatCard = ({ label, value, sub, color }) => (
-    <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', border: '1px solid #F3F4F6', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+  const StatCard = ({ label, value, sub, color, onClick, active }) => (
+    <div
+      onClick={onClick}
+      style={{
+        background: active ? color + '10' : '#fff',
+        borderRadius: 12, padding: '16px 20px',
+        border: active ? `1.5px solid ${color}40` : '1px solid #F3F4F6',
+        boxShadow: active ? `0 0 0 3px ${color}18` : '0 1px 6px rgba(0,0,0,0.05)',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.15s',
+        userSelect: 'none',
+      }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.boxShadow = active ? `0 0 0 3px ${color}28` : '0 2px 12px rgba(0,0,0,0.10)'; }}
+      onMouseLeave={e => { if (onClick) e.currentTarget.style.boxShadow = active ? `0 0 0 3px ${color}18` : '0 1px 6px rgba(0,0,0,0.05)'; }}
+    >
       <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 28, fontWeight: 800, color: color || '#111827', lineHeight: 1 }}>{value ?? '—'}</div>
       {sub && <div style={{ fontSize: 11.5, color: '#9CA3AF', marginTop: 4 }}>{sub}</div>}
@@ -365,9 +378,15 @@ export default function CeoAuditLog({ toast }) {
         {/* Summary stats */}
         {summary && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
-            <StatCard label="Total Events"    value={summary.total?.toLocaleString()}         sub="All time"         color="#111827" />
-            <StatCard label="Last 24 Hours"   value={summary.today_changes?.toLocaleString()} sub="Changes today"    color="#1D4ED8" />
-            <StatCard label="Last 7 Days"     value={summary.week_changes?.toLocaleString()}  sub="Changes this week" color="#7C3AED" />
+            <StatCard label="Total Events"    value={summary.total?.toLocaleString()}         sub="All time"          color="#111827"
+              active={!filters.from_date && !filters.to_date && !filters.action && !filters.actor_role && !filters.search && !filters.source}
+              onClick={resetFilters} />
+            <StatCard label="Last 24 Hours"   value={summary.today_changes?.toLocaleString()} sub="Changes today"     color="#1D4ED8"
+              active={filters.from_date === new Date().toISOString().split('T')[0] && !filters.to_date}
+              onClick={() => { setFilters(f => ({ ...f, from_date: new Date().toISOString().split('T')[0], to_date: '' })); setPage(0); }} />
+            <StatCard label="Last 7 Days"     value={summary.week_changes?.toLocaleString()}  sub="Changes this week" color="#7C3AED"
+              active={filters.from_date === new Date(Date.now() - 6*24*60*60*1000).toISOString().split('T')[0] && !filters.to_date}
+              onClick={() => { setFilters(f => ({ ...f, from_date: new Date(Date.now() - 6*24*60*60*1000).toISOString().split('T')[0], to_date: '' })); setPage(0); }} />
             <StatCard label="Filtered Results" value={loading ? '…' : total.toLocaleString()} sub="Matching filter"   color="#0369A1" />
           </div>
         )}
