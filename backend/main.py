@@ -398,7 +398,7 @@ except Exception:
 finally:
     _perm_db.close()
 
-app = FastAPI(title="Artech HRMS", version="1.0.0")
+app = FastAPI(title="AR Peopliz", version="1.0.0")
 
 # Rate limiter: 10 login attempts per minute per IP
 _limiter = Limiter(key_func=get_remote_address, default_limits=["10/minute"])

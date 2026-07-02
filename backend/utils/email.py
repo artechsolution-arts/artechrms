@@ -179,11 +179,11 @@ def _base(content: str) -> str:
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f9fafb;padding:24px;border-radius:12px">
       <div style="background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
         <div style="background:#1e40af;padding:20px 24px">
-          <h2 style="color:white;margin:0;font-size:18px">Artech HRMS</h2>
+          <h2 style="color:white;margin:0;font-size:18px">AR Peopliz</h2>
         </div>
         <div style="padding:24px">{content}</div>
         <div style="padding:16px 24px;background:#f3f4f6;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb">
-          This is an automated message from Artech HRMS. Please do not reply.
+          This is an automated message from AR Peopliz. Please do not reply.
         </div>
       </div>
     </div>"""
@@ -345,7 +345,7 @@ def resignation_status_email(employee_name: str, status: str,
           {p("We wish you all the best in your future endeavours." if approved else "Thank you for your understanding.")}
           <p style="color:#1f2937;font-size:15px;line-height:1.75;margin:0 0 4px">Yours sincerely,</p>
           <p style="color:#111827;font-size:15px;font-weight:700;margin:0 0 4px">HR Team</p>
-          <p style="color:#6b7280;font-size:13px;margin:0">Artech HRMS</p>
+          <p style="color:#6b7280;font-size:13px;margin:0">AR Peopliz</p>
         </div>
     """)
     return subject, html
