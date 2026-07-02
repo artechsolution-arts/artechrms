@@ -71,14 +71,14 @@ class Employee(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     profile_photo = Column(String(500), nullable=True)
     basic_salary = Column(Float, nullable=True)
-    hra_percent = Column(Float, default=40.0)
+    hra_percent = Column(Float, default=20.0)
     special_allowance = Column(Float, default=0.0)
     ca_allowance  = Column(Float, default=0.0)   # Conveyance Allowance
     lta = Column(Float, default=0.0)
     other_allowance = Column(Float, default=0.0)
-    pf_applicable = Column(Integer, default=1)
-    esi_applicable = Column(Integer, default=1)
-    pt_state = Column(String(50), default="Karnataka")
+    pf_applicable = Column(Integer, default=0)
+    esi_applicable = Column(Integer, default=0)
+    pt_state = Column(String(50), default="Telangana")
     official_email = Column(String(200), nullable=True)  # corporate email from IT Access
     education = Column(JSON, default=list)   # [{degree, institution, start_year, end_year, grade}]
     experience = Column(JSON, default=list)  # [{company, role, from_year, to_year, description}]

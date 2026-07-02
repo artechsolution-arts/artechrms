@@ -35,13 +35,13 @@ const ASSET_TYPES = ['Laptop', 'Desktop', 'Mobile', 'Tablet', 'Mouse & Keyboard'
 
 function calcLivePayroll(form) {
   const basic = parseFloat(form.basic_salary) || 0;
-  const hraPct = parseFloat(form.hra_percent) || 40;
+  const hraPct = parseFloat(form.hra_percent) || 20;
   const special = parseFloat(form.special_allowance) || 0;
   const lta = parseFloat(form.lta) || 0;
   const other = parseFloat(form.other_allowance) || 0;
   const pfApplicable = form.pf_applicable !== false && form.pf_applicable !== 'false';
   const esiApplicable = form.esi_applicable !== false && form.esi_applicable !== 'false';
-  const ptState = form.pt_state || 'Karnataka';
+  const ptState = form.pt_state || 'Telangana';
 
   if (!basic) return null;
 
@@ -921,8 +921,8 @@ export default function Employees({ toast }) {
         date_of_joining: detailEmp.date_of_joining,
         first_name: detailEmp.first_name,
         last_name: detailEmp.last_name,
-        pf_applicable: detailEmp.pf_applicable ?? true,
-        esi_applicable: detailEmp.esi_applicable ?? true,
+        pf_applicable: detailEmp.pf_applicable ?? false,
+        esi_applicable: detailEmp.esi_applicable ?? false,
       });
       setDetailEmp(p => ({ ...p, education, experience }));
       toast('Saved', 'success');
@@ -935,8 +935,8 @@ export default function Employees({ toast }) {
   const openAdd = () => {
     setForm({
       employment_type: 'Full-time', status: 'Active',
-      hra_percent: 40, special_allowance: 0, lta: 0, other_allowance: 0,
-      pf_applicable: true, esi_applicable: true, pt_state: 'Karnataka',
+      hra_percent: 20, special_allowance: 0, lta: 0, other_allowance: 0,
+      pf_applicable: false, esi_applicable: false, pt_state: 'Telangana',
       ec_name: '', ec_relationship: '', ec_phone: '', ec_id: null,
       reports_to_id: null, notice_period_days: null, probation_period_days: null, office_address: '', residential_address: '',
       confirmation_date: '',
@@ -1181,13 +1181,13 @@ export default function Employees({ toast }) {
     try {
       const salaryFields = {
         basic_salary: form.basic_salary ? parseFloat(form.basic_salary) : null,
-        hra_percent: parseFloat(form.hra_percent) || 40.0,
+        hra_percent: parseFloat(form.hra_percent) || 20.0,
         special_allowance: parseFloat(form.special_allowance) || 0.0,
         lta: parseFloat(form.lta) || 0.0,
         other_allowance: parseFloat(form.other_allowance) || 0.0,
         pf_applicable: form.pf_applicable !== false && form.pf_applicable !== 'false',
         esi_applicable: form.esi_applicable !== false && form.esi_applicable !== 'false',
-        pt_state: form.pt_state || 'Karnataka',
+        pt_state: form.pt_state || 'Telangana',
       };
       const bankFields = {
         bank_name: form.bank_name || null, bank_account_no: form.bank_account_no || null,
@@ -3252,7 +3252,7 @@ export default function Employees({ toast }) {
               <input type="number" className="form-input" value={form.basic_salary || ''} onChange={e => f({ basic_salary: e.target.value })} placeholder="e.g. 30000" min="0" />
             </Field>
             <Field label="HRA % (of Basic)">
-              <input type="number" className="form-input" value={form.hra_percent ?? 40} onChange={e => f({ hra_percent: e.target.value })} placeholder="40" min="0" max="100" step="0.1" />
+              <input type="number" className="form-input" value={form.hra_percent ?? 20} onChange={e => f({ hra_percent: e.target.value })} placeholder="20" min="0" max="100" step="0.1" />
             </Field>
             <Field label="Special Allowance (₹)">
               <input type="number" className="form-input" value={form.special_allowance || 0} onChange={e => f({ special_allowance: e.target.value })} min="0" />
@@ -3265,7 +3265,7 @@ export default function Employees({ toast }) {
             </Field>
             <Field label="PT State">
               <Select
-                value={form.pt_state || 'Karnataka'}
+                value={form.pt_state || 'Telangana'}
                 onChange={v => f({ pt_state: v })}
                 options={PT_STATES}
               />
@@ -3546,10 +3546,15 @@ export default function Employees({ toast }) {
                 <Row label="ESI Eligible"     value={emp.esi_applicable ? 'Yes' : null} />
               </div>
               {/* Footer */}
-              <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-end flex-shrink-0">
+              <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 flex justify-end gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setShowHireDetail(false)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  Close
+                </button>
                 <button
                   onClick={() => { setShowHireDetail(false); openJobInfoEdit(); }}
-                  className="btn btn-primary btn-sm gap-1.5">
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 transition-colors">
                   <Pencil size={11} /> Edit
                 </button>
               </div>
