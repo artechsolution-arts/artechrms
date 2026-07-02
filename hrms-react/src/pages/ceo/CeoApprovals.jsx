@@ -29,22 +29,38 @@ function fmtSalary(key, val) {
   return `₹${Math.round(n).toLocaleString('en-IN')}`;
 }
 
-function cap(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
 // ── Type config ────────────────────────────────────────────────────────────────
 
-const TYPE_META = {
-  salary:      { label: 'Salary Change', Icon: IndianRupee, iconCls: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400', tagCls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
-  leave:       { label: 'Leave Request', Icon: Calendar,    iconCls: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400',   tagCls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
-  resignation: { label: 'Resignation',   Icon: UserMinus,   iconCls: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400', tagCls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
-};
-
-const SECTION_META = {
-  salary:      { label: 'Salary Changes', barCls: 'bg-indigo-500', cntCls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
-  leave:       { label: 'Leave Requests', barCls: 'bg-green-500',  cntCls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
-  resignation: { label: 'Resignations',   barCls: 'bg-orange-500', cntCls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
+const TYPES = {
+  salary: {
+    key:     'salary',
+    label:   'Salary Changes',
+    Icon:    IndianRupee,
+    iconCls: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
+    tagCls:  'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+    cardActive: 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20',
+    barCls:  'bg-indigo-500',
+  },
+  leave: {
+    key:     'leave',
+    label:   'Leave Requests',
+    Icon:    Calendar,
+    iconCls: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400',
+    tagCls:  'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+    cardActive: 'border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-900/20',
+    barCls:  'bg-green-500',
+  },
+  resignation: {
+    key:     'resignation',
+    label:   'Resignations',
+    Icon:    UserMinus,
+    iconCls: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400',
+    tagCls:  'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+    cardActive: 'border-orange-400 dark:border-orange-500 bg-orange-50 dark:bg-orange-900/20',
+    barCls:  'bg-orange-500',
+  },
 };
 
 // ── Shared primitives ──────────────────────────────────────────────────────────
@@ -60,14 +76,38 @@ function InfoBlock({ label, value, highlight }) {
   );
 }
 
-function SectionHead({ type, count }) {
-  const m = SECTION_META[type];
-  if (!count) return null;
+// ── Summary filter cards ───────────────────────────────────────────────────────
+
+function SummaryCards({ counts, active, onSelect }) {
   return (
-    <div className="flex items-center gap-2 mt-1 mb-0.5">
-      <div className={`w-0.5 h-4 rounded-full ${m.barCls}`} />
-      <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{m.label}</span>
-      <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${m.cntCls}`}>{count}</span>
+    <div className="grid grid-cols-3 gap-4">
+      {Object.values(TYPES).map(t => {
+        const isActive = active === t.key;
+        return (
+          <button
+            key={t.key}
+            onClick={() => onSelect(isActive ? null : t.key)}
+            className={`card text-left p-4 transition-all border-2 hover:shadow-md ${
+              isActive ? t.cardActive : 'border-transparent'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.iconCls}`}>
+                <t.Icon size={18} />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 leading-none">
+                  {counts[t.key] ?? 0}
+                </div>
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">{t.label}</div>
+              </div>
+            </div>
+            {isActive && (
+              <div className={`mt-3 h-0.5 rounded-full ${t.barCls}`} />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -85,9 +125,7 @@ function SalaryDetailModal({ item, onClose, onAction, acting }) {
 
   useEffect(() => {
     api('GET', `/api/employees/${item.entity_id}`)
-      .then(setEmployee)
-      .catch(() => {})
-      .finally(() => setLoadingEmp(false));
+      .then(setEmployee).catch(() => {}).finally(() => setLoadingEmp(false));
   }, [item.entity_id]);
 
   async function handle(action) {
@@ -100,9 +138,9 @@ function SalaryDetailModal({ item, onClose, onAction, acting }) {
     <Modal open title={`Salary Change — ${ctx.employee_name || `Employee #${item.entity_id}`}`} onClose={onClose} hideSave wide>
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-3">
-          <InfoBlock label="Employee"     value={ctx.employee_name || `#${item.entity_id}`} />
+          <InfoBlock label="Employee"      value={ctx.employee_name || `#${item.entity_id}`} />
           <InfoBlock label="Employee Code" value={ctx.employee_code || '—'} />
-          <InfoBlock label="Requested On" value={item.created_at?.slice(0, 10) || '—'} />
+          <InfoBlock label="Requested On"  value={item.created_at?.slice(0, 10) || '—'} />
         </div>
 
         {fields.length > 0 && (
@@ -125,8 +163,7 @@ function SalaryDetailModal({ item, onClose, onAction, acting }) {
                       <tr key={key}>
                         <td className="font-medium">{SALARY_LABELS[key]}</td>
                         <td className="text-right text-gray-500 dark:text-gray-400">
-                          {loadingEmp
-                            ? <span className="text-gray-300 text-xs">loading…</span>
+                          {loadingEmp ? <span className="text-gray-300 text-xs">loading…</span>
                             : oldVal != null ? fmtSalary(key, oldVal) : '—'}
                         </td>
                         <td className="text-center text-gray-300">→</td>
@@ -155,13 +192,11 @@ function SalaryDetailModal({ item, onClose, onAction, acting }) {
         <div className="flex gap-3">
           <button onClick={() => handle('approve')} disabled={!!localAct || acting}
             className="btn btn-approve flex-1 justify-center gap-2">
-            <CheckCircle size={14} />
-            {localAct === 'approve' ? 'Approving…' : 'Approve'}
+            <CheckCircle size={14} />{localAct === 'approve' ? 'Approving…' : 'Approve'}
           </button>
           <button onClick={() => handle('reject')} disabled={!!localAct || acting}
             className="btn btn-reject flex-1 justify-center gap-2">
-            <XCircle size={14} />
-            {localAct === 'reject' ? 'Rejecting…' : 'Reject'}
+            <XCircle size={14} />{localAct === 'reject' ? 'Rejecting…' : 'Reject'}
           </button>
         </div>
       </div>
@@ -181,12 +216,11 @@ function HistoryDetailModal({ item, type, onClose }) {
       <Modal open title={`Salary Change #${item.id} — ${empName}`} onClose={onClose} hideSave wide>
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <InfoBlock label="Employee"    value={empName} />
-            <InfoBlock label="Status"      value={<Badge text={cap(item.status)} />} />
-            <InfoBlock label="Submitted"   value={item.created_at?.slice(0, 16)?.replace('T', ' ') || '—'} />
+            <InfoBlock label="Employee"     value={empName} />
+            <InfoBlock label="Status"       value={<Badge text={cap(item.status)} />} />
+            <InfoBlock label="Submitted"    value={item.created_at?.slice(0, 16)?.replace('T', ' ') || '—'} />
             <InfoBlock label="Last Updated" value={item.updated_at?.slice(0, 16)?.replace('T', ' ') || '—'} />
           </div>
-
           {fields.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Changes Requested</p>
@@ -205,11 +239,7 @@ function HistoryDetailModal({ item, type, onClose }) {
               </div>
             </div>
           )}
-
-          {item.remarks && (
-            <InfoBlock label="Remarks" value={item.remarks} />
-          )}
-
+          {item.remarks && <InfoBlock label="Remarks" value={item.remarks} />}
           {item.steps?.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Approval Trail</p>
@@ -219,9 +249,7 @@ function HistoryDetailModal({ item, type, onClose }) {
                     <Badge text={cap(step.status)} />
                     <span className="text-sm text-gray-700 dark:text-gray-300">Level {step.level} · {step.approver_role}</span>
                     {step.remarks && <span className="text-xs text-gray-500 italic">"{step.remarks}"</span>}
-                    {step.actioned_at && (
-                      <span className="text-xs text-gray-400 ml-auto">{step.actioned_at.slice(0, 16).replace('T', ' ')}</span>
-                    )}
+                    {step.actioned_at && <span className="text-xs text-gray-400 ml-auto">{step.actioned_at.slice(0, 16).replace('T', ' ')}</span>}
                   </div>
                 ))}
               </div>
@@ -282,86 +310,87 @@ function HistoryDetailModal({ item, type, onClose }) {
       </Modal>
     );
   }
-
   return null;
 }
 
-// ── Salary card (compact — click name to open modal) ──────────────────────────
+// ── Pending item cards ─────────────────────────────────────────────────────────
 
 function SalaryCard({ item, onAction, acting }) {
   const [open, setOpen] = useState(false);
   const ctx = item.context || {};
-  const m   = TYPE_META.salary;
+  const t   = TYPES.salary;
   return (
     <>
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-5 py-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${m.iconCls}`}>
-              <m.Icon size={17} />
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.iconCls}`}>
+              <t.Icon size={17} />
             </div>
             <div className="min-w-0">
-              <button
-                onClick={() => setOpen(true)}
+              <button onClick={() => setOpen(true)}
                 className="text-sm font-bold text-left hover:underline truncate block"
                 style={{ color: 'var(--accent)' }}>
                 {ctx.employee_name || `Employee #${item.entity_id}`}
               </button>
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 {ctx.employee_code && <span className="mr-2 font-medium">{ctx.employee_code}</span>}
-                Salary Change Request · #{item.approval_request_id}
+                Salary Change · #{item.approval_request_id}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${m.tagCls}`}>{m.label}</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.tagCls}`}>{t.label.slice(0, -1)}</span>
             <Badge text="Pending" />
-            {item.created_at && <span className="text-[11px] text-gray-400">{item.created_at.slice(0, 10)}</span>}
-            <button onClick={() => setOpen(true)} className="btn btn-secondary btn-xs gap-1">
-              View Details
-            </button>
+            {item.created_at && <span className="hidden sm:block text-[11px] text-gray-400">{item.created_at.slice(0, 10)}</span>}
+            <button onClick={() => setOpen(true)} className="btn btn-secondary btn-xs">View</button>
           </div>
         </div>
       </div>
       {open && (
-        <SalaryDetailModal
-          item={item}
-          acting={acting}
-          onClose={() => setOpen(false)}
+        <SalaryDetailModal item={item} acting={acting} onClose={() => setOpen(false)}
           onAction={async (action, body) => {
             await onAction('salary', item.approval_request_id, action, body);
             setOpen(false);
-          }}
-        />
+          }} />
       )}
     </>
   );
 }
 
-// ── Leave card (inline expand) ─────────────────────────────────────────────────
-
-function CardShell({ type, name, code, subtitle, date, children }) {
+function LeaveCard({ item, onAction, acting }) {
   const [open, setOpen] = useState(false);
-  const m = TYPE_META[type];
+  const [localAct, setLocalAct] = useState(null);
+  const isHR  = item.requester_role === 'HR';
+  const days  = item.total_days;
+  const t     = TYPES.leave;
+
+  async function handle(action) {
+    setLocalAct(action);
+    try { await onAction('leave', item.id, action, {}); }
+    finally { setLocalAct(null); }
+  }
+
   return (
     <div className="card overflow-hidden">
       <div className="flex items-center justify-between gap-3 px-5 py-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${m.iconCls}`}>
-            <m.Icon size={17} />
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.iconCls}`}>
+            <t.Icon size={17} />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{name}</div>
+            <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+              {item.employee_name || `Employee #${item.employee_id}`}
+              {isHR && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">HR</span>}
+            </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {code && <span className="mr-2 font-medium">{code}</span>}
-              {subtitle}
+              {item.leave_type} · {days}d · {item.from_date} → {item.to_date}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${m.tagCls}`}>{m.label}</span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.tagCls}`}>Leave</span>
           <Badge text="Pending" />
-          {date && <span className="text-[11px] text-gray-400">{date}</span>}
           <button onClick={() => setOpen(o => !o)} className="btn btn-secondary btn-xs gap-1">
             {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             {open ? 'Hide' : 'Review'}
@@ -370,100 +399,118 @@ function CardShell({ type, name, code, subtitle, date, children }) {
       </div>
       {open && (
         <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4">
-          {children}
+          <div className="grid grid-cols-2 gap-2">
+            <InfoBlock label="Leave Type" value={item.leave_type} />
+            <InfoBlock label="Duration"   value={`${days} day${days !== 1 ? 's' : ''}${item.half_day ? ' (half)' : ''}`} />
+            <InfoBlock label="From" value={item.from_date} />
+            <InfoBlock label="To"   value={item.to_date} />
+            {item.leave_category && <InfoBlock label="Category" value={item.leave_category} />}
+            {isHR && <InfoBlock label="Requested by" value="HR Staff" highlight />}
+          </div>
+          {item.reason && (
+            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg px-4 py-3">
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Reason</div>
+              <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
+            </div>
+          )}
+          <div className="flex gap-3">
+            <button onClick={() => handle('approve')} disabled={!!localAct || acting}
+              className="btn btn-approve flex-1 justify-center gap-2">
+              <CheckCircle size={14} />{localAct === 'approve' ? 'Approving…' : 'Approve'}
+            </button>
+            <button onClick={() => handle('reject')} disabled={!!localAct || acting}
+              className="btn btn-reject flex-1 justify-center gap-2">
+              <XCircle size={14} />{localAct === 'reject' ? 'Rejecting…' : 'Reject'}
+            </button>
+          </div>
         </div>
       )}
     </div>
-  );
-}
-
-function ActionRow({ onApprove, onReject, acting, approveLabel = 'Approve', rejectLabel = 'Reject' }) {
-  const [localActing, setLocalActing] = useState(null);
-  async function handle(which, fn) {
-    setLocalActing(which);
-    try { await fn(); } finally { setLocalActing(null); }
-  }
-  return (
-    <div className="flex gap-3">
-      <button onClick={() => handle('approve', onApprove)} disabled={!!localActing || acting}
-        className="btn btn-approve flex-1 justify-center gap-2">
-        <CheckCircle size={14} />
-        {localActing === 'approve' ? `${approveLabel.replace(/e$/, '')}ing…` : approveLabel}
-      </button>
-      <button onClick={() => handle('reject', onReject)} disabled={!!localActing || acting}
-        className="btn btn-reject flex-1 justify-center gap-2">
-        <XCircle size={14} />
-        {localActing === 'reject' ? 'Rejecting…' : rejectLabel}
-      </button>
-    </div>
-  );
-}
-
-function LeaveCard({ item, onAction, acting }) {
-  const isHR     = item.requester_role === 'HR';
-  const days     = item.total_days;
-  const subtitle = `${item.leave_type} · ${days}d · ${item.from_date} → ${item.to_date}${isHR ? ' · HR Staff' : ''}`;
-  return (
-    <CardShell type="leave" name={item.employee_name || `Employee #${item.employee_id}`}
-      subtitle={subtitle} date={item.from_date}>
-      <div className="grid grid-cols-2 gap-2">
-        <InfoBlock label="Leave Type" value={item.leave_type} />
-        <InfoBlock label="Duration"   value={`${days} day${days !== 1 ? 's' : ''}${item.half_day ? ' (half day)' : ''}`} />
-        <InfoBlock label="From"       value={item.from_date} />
-        <InfoBlock label="To"         value={item.to_date} />
-        {item.leave_category && <InfoBlock label="Category" value={item.leave_category} />}
-        {isHR && <InfoBlock label="Requested by" value="HR Staff" highlight />}
-      </div>
-      {item.reason && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg px-4 py-3">
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Reason</div>
-          <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
-        </div>
-      )}
-      <ActionRow acting={acting}
-        onApprove={() => onAction('leave', item.id, 'approve', {})}
-        onReject={()  => onAction('leave', item.id, 'reject',  {})} />
-    </CardShell>
   );
 }
 
 function ResignationCard({ item, onAction, acting }) {
-  const [remarks,     setRemarks]     = useState('');
-  const [approvedLwd, setApprovedLwd] = useState(item.last_working_date || '');
-  const subtitle = `${item.designation || 'Employee'} · ${item.department || ''} · LWD: ${item.last_working_date || '—'}`;
+  const [open, setOpen]           = useState(false);
+  const [remarks, setRemarks]     = useState('');
+  const [approvedLwd, setLwd]     = useState(item.last_working_date || '');
+  const [localAct, setLocalAct]   = useState(null);
+  const t = TYPES.resignation;
+
+  async function handle(action) {
+    setLocalAct(action);
+    try {
+      await onAction('resignation', item.id, action,
+        action === 'approve'
+          ? { hr_remarks: remarks, approved_last_working_date: approvedLwd || item.last_working_date }
+          : { hr_remarks: remarks });
+    } finally { setLocalAct(null); }
+  }
+
   return (
-    <CardShell type="resignation" name={item.employee_name || `Employee #${item.employee_id}`} code={item.employee_code}
-      subtitle={subtitle} date={item.created_at}>
-      <div className="grid grid-cols-2 gap-2">
-        {item.department      && <InfoBlock label="Department"    value={item.department} />}
-        {item.designation     && <InfoBlock label="Designation"   value={item.designation} />}
-        {item.date_of_joining && <InfoBlock label="Date of Joining" value={item.date_of_joining} />}
-        <InfoBlock label="Requested LWD" value={item.last_working_date || '—'} />
-        {item.notice_period_days != null && <InfoBlock label="Notice Period" value={`${item.notice_period_days} days`} />}
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-5 py-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.iconCls}`}>
+            <t.Icon size={17} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+              {item.employee_name || `Employee #${item.employee_id}`}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {item.employee_code && <span className="mr-2 font-medium">{item.employee_code}</span>}
+              {item.designation || 'Employee'} · LWD: {item.last_working_date || '—'}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.tagCls}`}>Resignation</span>
+          <Badge text="Pending" />
+          <button onClick={() => setOpen(o => !o)} className="btn btn-secondary btn-xs gap-1">
+            {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            {open ? 'Hide' : 'Review'}
+          </button>
+        </div>
       </div>
-      {item.reason && (
-        <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-3">
-          <div className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1">Reason for Resignation</div>
-          <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
+      {open && (
+        <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-2">
+            {item.department      && <InfoBlock label="Department"     value={item.department} />}
+            {item.designation     && <InfoBlock label="Designation"    value={item.designation} />}
+            {item.date_of_joining && <InfoBlock label="Date of Joining" value={item.date_of_joining} />}
+            <InfoBlock label="Requested LWD" value={item.last_working_date || '—'} />
+            {item.notice_period_days != null && <InfoBlock label="Notice Period" value={`${item.notice_period_days} days`} />}
+          </div>
+          {item.reason && (
+            <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-3">
+              <div className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1">Reason</div>
+              <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Approved Last Working Day</label>
+            <DatePicker value={approvedLwd} onChange={setLwd} placeholder="Select approved last working day" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              Remarks <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <textarea value={remarks} onChange={e => setRemarks(e.target.value)}
+              placeholder="Add a note for the employee…" rows={2} className="form-input resize-y" />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => handle('approve')} disabled={!!localAct || acting}
+              className="btn btn-approve flex-1 justify-center gap-2">
+              <CheckCircle size={14} />{localAct === 'approve' ? 'Accepting…' : 'Accept'}
+            </button>
+            <button onClick={() => handle('reject')} disabled={!!localAct || acting}
+              className="btn btn-reject flex-1 justify-center gap-2">
+              <XCircle size={14} />{localAct === 'reject' ? 'Rejecting…' : 'Not Accept'}
+            </button>
+          </div>
         </div>
       )}
-      <div>
-        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-          Approved Last Working Day
-        </label>
-        <DatePicker value={approvedLwd} onChange={setApprovedLwd} placeholder="Select approved last working day" />
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-          Remarks <span className="font-normal text-gray-400">(optional)</span>
-        </label>
-        <textarea value={remarks} onChange={e => setRemarks(e.target.value)}
-          placeholder="Add a note for the employee…" rows={2} className="form-input resize-y" />
-      </div>
-      <ActionRow acting={acting} approveLabel="Accept" rejectLabel="Not Accept"
-        onApprove={() => onAction('resignation', item.id, 'approve', { hr_remarks: remarks, approved_last_working_date: approvedLwd || item.last_working_date })}
-        onReject={()  => onAction('resignation', item.id, 'reject',  { hr_remarks: remarks })} />
-    </CardShell>
+    </div>
   );
 }
 
@@ -479,7 +526,8 @@ export default function CeoApprovals({ toast }) {
   const [loading,        setLoading]        = useState(true);
   const [acting,         setActing]         = useState(false);
   const [tab,            setTab]            = useState('pending');
-  const [detailModal,    setDetailModal]    = useState(null); // { item, type }
+  const [filterType,     setFilterType]     = useState(null); // null = all
+  const [detailModal,    setDetailModal]    = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -510,13 +558,9 @@ export default function CeoApprovals({ toast }) {
   async function handleAction(type, id, action, body) {
     setActing(true);
     try {
-      if (type === 'salary') {
-        await api('POST', `/api/approvals/${id}/${action}`, body);
-      } else if (type === 'leave') {
-        await api('PUT', `/api/leaves/${id}/${action}`, body);
-      } else if (type === 'resignation') {
-        await api('PUT', `/api/resignations/${id}/${action}`, body);
-      }
+      if (type === 'salary')      await api('POST', `/api/approvals/${id}/${action}`, body);
+      else if (type === 'leave')  await api('PUT',  `/api/leaves/${id}/${action}`, body);
+      else                        await api('PUT',  `/api/resignations/${id}/${action}`, body);
       toast?.(`Request ${action === 'approve' ? 'approved' : 'rejected'} successfully`, 'success');
       load();
     } catch (e) {
@@ -527,6 +571,39 @@ export default function CeoApprovals({ toast }) {
   }
 
   const totalPending = salaryPending.length + leavePending.length + resignPending.length;
+
+  // Unified + filtered pending list (tagged with type for rendering)
+  const allPending = [
+    ...salaryPending.map(i => ({ ...i, _type: 'salary',      _date: i.created_at })),
+    ...leavePending.map(i  => ({ ...i, _type: 'leave',       _date: i.from_date })),
+    ...resignPending.map(i => ({ ...i, _type: 'resignation', _date: i.created_at })),
+  ].sort((a, b) => (b._date || '').localeCompare(a._date || ''));
+
+  const visiblePending = filterType
+    ? allPending.filter(i => i._type === filterType)
+    : allPending;
+
+  // Unified history list
+  const allHistory = [
+    ...salaryHistory.map(i => ({ ...i, _type: 'salary',      _date: i.updated_at || i.created_at, _name: i.context?.employee_name || `Employee #${i.entity_id}` })),
+    ...leaveHistory.map(i  => ({ ...i, _type: 'leave',       _date: i.to_date,                    _name: i.employee_name })),
+    ...resignHistory.map(i => ({ ...i, _type: 'resignation', _date: i.created_at,                 _name: i.employee_name })),
+  ].sort((a, b) => (b._date || '').localeCompare(a._date || ''));
+
+  const visibleHistory = filterType
+    ? allHistory.filter(i => i._type === filterType)
+    : allHistory;
+
+  const pendingCounts = {
+    salary:      salaryPending.length,
+    leave:       leavePending.length,
+    resignation: resignPending.length,
+  };
+  const historyCounts = {
+    salary:      salaryHistory.length,
+    leave:       leaveHistory.length,
+    resignation: resignHistory.length,
+  };
 
   const TABS = [
     { key: 'pending', label: `Pending${totalPending ? ` (${totalPending})` : ''}` },
@@ -549,10 +626,10 @@ export default function CeoApprovals({ toast }) {
 
       <div className="page-content space-y-5">
 
-        {/* Tabs */}
+        {/* Main tabs */}
         <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
           {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
+            <button key={t.key} onClick={() => { setTab(t.key); setFilterType(null); }}
               className={`px-5 py-1.5 rounded-lg text-sm font-semibold transition-all ${tab === t.key
                 ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
@@ -567,152 +644,101 @@ export default function CeoApprovals({ toast }) {
             Loading…
           </div>
         ) : tab === 'pending' ? (
-          totalPending === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
-              <CheckCircle size={48} className="text-green-200 dark:text-green-900" />
-              <div className="text-center">
-                <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">All clear!</div>
-                <div className="text-xs mt-0.5">No pending approval requests</div>
+          <div className="space-y-5">
+            {/* Summary filter cards */}
+            <SummaryCards
+              counts={pendingCounts}
+              active={filterType}
+              onSelect={setFilterType}
+            />
+
+            {/* Unified list */}
+            {visiblePending.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
+                <CheckCircle size={44} className="text-green-200 dark:text-green-900" />
+                <div className="text-center">
+                  <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">All clear!</div>
+                  <div className="text-xs mt-0.5">
+                    {filterType ? `No pending ${TYPES[filterType].label.toLowerCase()}` : 'No pending approval requests'}
+                  </div>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {salaryPending.length > 0 && (
-                <>
-                  <SectionHead type="salary" count={salaryPending.length} />
-                  {salaryPending.map(item => (
-                    <SalaryCard key={item.approval_request_id} item={item} onAction={handleAction} acting={acting} />
-                  ))}
-                </>
-              )}
-              {leavePending.length > 0 && (
-                <>
-                  <SectionHead type="leave" count={leavePending.length} />
-                  {leavePending.map(item => (
-                    <LeaveCard key={item.id} item={item} onAction={handleAction} acting={acting} />
-                  ))}
-                </>
-              )}
-              {resignPending.length > 0 && (
-                <>
-                  <SectionHead type="resignation" count={resignPending.length} />
-                  {resignPending.map(item => (
-                    <ResignationCard key={item.id} item={item} onAction={handleAction} acting={acting} />
-                  ))}
-                </>
-              )}
-            </div>
-          )
+            ) : (
+              <div className="flex flex-col gap-3">
+                {visiblePending.map(item => {
+                  if (item._type === 'salary')      return <SalaryCard      key={`s-${item.approval_request_id}`} item={item} onAction={handleAction} acting={acting} />;
+                  if (item._type === 'leave')       return <LeaveCard       key={`l-${item.id}`}                 item={item} onAction={handleAction} acting={acting} />;
+                  if (item._type === 'resignation') return <ResignationCard key={`r-${item.id}`}                 item={item} onAction={handleAction} acting={acting} />;
+                  return null;
+                })}
+              </div>
+            )}
+          </div>
         ) : (
           /* History tab */
-          <div className="flex flex-col gap-5">
+          <div className="space-y-5">
+            {/* Summary filter cards */}
+            <SummaryCards
+              counts={historyCounts}
+              active={filterType}
+              onSelect={setFilterType}
+            />
 
-            {salaryHistory.length > 0 && (
-              <div>
-                <SectionHead type="salary" count={salaryHistory.length} />
-                <div className="table-wrap mt-2">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Employee</th>
-                        <th>Status</th>
-                        <th>Remarks</th>
-                        <th>Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {salaryHistory.map(r => (
-                        <tr key={r.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                          onClick={() => setDetailModal({ item: r, type: 'salary' })}>
-                          <td className="text-gray-400 text-xs">#{r.id}</td>
-                          <td className="font-semibold" style={{ color: 'var(--accent)' }}>
-                            {r.context?.employee_name || `Employee #${r.entity_id}`}
-                          </td>
-                          <td><Badge text={cap(r.status)} /></td>
-                          <td className="text-gray-500 text-xs max-w-[200px] truncate">{r.remarks || '—'}</td>
-                          <td className="text-gray-400 text-xs whitespace-nowrap">{(r.updated_at || r.created_at)?.slice(0, 10)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {leaveHistory.length > 0 && (
-              <div>
-                <SectionHead type="leave" count={leaveHistory.length} />
-                <div className="table-wrap mt-2">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Employee</th>
-                        <th>Leave Type</th>
-                        <th>Dates</th>
-                        <th>Days</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaveHistory.map(r => (
-                        <tr key={r.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                          onClick={() => setDetailModal({ item: r, type: 'leave' })}>
-                          <td className="font-semibold" style={{ color: 'var(--accent)' }}>{r.employee_name || `#${r.employee_id}`}</td>
-                          <td>{r.leave_type}</td>
-                          <td className="text-gray-500 text-xs">{r.from_date} → {r.to_date}</td>
-                          <td>{r.total_days}d</td>
-                          <td><Badge text={r.status} /></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {resignHistory.length > 0 && (
-              <div>
-                <SectionHead type="resignation" count={resignHistory.length} />
-                <div className="table-wrap mt-2">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Employee</th>
-                        <th>Last Working Day</th>
-                        <th>Remarks</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {resignHistory.map(r => (
-                        <tr key={r.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                          onClick={() => setDetailModal({ item: r, type: 'resignation' })}>
-                          <td className="font-semibold" style={{ color: 'var(--accent)' }}>{r.employee_name || `#${r.employee_id}`}</td>
-                          <td className="text-xs">{r.approved_last_working_date || r.last_working_date || '—'}</td>
-                          <td className="text-gray-500 text-xs max-w-[180px] truncate">{r.hr_remarks || '—'}</td>
-                          <td><Badge text={r.status} /></td>
-                          <td className="text-gray-400 text-xs">{r.actioned_at || r.created_at || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {salaryHistory.length === 0 && leaveHistory.length === 0 && resignHistory.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 gap-2 text-gray-400">
+            {/* Unified history table */}
+            {visibleHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
                 <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">No history yet</div>
-                <div className="text-xs">Approved and rejected requests will appear here</div>
+                <div className="text-xs">Actioned requests will appear here</div>
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Employee</th>
+                      <th>Details</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleHistory.map((r, i) => {
+                      const t = TYPES[r._type];
+                      let detail = '—';
+                      if (r._type === 'salary') {
+                        const fields = Object.keys(r.payload || {}).filter(k => SALARY_LABELS[k]);
+                        detail = fields.map(k => SALARY_LABELS[k]).join(', ') || '—';
+                      } else if (r._type === 'leave') {
+                        detail = `${r.leave_type} · ${r.total_days}d (${r.from_date} → ${r.to_date})`;
+                      } else if (r._type === 'resignation') {
+                        detail = `LWD: ${r.approved_last_working_date || r.last_working_date || '—'}`;
+                      }
+                      return (
+                        <tr key={i} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                          onClick={() => setDetailModal({ item: r, type: r._type })}>
+                          <td>
+                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.tagCls}`}>
+                              {t.label.replace(' Requests', '').replace(' Changes', '')}
+                            </span>
+                          </td>
+                          <td className="font-semibold" style={{ color: 'var(--accent)' }}>{r._name || '—'}</td>
+                          <td className="text-gray-500 text-xs max-w-[240px] truncate">{detail}</td>
+                          <td>
+                            <Badge text={r.status ? cap(r.status) : (r.status || '—')} />
+                          </td>
+                          <td className="text-gray-400 text-xs whitespace-nowrap">{r._date?.slice(0, 10) || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* History detail modal */}
       {detailModal && (
         <HistoryDetailModal
           item={detailModal.item}
