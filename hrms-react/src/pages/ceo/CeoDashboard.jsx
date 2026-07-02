@@ -549,7 +549,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
         <StatCard label="Active Employees"    value={s.total_employees}      icon={Users}         gradient="navy"  delay={0.04} onClick={() => onNavigate('employees')} />
         <StatCard label="Present Today"       value={s.present_today}        icon={Clock}         gradient="green" delay={0.08} onClick={() => onNavigate('attendance')} />
         <StatCard label="On Leave Today"      value={s.on_leave_today}       icon={CalendarDays}  gradient="amber" delay={0.12} onClick={() => onNavigate('leaves')} />
-        <StatCard label="Pending Approvals"   value={totalPendingApprovals}  icon={AlertCircle}   gradient="rose"  delay={0.16} onClick={() => onNavigate('leaves')} />
+        <StatCard label="Pending Approvals"   value={totalPendingApprovals}  icon={AlertCircle}   gradient="rose"  delay={0.16} onClick={() => onNavigate('ceo-approvals')} />
       </div>
 
       {/* ── Second row stat cards ── */}
@@ -561,7 +561,7 @@ export default function CeoDashboard({ toast, onNavigate }) {
           onNavigate('employees');
         }} />
         <StatCard label="Open Positions"       value={s.open_positions}       icon={Briefcase}     gradient="purple" delay={0.08} onClick={() => onNavigate('job-openings')} />
-        <StatCard label="Pending Resignations" value={s.pending_resignations} icon={FileText}      gradient="orange" delay={0.12} onClick={() => onNavigate('leaves')} />
+        <StatCard label="Pending Resignations" value={s.pending_resignations} icon={FileText}      gradient="orange" delay={0.12} onClick={() => onNavigate('ceo-approvals')} />
         <StatCard
           label="This Month Payroll"
           value={s.monthly_payroll > 0 ? fmt(s.monthly_payroll) : '—'}
