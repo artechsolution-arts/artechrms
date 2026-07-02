@@ -1937,33 +1937,78 @@ export default function Employees({ toast }) {
                         )}
                       </div>}
 
-                      {/* ── HIRE RECORD ── */}
-                      {detailEmp.date_of_joining && (() => {
-                        const joiningEv = allEvDesc.find(e => e.change_type === 'Joining') || null;
-                        const joinDesig = joiningEv?.to_designation || detailEmp.designation || '—';
-                        const joinDept  = joiningEv?.to_department  || detailEmp.department  || '—';
-                        return (
-                          <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-                            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-                              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <CheckCircle2 size={11} /> Hire Record
-                              </span>
-                            </div>
-                            <div
-                              onClick={() => setShowHireDetail(true)}
-                              className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center flex-shrink-0">
-                                <CheckCircle2 size={14} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Hired · {fmtDate(detailEmp.date_of_joining)}</p>
-                                <p className="text-[11px] text-gray-400 mt-0.5">{joinDesig} · {joinDept}</p>
-                              </div>
-                              <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
-                            </div>
+                      {/* ── WORKER HISTORY ── */}
+                      <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                        <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                          <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                            <Briefcase size={11} /> Worker History
+                          </span>
+                        </div>
+                        {historyLoading ? (
+                          <div className="text-center py-4 text-xs text-gray-400">Loading…</div>
+                        ) : allEvDesc.length === 0 ? (
+                          <div className="text-center py-4 text-xs text-gray-400">No events recorded</div>
+                        ) : (
+                          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {allEvDesc.map((ev, i) => {
+                              const m = EVENT_META[ev.change_type] || { icon: Clock, color: 'bg-gray-100 text-gray-600' };
+                              const Icon = m.icon;
+                              const isHire = ev.change_type === 'Joining';
+                              const summary = [
+                                ev.to_designation || ev.from_designation,
+                                ev.to_department  || ev.from_department,
+                              ].filter(Boolean).join(' · ');
+                              return (
+                                <div key={ev.id || i} className="flex items-center gap-3 px-4 py-3 group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                  <div className={`w-7 h-7 rounded-full ${m.color} flex items-center justify-center flex-shrink-0`}>
+                                    <Icon size={12} />
+                                  </div>
+                                  <div
+                                    className="flex-1 min-w-0 cursor-pointer"
+                                    onClick={() => isHire ? setShowHireDetail(true) : setViewEvent(ev)}>
+                                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{isHire ? 'Hired' : ev.change_type}</p>
+                                    <p className="text-[11px] text-gray-400 mt-0.5">{fmtDate(ev.effective_date)}{summary ? ` · ${summary}` : ''}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                                    <button
+                                      title="Edit"
+                                      className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-300 hover:text-blue-500 transition-colors"
+                                      onClick={() => {
+                                        if (ev._synthetic) {
+                                          setUpdateEventType('Joining');
+                                          setUpdateForm({
+                                            effective_date:   ev.effective_date || detailEmp.date_of_joining || '',
+                                            from_designation: '',
+                                            to_designation:   ev.to_designation || detailEmp.designation || '',
+                                            from_department:  '',
+                                            to_department:    ev.to_department || detailEmp.department || '',
+                                            salary_before:    '',
+                                            salary_after:     detailEmp.basic_salary ? String(detailEmp.basic_salary) : '',
+                                            approved_by:      ev.created_by || '',
+                                            remarks:          ev.remarks || '',
+                                          });
+                                          setUpdateModalOpen(true);
+                                        } else {
+                                          openEditEvent(ev);
+                                        }
+                                      }}>
+                                      <Pencil size={11} />
+                                    </button>
+                                    {!ev._synthetic && (
+                                      <button
+                                        title="Delete"
+                                        className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-300 hover:text-red-400 transition-colors"
+                                        onClick={() => deleteHistoryEvent(ev.id)}>
+                                        <Trash2 size={11} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      })()}
+                        )}
+                      </div>
 
                       {/* ── ALL EVENTS TIMELINE ── */}
                       <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
