@@ -1636,7 +1636,7 @@ export default function Employees({ toast }) {
 
             {/* ── Tab bar ── */}
             {!detailLoading && (
-              <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 px-6 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{scrollbarWidth:'none'}}>
+              <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 px-2 overflow-x-auto [&::-webkit-scrollbar]:h-[3px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full dark:[&::-webkit-scrollbar-thumb]:bg-gray-600" style={{scrollbarWidth:'thin',scrollbarColor:'#d1d5db transparent'}}>
                 {[
                   { key: 'overview',    label: 'Overview' },
                   { key: 'job-info',    label: 'Job Info', icon: Briefcase },
