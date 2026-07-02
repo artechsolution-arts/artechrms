@@ -17,6 +17,20 @@ from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+# ── Production guard ──────────────────────────────────────────────────────────
+# This script seeds DEMO data and must NEVER run against the production DB.
+# Require DEMO_SEED=1 for any non-local database URL.
+_raw_url = os.environ.get("DATABASE_URL", "")
+_is_local = not _raw_url or "localhost" in _raw_url or "127.0.0.1" in _raw_url
+if not _is_local and not os.environ.get("DEMO_SEED"):
+    print("ERROR: Refusing to seed — DATABASE_URL points to a remote database.")
+    print("This script is for the DEMO environment only.")
+    print("If you are sure this is the demo DB, re-run with DEMO_SEED=1:")
+    print()
+    print("  DEMO_SEED=1 DATABASE_URL=... python seed_demo.py --reset")
+    print()
+    sys.exit(1)
+
 # Force psycopg3 dialect so the script runs without psycopg2 installed
 _url = os.environ.get("DATABASE_URL", "")
 if _url.startswith("postgresql://") and not _url.startswith("postgresql+"):
@@ -396,7 +410,7 @@ def seed(db):
     db.flush()
 
     # ── 15. Audit Log — ActivityLog entries ───────────────────
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timezone
     def _dt(days_ago=0, hour=9, minute=0):
         return datetime.now(timezone.utc) - timedelta(days=days_ago, hours=0) \
                + timedelta(hours=hour - datetime.now(timezone.utc).hour, minutes=minute - datetime.now(timezone.utc).minute)

@@ -429,12 +429,23 @@ def update_employee(emp_id: int, data: EmployeeIn, request: Request, db: Session
         dump["pf_applicable"] = 1 if dump["pf_applicable"] else 0
     if "esi_applicable" in dump:
         dump["esi_applicable"] = 1 if dump["esi_applicable"] else 0
+    # Capture old→new before applying
+    _SKIP_FIELDS = {"profile_photo", "hashed_password", "password"}
+    old_new = {}
+    for k, v in dump.items():
+        if k in _SKIP_FIELDS:
+            continue
+        old_val = getattr(emp, k, None)
+        new_val = v
+        if str(old_val) != str(new_val):
+            old_new[k] = {"old": str(old_val) if old_val is not None else None,
+                          "new": str(new_val) if new_val is not None else None}
     for k, v in dump.items():
         setattr(emp, k, v)
     emp.full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
     log_activity(db, request, "UPDATE", "Employee",
                  entity_id=emp.id, entity_name=emp.full_name,
-                 changes={"fields": list(dump.keys())})
+                 changes=old_new or {"fields": list(dump.keys())})
     db.commit()
     return {"ok": True}
 
