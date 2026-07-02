@@ -48,6 +48,9 @@ from backend.models.leave import LeaveType, LeaveApplication, Attendance
 from backend.models.hrm import LeaveBalance, Holiday, EmployeeAsset, Announcement, EmployeeHistory
 from backend.models.payroll import SalarySlip, PayrollRules
 from backend.models.permission import RolePermission, DEFAULT_PERMISSIONS
+from backend.models.notification import Notification
+from backend.models.resignation import Resignation
+from backend.models.approval import ApprovalRequest, ApprovalStep, ApprovalWorkflow
 
 # Inline password hashing — avoids pulling in python-jose via auth_utils
 from passlib.context import CryptContext
@@ -75,6 +78,11 @@ WIPE_TABLES = [
     "leave_balances",
     "leave_applications",
     "attendance",
+    "notifications",
+    "approval_steps",
+    "approval_requests",
+    "approval_workflows",
+    "resignations",
     "employees",
     "departments",
     "designations",
@@ -484,6 +492,229 @@ def seed(db):
     ]
     for p in profile_updates:
         db.add(ProfileUpdateLog(**p))
+    db.flush()
+
+    # ── 18. Fetch existing pending leaves (seeded in §9) for notification refs ──
+    pending_leaves = db.query(LeaveApplication).filter(
+        LeaveApplication.status == "Pending"
+    ).order_by(LeaveApplication.id).all()
+    # Ensure we have a leave per employee for notification coverage
+    # Add neha + rohan pending leaves if missing (§9 only seeds suresh, kavya, arjun)
+    emp_ids_with_pending = {lv.employee_id for lv in pending_leaves}
+    if neha.id not in emp_ids_with_pending:
+        lv_neha_extra = LeaveApplication(
+            employee_id=neha.id, leave_type_id=lt_objs["Casual Leave"].id,
+            from_date=TODAY + timedelta(days=3), to_date=TODAY + timedelta(days=4),
+            total_days=2.0, reason="Personal work", status="Pending")
+        db.add(lv_neha_extra); db.flush()
+        pending_leaves.append(lv_neha_extra)
+    if rohan.id not in emp_ids_with_pending:
+        lv_rohan_extra = LeaveApplication(
+            employee_id=rohan.id, leave_type_id=lt_objs["Sick Leave"].id,
+            from_date=TODAY + timedelta(days=1), to_date=TODAY + timedelta(days=1),
+            total_days=1.0, reason="Doctor appointment", status="Pending")
+        db.add(lv_rohan_extra); db.flush()
+        pending_leaves.append(lv_rohan_extra)
+
+    # Map employee_id → leave object for easy lookup
+    emp_id_to_leave = {lv.employee_id: lv for lv in pending_leaves}
+    lv_arjun  = emp_id_to_leave.get(arjun.id)
+    lv_kavya  = emp_id_to_leave.get(kavya.id)
+    lv_neha   = emp_id_to_leave.get(neha.id)
+    lv_rohan  = emp_id_to_leave.get(rohan.id)
+
+    # ── 19. Pending Resignations (for notification deep-links) ────────────────
+    pending_resignations = [
+        Resignation(employee_id=suresh.id, last_working_date=TODAY + timedelta(days=30),
+                    reason="Got a better opportunity", status="Pending"),
+        Resignation(employee_id=rohan.id,  last_working_date=TODAY + timedelta(days=45),
+                    reason="Pursuing higher education", status="Pending"),
+    ]
+    for rg in pending_resignations:
+        db.add(rg)
+    db.flush()
+
+    # ── 20. Approval Workflow seed (salary_change needs CEO) ──────────────────
+    from backend.services.approval_service import seed_workflows
+    seed_workflows(db)
+
+    # ── 21. Pending Salary Change ApprovalRequest (for CEO approval) ──────────
+    sal_req = ApprovalRequest(
+        module="salary_change",
+        entity_id=arjun.id,
+        requested_by_user_id=user_objs["hr_priya"].id,
+        current_level=1,
+        status="pending",
+        payload={
+            "old": {"basic_salary": 55000, "hra_percent": 40},
+            "new": {"basic_salary": 65000, "hra_percent": 40},
+        },
+    )
+    db.add(sal_req)
+    db.flush()
+    db.add(ApprovalStep(
+        approval_request_id=sal_req.id, level=1,
+        approver_role="CEO", status="pending",
+    ))
+    db.flush()
+
+    # ── 22. Notifications — comprehensive coverage of all fields ──────────────
+    from datetime import datetime, timezone
+    def _ndt(minutes_ago=0):
+        return datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
+
+    ceo_user   = user_objs["ceo_vivek"]
+    hr_user    = user_objs["hr_priya"]
+    arjun_user = user_objs["emp_arjun"]
+    neha_user  = user_objs["emp_neha"]
+    rohan_user = user_objs["emp_rohan"]
+    kavya_user = user_objs["emp_kavya"]
+    suresh_user= user_objs["emp_suresh"]
+
+    rg_suresh = pending_resignations[0]
+    rg_rohan  = pending_resignations[1]
+
+    def _lv_msg(emp_name, days, lt_name, from_d, to_d):
+        return f"{emp_name} applied for {days} day{'s' if days != 1.0 else ''} {lt_name} ({from_d} – {to_d})."
+
+    notif_entries = [
+        # ── CEO — Salary change approval (approval_request, high, unread) ──────
+        dict(recipient_user_id=ceo_user.id, entity_type="salary_change",
+             entity_id=sal_req.id, notif_type="approval_request",
+             title="Approval Required — Salary Change",
+             message=f"Salary Change request #{sal_req.id} is waiting for your approval. Arjun Mehta: ₹55,000 → ₹65,000.",
+             action="ceo-approvals", priority="high", is_read=False, is_cc=False,
+             dedup_key=f"approval_req_{sal_req.id}_l1", created_at=_ndt(5)),
+
+        # CEO — [CC] Leave — Kavya (info, low, unread, is_cc)
+        *([dict(recipient_user_id=ceo_user.id, entity_type="leave",
+               entity_id=lv_kavya.id, notif_type="info",
+               title="[CC] Leave Request — Kavya Nair",
+               message=_lv_msg("Kavya Nair", lv_kavya.total_days, "Earned Leave", lv_kavya.from_date, lv_kavya.to_date),
+               action="ceo-approvals", priority="low", is_read=False, is_cc=True,
+               dedup_key=f"leave_req_cc_{lv_kavya.id}", created_at=_ndt(60))] if lv_kavya else []),
+
+        # CEO — [CC] Leave — Arjun (info, low, unread, is_cc)
+        *([dict(recipient_user_id=ceo_user.id, entity_type="leave",
+               entity_id=lv_arjun.id, notif_type="info",
+               title="[CC] Leave Request — Arjun Mehta",
+               message=_lv_msg("Arjun Mehta", lv_arjun.total_days, "Casual Leave", lv_arjun.from_date, lv_arjun.to_date),
+               action="ceo-approvals", priority="low", is_read=False, is_cc=True,
+               dedup_key=f"leave_req_cc_{lv_arjun.id}", created_at=_ndt(62))] if lv_arjun else []),
+
+        # CEO — [CC] Leave — Neha (info, low, unread, is_cc)
+        *([dict(recipient_user_id=ceo_user.id, entity_type="leave",
+               entity_id=lv_neha.id, notif_type="info",
+               title="[CC] Leave Request — Neha Reddy",
+               message=_lv_msg("Neha Reddy", lv_neha.total_days, "Casual Leave", lv_neha.from_date, lv_neha.to_date),
+               action="ceo-approvals", priority="low", is_read=False, is_cc=True,
+               dedup_key=f"leave_req_cc_{lv_neha.id}", created_at=_ndt(90))] if lv_neha else []),
+
+        # CEO — [CC] Resignation — Suresh (info, low, unread, is_cc)
+        dict(recipient_user_id=ceo_user.id, entity_type="resignation",
+             entity_id=rg_suresh.id, notif_type="info",
+             title="[CC] Resignation — Suresh Pillai",
+             message=f"Suresh Pillai has submitted a resignation. Last working day: {rg_suresh.last_working_date}.",
+             action="ceo-approvals", priority="low", is_read=False, is_cc=True,
+             dedup_key=f"resignation_cc_{rg_suresh.id}", created_at=_ndt(120)),
+
+        # CEO — [CC] Resignation — Rohan (info, low, unread, is_cc)
+        dict(recipient_user_id=ceo_user.id, entity_type="resignation",
+             entity_id=rg_rohan.id, notif_type="info",
+             title="[CC] Resignation — Rohan Das",
+             message=f"Rohan Das has submitted a resignation. Last working day: {rg_rohan.last_working_date}.",
+             action="ceo-approvals", priority="low", is_read=False, is_cc=True,
+             dedup_key=f"resignation_cc_{rg_rohan.id}", created_at=_ndt(125)),
+
+        # CEO — Work hours alert (alert, medium, already read)
+        dict(recipient_user_id=ceo_user.id, entity_type="work_hours",
+             entity_id=arjun.id, notif_type="alert",
+             title="Late Check-in — Arjun Mehta",
+             message="Arjun Mehta checked in at 10:42 AM (expected by 9:30 AM).",
+             action="ceo-employees", priority="medium", is_read=True, is_cc=False,
+             dedup_key=f"late_checkin_{arjun.id}_{TODAY}", created_at=_ndt(300)),
+
+        # ── HR — Leave requests (approval_request, high) ─────────────────────
+        *([dict(recipient_user_id=hr_user.id, entity_type="leave",
+               entity_id=lv_kavya.id, notif_type="approval_request",
+               title="Leave Request — Kavya Nair",
+               message=_lv_msg("Kavya Nair", lv_kavya.total_days, "Earned Leave", lv_kavya.from_date, lv_kavya.to_date),
+               action="leaves", priority="high", is_read=False, is_cc=False,
+               dedup_key=f"leave_req_{lv_kavya.id}", created_at=_ndt(60))] if lv_kavya else []),
+        *([dict(recipient_user_id=hr_user.id, entity_type="leave",
+               entity_id=lv_arjun.id, notif_type="approval_request",
+               title="Leave Request — Arjun Mehta",
+               message=_lv_msg("Arjun Mehta", lv_arjun.total_days, "Casual Leave", lv_arjun.from_date, lv_arjun.to_date),
+               action="leaves", priority="high", is_read=False, is_cc=False,
+               dedup_key=f"leave_req_{lv_arjun.id}", created_at=_ndt(62))] if lv_arjun else []),
+        *([dict(recipient_user_id=hr_user.id, entity_type="leave",
+               entity_id=lv_neha.id, notif_type="approval_request",
+               title="Leave Request — Neha Reddy",
+               message=_lv_msg("Neha Reddy", lv_neha.total_days, "Casual Leave", lv_neha.from_date, lv_neha.to_date),
+               action="leaves", priority="high", is_read=False, is_cc=False,
+               dedup_key=f"leave_req_{lv_neha.id}", created_at=_ndt(90))] if lv_neha else []),
+        *([dict(recipient_user_id=hr_user.id, entity_type="leave",
+               entity_id=lv_rohan.id, notif_type="approval_request",
+               title="Leave Request — Rohan Das",
+               message=_lv_msg("Rohan Das", lv_rohan.total_days, "Sick Leave", lv_rohan.from_date, lv_rohan.to_date),
+               action="leaves", priority="high", is_read=True, is_cc=False,
+               dedup_key=f"leave_req_{lv_rohan.id}", created_at=_ndt(100))] if lv_rohan else []),
+
+        # HR — Resignations (approval_request, high)
+        dict(recipient_user_id=hr_user.id, entity_type="resignation",
+             entity_id=rg_suresh.id, notif_type="approval_request",
+             title="Resignation — Suresh Pillai",
+             message=f"Suresh Pillai has submitted a resignation. Last working day: {rg_suresh.last_working_date}.",
+             action="resignations", priority="high", is_read=False, is_cc=False,
+             dedup_key=f"resignation_{rg_suresh.id}", created_at=_ndt(120)),
+        dict(recipient_user_id=hr_user.id, entity_type="resignation",
+             entity_id=rg_rohan.id, notif_type="approval_request",
+             title="Resignation — Rohan Das",
+             message=f"Rohan Das has submitted a resignation. Last working day: {rg_rohan.last_working_date}.",
+             action="resignations", priority="high", is_read=False, is_cc=False,
+             dedup_key=f"resignation_{rg_rohan.id}", created_at=_ndt(125)),
+
+        # HR — Salary change CC (info, low, read)
+        dict(recipient_user_id=hr_user.id, entity_type="salary_change",
+             entity_id=sal_req.id, notif_type="info",
+             title="[CC] Salary Change Request Submitted",
+             message=f"Salary Change request #{sal_req.id} has been submitted and is pending CEO approval.",
+             action="approvals", priority="low", is_read=True, is_cc=True,
+             dedup_key=f"approval_cc_{sal_req.id}_HR", created_at=_ndt(5)),
+
+        # ── Employee notifications ─────────────────────────────────────────────
+        # Arjun — leave approved (approval_result, medium, unread)
+        *([dict(recipient_user_id=arjun_user.id, entity_type="leave",
+               entity_id=lv_arjun.id, notif_type="approval_result",
+               title="Leave Request Approved",
+               message="Your Casual Leave request has been approved by HR.",
+               action="emp-leaves", priority="medium", is_read=False, is_cc=False,
+               dedup_key=f"leave_result_{lv_arjun.id}_demo", created_at=_ndt(30))] if lv_arjun else []),
+
+        # Arjun — salary updated (info, high, unread)
+        dict(recipient_user_id=arjun_user.id, entity_type="salary_change",
+             entity_id=arjun.id, notif_type="info",
+             title="Salary Updated",
+             message="Your salary has been updated to ₹65,000/mo. It will reflect in your next payslip.",
+             action="emp-salary", priority="high", is_read=False, is_cc=False,
+             dedup_key=f"salary_updated_{arjun.id}_demo", created_at=_ndt(200)),
+
+        # Suresh — resignation acknowledged (info, high, unread)
+        dict(recipient_user_id=suresh_user.id, entity_type="resignation",
+             entity_id=rg_suresh.id, notif_type="info",
+             title=f"Resignation Accepted — Last Working Day: {rg_suresh.last_working_date}",
+             message=f"Your resignation has been accepted. Last working day: {rg_suresh.last_working_date}. Please complete the offboarding checklist.",
+             action="emp-resignation", priority="high", is_read=False, is_cc=False,
+             dedup_key=f"resignation_result_{rg_suresh.id}_demo", created_at=_ndt(90)),
+    ]
+
+    for n in notif_entries:
+        created_at = n.pop("created_at")
+        notif = Notification(**n)
+        db.add(notif)
+        db.flush()
+        from sqlalchemy import update as sa_update
+        db.execute(sa_update(Notification).where(Notification.id == notif.id).values(created_at=created_at))
     db.flush()
 
     db.commit()
