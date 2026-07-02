@@ -2312,7 +2312,7 @@ export default function Employees({ toast }) {
                           { label: 'Marital Status',  value: detailEmp.marital_status },
                           { label: 'Blood Group',     value: detailEmp.blood_group },
                           { label: 'Nationality',     value: detailEmp.nationality },
-                          { label: 'Work Email',      value: detailEmp.email },
+                          { label: 'Work Email',      value: detailEmp.official_email || detailEmp.email },
                           { label: 'Personal Email',  value: detailEmp.personal_email },
                           { label: 'Mobile',          value: detailEmp.mobile },
                           { label: 'Alt Mobile',      value: detailEmp.alt_mobile },

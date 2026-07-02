@@ -209,6 +209,8 @@ def _apply_section_to_emp(emp, section: str, d: dict, db):
             try:
                 emp.confirmation_date = _date_type.fromisoformat(d["confirmation_date"]); changed = True
             except (ValueError, TypeError): pass
+        if d.get("official_email"):
+            emp.official_email = d["official_email"].strip(); changed = True
 
     elif section == "documents":
         if d.get("aadhaar"):
