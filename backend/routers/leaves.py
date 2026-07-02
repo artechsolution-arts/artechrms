@@ -212,7 +212,7 @@ def create_leave(data: LeaveAppIn, db: Session = Depends(get_db)):
             _notif.push_to_role(
                 db, "CEO", "leave", f"Leave Request — {emp_name}",
                 notif_msg,
-                entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
+                entity_id=leave.id, notif_type="approval_request", action="ceo-approvals", priority="high",
                 dedup_key=f"leave_req_{leave.id}",
             )
         else:
@@ -225,7 +225,7 @@ def create_leave(data: LeaveAppIn, db: Session = Depends(get_db)):
             _notif.push_to_role(
                 db, "CEO", "leave", f"[CC] Leave Request — {emp_name}",
                 notif_msg,
-                entity_id=leave.id, notif_type="info", action="leaves", priority="low", is_cc=True,
+                entity_id=leave.id, notif_type="info", action="ceo-approvals", priority="low", is_cc=True,
                 dedup_key=f"leave_req_cc_{leave.id}",
             )
         db.commit()

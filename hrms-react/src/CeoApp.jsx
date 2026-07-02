@@ -9,6 +9,7 @@ import { useTheme } from './hooks/useTheme';
 import CeoDashboard          from './pages/ceo/CeoDashboard';
 import CompensationPlanner   from './pages/ceo/CompensationPlanner';
 import CeoAuditLog           from './pages/ceo/CeoAuditLog';
+import CeoApprovals          from './pages/ceo/CeoApprovals';
 import Leaves        from './pages/Leaves';
 import Employees     from './pages/Employees';
 import HRStatusSheet from './pages/HRStatusSheet';
@@ -23,6 +24,7 @@ const CEO_PAGES = {
   'ceo-dashboard':          CeoDashboard,
   'compensation-planner':   CompensationPlanner,
   'ceo-audit-log':          CeoAuditLog,
+  'ceo-approvals':          CeoApprovals,
   'ceo-leaves':        Leaves,
   'ceo-employees':     Employees,
   'ceo-status-sheets': HRStatusSheet,

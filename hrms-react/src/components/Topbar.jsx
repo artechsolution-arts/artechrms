@@ -17,8 +17,14 @@ function _notifNavigate(notif, onNavigate) {
     ?? (EMPLOYEE_ENTITY_TYPES.has(notif.entity_type) ? notif.entity_id : null);
   const action = notif.action;
   if (!action) return;
-  // Always attach employeeId when available — each page reads nav-filter and deep-links
   if (empId) sessionStorage.setItem('nav-filter', JSON.stringify({ employeeId: empId }));
+  // Store entity deep-link so the destination page can open the specific request
+  if (notif.entity_id && notif.entity_type) {
+    sessionStorage.setItem('notif-deeplink', JSON.stringify({
+      entityId: notif.entity_id,
+      entityType: notif.entity_type,
+    }));
+  }
   onNavigate(action);
 }
 

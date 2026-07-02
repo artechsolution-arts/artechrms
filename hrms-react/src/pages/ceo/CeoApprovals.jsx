@@ -622,6 +622,31 @@ export default function CeoApprovals({ toast }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Deep-link: when arriving from a notification, auto-filter and scroll to the item
+  useEffect(() => {
+    if (loading) return;
+    const raw = sessionStorage.getItem('notif-deeplink');
+    if (!raw) return;
+    sessionStorage.removeItem('notif-deeplink');
+    try {
+      const { entityId, entityType } = JSON.parse(raw);
+      const typeMap = { leave: 'leave', resignation: 'resignation', salary_change: 'salary' };
+      const t = typeMap[entityType];
+      if (t) {
+        setFilterType(t);
+        setTab('pending');
+        setTimeout(() => {
+          const el = document.getElementById(`approval-item-${t}-${entityId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2');
+            setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'), 2500);
+          }
+        }, 150);
+      }
+    } catch {}
+  }, [loading]);
+
   async function handleAction(type, id, action, body) {
     setActing(true);
     try {
@@ -733,10 +758,14 @@ export default function CeoApprovals({ toast }) {
             ) : (
               <div className="flex flex-col gap-3">
                 {visiblePending.map(item => {
-                  if (item._type === 'salary')      return <SalaryCard      key={`s-${item.approval_request_id}`} item={item} onAction={handleAction} acting={acting} />;
-                  if (item._type === 'leave')       return <LeaveCard       key={`l-${item.id}`}                 item={item} onAction={handleAction} acting={acting} />;
-                  if (item._type === 'resignation') return <ResignationCard key={`r-${item.id}`}                 item={item} onAction={handleAction} acting={acting} />;
-                  return null;
+                  const domId = `approval-item-${item._type}-${item.id ?? item.approval_request_id}`;
+                  return (
+                    <div key={domId} id={domId} className="rounded-xl transition-all duration-300">
+                      {item._type === 'salary'      && <SalaryCard      item={item} onAction={handleAction} acting={acting} />}
+                      {item._type === 'leave'       && <LeaveCard       item={item} onAction={handleAction} acting={acting} />}
+                      {item._type === 'resignation' && <ResignationCard item={item} onAction={handleAction} acting={acting} />}
+                    </div>
+                  );
                 })}
               </div>
             )}
