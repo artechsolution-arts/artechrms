@@ -3545,6 +3545,14 @@ export default function Employees({ toast }) {
                 <Row label="PF Enrolled"      value={emp.pf_applicable ? 'Yes' : null} />
                 <Row label="ESI Eligible"     value={emp.esi_applicable ? 'Yes' : null} />
               </div>
+              {/* Footer */}
+              <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-end flex-shrink-0">
+                <button
+                  onClick={() => { setShowHireDetail(false); openJobInfoEdit(); }}
+                  className="btn btn-primary btn-sm gap-1.5">
+                  <Pencil size={11} /> Edit
+                </button>
+              </div>
             </div>
           </div>
         );
