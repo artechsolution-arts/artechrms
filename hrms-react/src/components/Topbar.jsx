@@ -20,10 +20,10 @@ function _notifNavigate(notif, onNavigate) {
   if (empId) sessionStorage.setItem('nav-filter', JSON.stringify({ employeeId: empId }));
   // Store entity deep-link so the destination page can open the specific request
   if (notif.entity_id && notif.entity_type) {
-    sessionStorage.setItem('notif-deeplink', JSON.stringify({
-      entityId: notif.entity_id,
-      entityType: notif.entity_type,
-    }));
+    const dl = { entityId: notif.entity_id, entityType: notif.entity_type };
+    sessionStorage.setItem('notif-deeplink', JSON.stringify(dl));
+    // Dispatch a custom event so pages already mounted (same-page navigation) catch it immediately
+    window.dispatchEvent(new CustomEvent('notif-deeplink', { detail: dl }));
   }
   onNavigate(action);
 }

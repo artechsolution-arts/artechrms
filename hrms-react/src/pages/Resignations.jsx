@@ -135,7 +135,28 @@ export default function Resignations({ toast }) {
 
   useEffect(() => { load(); }, []);
 
-  // Deep-link: expand and scroll to the resignation when arriving from a notification
+  // Deep-link: handle notification click when this page is already mounted
+  useEffect(() => {
+    const handle = e => {
+      sessionStorage.removeItem('notif-deeplink');
+      const { entityId, entityType } = e.detail || {};
+      if (entityType === 'resignation') {
+        const match = rows.find(r => String(r.id) === String(entityId));
+        if (match) {
+          setStatusTab('Pending');
+          setExpanded(match.id);
+          setTimeout(() => {
+            const el = document.getElementById(`resignation-card-${match.id}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
+      }
+    };
+    window.addEventListener('notif-deeplink', handle);
+    return () => window.removeEventListener('notif-deeplink', handle);
+  }, [rows]);
+
+  // Deep-link: handle notification click when navigating fresh to this page (loading true→false)
   useEffect(() => {
     if (loading) return;
     const raw = sessionStorage.getItem('notif-deeplink');

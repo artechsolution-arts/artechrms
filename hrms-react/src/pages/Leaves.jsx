@@ -66,7 +66,21 @@ export default function Leaves({ toast }) {
       .then(([t, e]) => { setTypes(t); setEmps(e); load(initStatus || statusFilter); })
       .catch(e => toast(e.message, 'error'));
   }, []);
-  // Deep-link: auto-open leave detail modal when arriving from a notification
+  // Deep-link: handle notification click when this page is already mounted
+  useEffect(() => {
+    const handle = e => {
+      sessionStorage.removeItem('notif-deeplink');
+      const { entityId, entityType } = e.detail || {};
+      if (entityType === 'leave') {
+        const match = allRows.find(r => String(r.id) === String(entityId));
+        if (match) { setStatusFilter('Pending'); setSelectedLeave(match); }
+      }
+    };
+    window.addEventListener('notif-deeplink', handle);
+    return () => window.removeEventListener('notif-deeplink', handle);
+  }, [allRows]);
+
+  // Deep-link: handle notification click when navigating fresh to this page (loading true→false)
   useEffect(() => {
     if (loading) return;
     const raw = sessionStorage.getItem('notif-deeplink');

@@ -623,7 +623,20 @@ export default function CeoApprovals({ toast }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Deep-link: when arriving from a notification, auto-open that item's modal
+  // Deep-link: handle notification click when this page is already mounted
+  useEffect(() => {
+    const handle = e => {
+      sessionStorage.removeItem('notif-deeplink');
+      const { entityId, entityType } = e.detail || {};
+      const typeMap = { leave: 'leave', resignation: 'resignation', salary_change: 'salary' };
+      const t = typeMap[entityType];
+      if (t) { setFilterType(t); setTab('pending'); setPendingOpen({ id: entityId, type: t }); }
+    };
+    window.addEventListener('notif-deeplink', handle);
+    return () => window.removeEventListener('notif-deeplink', handle);
+  }, []);
+
+  // Deep-link: handle notification click when navigating fresh to this page (loading true→false)
   useEffect(() => {
     if (loading) return;
     const raw = sessionStorage.getItem('notif-deeplink');
