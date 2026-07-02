@@ -1758,11 +1758,12 @@ export default function Employees({ toast }) {
                     return detailEmp.basic_salary ?? null;
                   })();
                   let _run = {
-                    designation: _first.from_designation || _first.to_designation || detailEmp.designation,
-                    department:  _first.from_department  || _first.to_department  || detailEmp.department,
-                    salary:      _seedSalary,
-                    manager:     detailEmp.reporting_manager,
-                    location:    detailEmp.work_location || (detailEmp.office_address?.split(',')[0] ?? null),
+                    designation:     _first.from_designation || _first.to_designation || detailEmp.designation,
+                    department:      _first.from_department  || _first.to_department  || detailEmp.department,
+                    salary:          _seedSalary,
+                    manager:         detailEmp.reporting_manager,
+                    location:        detailEmp.work_location || (detailEmp.office_address?.split(',')[0] ?? null),
+                    employment_type: detailEmp.employment_type || null,
                   };
                   const _snapMap = new Map();
                   for (const ev of _sortedAsc) {
@@ -2065,6 +2066,9 @@ export default function Employees({ toast }) {
                                         <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
                                           ₹{Number(snap.salary).toLocaleString('en-IN')}/mo
                                         </span>
+                                      )}
+                                      {snap?.employment_type && (
+                                        <span className="text-xs text-gray-400 border border-gray-200 dark:border-gray-700 rounded px-1.5 py-0.5">{snap.employment_type}</span>
                                       )}
                                       {snap?.manager && (
                                         <span className="text-xs text-gray-400 flex items-center gap-1">
@@ -3419,8 +3423,18 @@ export default function Employees({ toast }) {
                 <Row label="Full Name"        value={emp.full_name} />
                 <Row label="Employee Code"    value={emp.employee_id} />
                 <Row label="Date of Joining"  value={fmtDate(emp.date_of_joining)} accent="text-green-600 dark:text-green-400" />
-                <Row label="Employment Type"  value={emp.employment_type} />
+                <Row label="Employment Type"  value={hireSnapshot?.employment_type || emp.employment_type} />
+                <Row label="Worker Type"      value="Employee" />
                 <Row label="Status"           value={emp.status || 'Active'} />
+                {(() => {
+                  if (!emp.date_of_joining) return null;
+                  const hire = new Date(emp.date_of_joining);
+                  const now  = new Date();
+                  const totalMonths = (now.getFullYear() - hire.getFullYear()) * 12 + (now.getMonth() - hire.getMonth());
+                  const y = Math.floor(totalMonths / 12), m = totalMonths % 12;
+                  const tenure = y > 0 ? (m > 0 ? `${y}y ${m}m` : `${y}y`) : `${m}m`;
+                  return <Row label="Current Tenure" value={tenure} />;
+                })()}
 
                 <Section title="Position" />
                 <Row label="Designation"      value={hireSnapshot?.designation || emp.designation} />
@@ -3464,9 +3478,9 @@ export default function Employees({ toast }) {
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setViewEvent(null)}>
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div className={`px-5 py-4 flex items-center gap-3 ${m.color.replace('text-','border-b border-').split(' ')[0]} border-b border-gray-100 dark:border-gray-800`}>
+              <div className={`px-5 py-4 flex items-center gap-3 ${m.color.replace('text-','border-b border-').split(' ')[0]} border-b border-gray-100 dark:border-gray-800 flex-shrink-0`}>
                 <div className={`w-9 h-9 rounded-full ${m.color} flex items-center justify-center flex-shrink-0`}>
                   <Icon size={16} />
                 </div>
@@ -3478,7 +3492,8 @@ export default function Employees({ toast }) {
                   <X size={14} />
                 </button>
               </div>
-              {/* Body */}
+              {/* Body — scrollable */}
+              <div className="overflow-y-auto flex-1">
               {(() => {
                 const showDesig = ['Promotion','Demotion','Role Change','Joining'].includes(ev.change_type) || ev.from_designation || ev.to_designation;
                 const showDept  = ['Department Change','Transfer','Joining'].includes(ev.change_type) || ev.from_department || ev.to_department;
@@ -3505,9 +3520,26 @@ export default function Employees({ toast }) {
                     <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{title}</p>
                   </div>
                 );
+                // Tenure at this event date
+                const _tenure = (() => {
+                  if (!detailEmp?.date_of_joining) return null;
+                  const hire = new Date(detailEmp.date_of_joining);
+                  const evD  = new Date(ev.effective_date);
+                  const totalMonths = (evD.getFullYear() - hire.getFullYear()) * 12 + (evD.getMonth() - hire.getMonth());
+                  if (totalMonths <= 0) return 'Day of joining';
+                  const y = Math.floor(totalMonths / 12), m = totalMonths % 12;
+                  return y > 0 ? (m > 0 ? `${y}y ${m}m` : `${y}y`) : `${m}m`;
+                })();
                 const hasChanges = showDesig || showDept || showSalary || showLwd;
                 return (
                   <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {/* ── Worker context — always shown, like Oracle ── */}
+                    <SectionHdr title="Employee" />
+                    <Row label="Full Name"       value={detailEmp?.full_name} />
+                    <Row label="Employee ID"     value={detailEmp?.employee_id} />
+                    <Row label="Hire Date"       value={fmtDate(detailEmp?.date_of_joining)} highlight="text-green-600 dark:text-green-400" />
+                    {snap?.employment_type && <Row label="Employment Type" value={snap.employment_type} />}
+                    {_tenure && <Row label="Tenure at Event" value={_tenure} highlight="text-gray-500 dark:text-gray-400 font-normal" />}
                     {/* Full employee state as of this event date */}
                     {snap && (<>
                       <SectionHdr title="State as of this date" />
@@ -3537,9 +3569,10 @@ export default function Employees({ toast }) {
                   </div>
                 );
               })()}
+              </div>{/* end scrollable body */}
               {/* Footer actions */}
               {!ev._synthetic && (
-                <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2">
+                <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2 flex-shrink-0">
                   <button onClick={() => { setViewEvent(null); openEditEvent(ev); }} className="btn btn-secondary btn-sm gap-1.5">
                     <Pencil size={11} /> Edit
                   </button>
