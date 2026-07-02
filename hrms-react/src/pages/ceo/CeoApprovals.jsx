@@ -343,8 +343,9 @@ function HistoryDetailModal({ item, type, onClose }) {
 
 // ── Pending item cards ─────────────────────────────────────────────────────────
 
-function SalaryCard({ item, onAction, acting }) {
+function SalaryCard({ item, onAction, acting, autoOpen }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
   const ctx = item.context || {};
   const t   = TYPES.salary;
   return (
@@ -495,8 +496,9 @@ function ResignationDetailModal({ item, onClose, onAction, acting }) {
 
 // ── Compact pending cards (click name → modal) ────────────────────────────────
 
-function LeaveCard({ item, onAction, acting }) {
+function LeaveCard({ item, onAction, acting, autoOpen }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
   const isHR = item.requester_role === 'HR';
   const days = item.total_days;
   const t    = TYPES.leave;
@@ -539,8 +541,9 @@ function LeaveCard({ item, onAction, acting }) {
   );
 }
 
-function ResignationCard({ item, onAction, acting }) {
+function ResignationCard({ item, onAction, acting, autoOpen }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
   const t = TYPES.resignation;
   return (
     <>
@@ -595,6 +598,7 @@ export default function CeoApprovals({ toast }) {
   const [tab,            setTab]            = useState('pending');
   const [filterType,     setFilterType]     = useState(null); // null = all
   const [detailModal,    setDetailModal]    = useState(null);
+  const [pendingOpen,    setPendingOpen]    = useState(null); // { id, type } for deep-link auto-open
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -622,7 +626,7 @@ export default function CeoApprovals({ toast }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Deep-link: when arriving from a notification, auto-filter and scroll to the item
+  // Deep-link: when arriving from a notification, auto-open that item's modal
   useEffect(() => {
     if (loading) return;
     const raw = sessionStorage.getItem('notif-deeplink');
@@ -635,14 +639,7 @@ export default function CeoApprovals({ toast }) {
       if (t) {
         setFilterType(t);
         setTab('pending');
-        setTimeout(() => {
-          const el = document.getElementById(`approval-item-${t}-${entityId}`);
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2');
-            setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'), 2500);
-          }
-        }, 150);
+        setPendingOpen({ id: entityId, type: t });
       }
     } catch {}
   }, [loading]);
@@ -761,9 +758,12 @@ export default function CeoApprovals({ toast }) {
                   const domId = `approval-item-${item._type}-${item.id ?? item.approval_request_id}`;
                   return (
                     <div key={domId} id={domId} className="rounded-xl transition-all duration-300">
-                      {item._type === 'salary'      && <SalaryCard      item={item} onAction={handleAction} acting={acting} />}
-                      {item._type === 'leave'       && <LeaveCard       item={item} onAction={handleAction} acting={acting} />}
-                      {item._type === 'resignation' && <ResignationCard item={item} onAction={handleAction} acting={acting} />}
+                      {item._type === 'salary'      && <SalaryCard      item={item} onAction={handleAction} acting={acting}
+                        autoOpen={pendingOpen?.type === 'salary'      && String(pendingOpen.id) === String(item.id ?? item.approval_request_id)} />}
+                      {item._type === 'leave'       && <LeaveCard       item={item} onAction={handleAction} acting={acting}
+                        autoOpen={pendingOpen?.type === 'leave'       && String(pendingOpen.id) === String(item.id)} />}
+                      {item._type === 'resignation' && <ResignationCard item={item} onAction={handleAction} acting={acting}
+                        autoOpen={pendingOpen?.type === 'resignation' && String(pendingOpen.id) === String(item.id)} />}
                     </div>
                   );
                 })}
