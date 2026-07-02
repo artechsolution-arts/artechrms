@@ -65,28 +65,29 @@ function SlideNotif({ notif, onClose, onNavigate }) {
       className="w-[340px] rounded-2xl overflow-hidden cursor-pointer select-none"
       onClick={() => { _notifNavigate(notif, onNavigate); dismiss(); }}
     >
-      <div className="bg-white/96 dark:bg-gray-900/96 backdrop-blur-2xl border border-gray-200/70 dark:border-gray-700/60 shadow-2xl rounded-2xl overflow-hidden">
-        {/* Top accent gradient */}
-        <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${color} 0%, ${color}55 100%)` }} />
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-2xl overflow-hidden"
+        style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.12)' }}>
+        {/* Top accent bar */}
+        <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${color} 0%, ${color}88 100%)` }} />
 
         <div className="flex items-start gap-3 px-4 py-3.5">
           {/* Icon badge */}
           <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center mt-0.5"
-            style={{ background: color + '18' }}>
+            style={{ background: color + '22' }}>
             <NotifIcon type={notif.type || notif.entity_type} size={17} color={color} />
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[12px] font-bold text-gray-900 dark:text-white leading-tight line-clamp-1">
+              <p className="text-[12px] font-bold text-gray-900 dark:text-gray-50 leading-tight line-clamp-1">
                 {notif.title}
               </p>
               {notif.time && (
-                <span className="text-[10px] text-gray-400 flex-shrink-0">{notif.time}</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 flex-shrink-0 font-medium">{notif.time}</span>
               )}
             </div>
-            <p className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2 leading-snug">
+            <p className="text-[11.5px] text-gray-600 dark:text-gray-300 mt-0.5 line-clamp-2 leading-snug">
               {notif.message}
             </p>
             {notif.action && (
@@ -98,14 +99,14 @@ function SlideNotif({ notif, onClose, onNavigate }) {
 
           <button
             onClick={e => { e.stopPropagation(); dismiss(); }}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 transition-colors"
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >
             <X size={13} />
           </button>
         </div>
 
         {/* Auto-dismiss countdown bar */}
-        <div className="h-[2px] mx-4 mb-3 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+        <div className="h-[2px] mx-4 mb-3 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
           <div
             className="h-full rounded-full"
             style={{
