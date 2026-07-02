@@ -110,7 +110,7 @@ def create_request(
             title=f"[CC] {module_label} Request Submitted",
             message=f"A {module_label} request (#{req.id}) has been submitted and is pending approval.",
             notif_type="info",
-            action="approvals",
+            action="ceo-approvals" if cc_role == "CEO" else "approvals",
             priority="low",
             dedup_key=f"approval_cc_{req.id}_{cc_role}",
             is_cc=True,

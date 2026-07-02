@@ -306,7 +306,7 @@ def portal_apply_leave(data: PortalLeaveIn, request: Request, db: Session = Depe
             _notif.push_to_role(
                 db, "CEO", "leave", f"Leave Request — {emp_name}",
                 notif_msg,
-                entity_id=leave.id, notif_type="approval_request", action="leaves", priority="high",
+                entity_id=leave.id, notif_type="approval_request", action="ceo-approvals", priority="high",
                 dedup_key=f"leave_req_{leave.id}",
             )
         else:
@@ -320,7 +320,7 @@ def portal_apply_leave(data: PortalLeaveIn, request: Request, db: Session = Depe
             _notif.push_to_role(
                 db, "CEO", "leave", f"[CC] Leave Request — {emp_name}",
                 notif_msg,
-                entity_id=leave.id, notif_type="info", action="leaves", priority="low", is_cc=True,
+                entity_id=leave.id, notif_type="info", action="ceo-approvals", priority="low", is_cc=True,
                 dedup_key=f"leave_req_cc_{leave.id}",
             )
         db.commit()
@@ -1141,15 +1141,15 @@ def portal_submit_resignation(data: ResignationIn, request: Request, db: Session
 
     if requester_role == "HR":
         _notif.push_to_role(db, "CEO", "resignation", f"Resignation — {emp_name}", notif_msg,
-                            entity_id=r.id, notif_type="approval_request", priority="high",
-                            dedup_key=f"resignation_{r.id}")
+                            entity_id=r.id, notif_type="approval_request", action="ceo-approvals",
+                            priority="high", dedup_key=f"resignation_{r.id}")
     else:
         _notif.push_to_role(db, "HR", "resignation", f"Resignation — {emp_name}", notif_msg,
-                            entity_id=r.id, notif_type="approval_request", priority="high",
-                            dedup_key=f"resignation_{r.id}")
+                            entity_id=r.id, notif_type="approval_request", action="resignations",
+                            priority="high", dedup_key=f"resignation_{r.id}")
         _notif.push_to_role(db, "CEO", "resignation", f"[CC] Resignation — {emp_name}", notif_msg,
-                            entity_id=r.id, notif_type="info", priority="low", is_cc=True,
-                            dedup_key=f"resignation_cc_{r.id}")
+                            entity_id=r.id, notif_type="info", action="ceo-approvals",
+                            priority="low", is_cc=True, dedup_key=f"resignation_cc_{r.id}")
     db.commit()
 
     # Email
