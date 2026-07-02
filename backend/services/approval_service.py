@@ -325,8 +325,11 @@ def _apply_on_approve(db: Session, req: ApprovalRequest):
     if not emp:
         return
 
+    # Payload may be {"new": {...}, "old": {...}} (new format) or flat dict (legacy)
+    new_values = req.payload.get("new", req.payload) if isinstance(req.payload, dict) else req.payload
+
     _SALARY_FIELDS = {"basic_salary", "hra_percent", "special_allowance", "lta", "other_allowance", "ca_allowance"}
-    for field, value in req.payload.items():
+    for field, value in new_values.items():
         if field in _SALARY_FIELDS:
             setattr(emp, field, value)
     db.commit()

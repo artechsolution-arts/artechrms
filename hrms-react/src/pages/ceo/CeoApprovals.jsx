@@ -120,8 +120,12 @@ function SalaryDetailModal({ item, onClose, onAction, acting }) {
   const [loadingEmp, setLoadingEmp] = useState(true);
   const [localAct,   setLocalAct]   = useState(null);
 
-  const ctx    = item.context || {};
-  const fields = Object.entries(item.payload || {}).filter(([k]) => SALARY_LABELS[k]);
+  const ctx        = item.context || {};
+  const rawPayload = item.payload || {};
+  // Payload may be {new:{...}, old:{...}} or legacy flat dict
+  const newPayload = rawPayload.new || rawPayload;
+  const oldPayload = rawPayload.old || {};
+  const fields     = Object.entries(newPayload).filter(([k]) => SALARY_LABELS[k]);
 
   useEffect(() => {
     api('GET', `/api/employees/${item.entity_id}`)
@@ -158,12 +162,15 @@ function SalaryDetailModal({ item, onClose, onAction, acting }) {
                 </thead>
                 <tbody>
                   {fields.map(([key, newVal]) => {
-                    const oldVal = employee?.[key];
+                    // Prefer snapshot old value; fall back to live employee data
+                    const oldVal = oldPayload[key] != null ? oldPayload[key] : employee?.[key];
                     return (
                       <tr key={key}>
                         <td className="font-medium">{SALARY_LABELS[key]}</td>
                         <td className="text-right text-gray-500 dark:text-gray-400">
-                          {loadingEmp ? <span className="text-gray-300 text-xs">loading…</span>
+                          {oldPayload[key] != null
+                            ? fmtSalary(key, oldPayload[key])
+                            : loadingEmp ? <span className="text-gray-300 text-xs">loading…</span>
                             : oldVal != null ? fmtSalary(key, oldVal) : '—'}
                         </td>
                         <td className="text-center text-gray-300">→</td>
@@ -210,8 +217,12 @@ function HistoryDetailModal({ item, type, onClose }) {
   if (!item) return null;
 
   if (type === 'salary') {
-    const empName = item.context?.employee_name || `Employee #${item.entity_id}`;
-    const fields  = Object.entries(item.payload || {}).filter(([k]) => SALARY_LABELS[k]);
+    const empName    = item.context?.employee_name || `Employee #${item.entity_id}`;
+    const rawPay     = item.payload || {};
+    const newPay     = rawPay.new || rawPay;
+    const oldPay     = rawPay.old || {};
+    const hasOldNew  = Object.keys(oldPay).length > 0;
+    const fields     = Object.entries(newPay).filter(([k]) => SALARY_LABELS[k]);
     return (
       <Modal open title={`Salary Change #${item.id} — ${empName}`} onClose={onClose} hideSave wide>
         <div className="space-y-4">
@@ -223,15 +234,32 @@ function HistoryDetailModal({ item, type, onClose }) {
           </div>
           {fields.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Changes Requested</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Salary Changes</p>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Field</th><th className="text-right">Proposed Value</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>Field</th>
+                      {hasOldNew && <th className="text-right">Old Value</th>}
+                      {hasOldNew && <th className="text-center w-6"></th>}
+                      <th className="text-right">New Value</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {fields.map(([key, val]) => (
+                    {fields.map(([key, newVal]) => (
                       <tr key={key}>
                         <td className="font-medium">{SALARY_LABELS[key]}</td>
-                        <td className="text-right font-semibold">{fmtSalary(key, val)}</td>
+                        {hasOldNew && (
+                          <td className="text-right text-gray-500 dark:text-gray-400">
+                            {oldPay[key] != null ? fmtSalary(key, oldPay[key]) : '—'}
+                          </td>
+                        )}
+                        {hasOldNew && <td className="text-center text-gray-300">→</td>}
+                        <td className="text-right">
+                          <span className="inline-block bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs font-semibold px-2 py-0.5 rounded border border-green-200 dark:border-green-800">
+                            {fmtSalary(key, newVal)}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

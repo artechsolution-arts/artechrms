@@ -389,13 +389,14 @@ def update_employee(emp_id: int, data: EmployeeIn, request: Request, db: Session
             username = getattr(request.state, "username", None)
             requester_user = db.query(User).filter(User.username == username).first() if username else None
 
+            old_values = {k: getattr(emp, k, None) for k in real_changes}
             try:
                 ar = create_request(
                     db,
                     module="salary_change",
                     entity_id=emp.id,
                     requested_by_user_id=requester_user.id if requester_user else None,
-                    payload=real_changes,
+                    payload={"new": real_changes, "old": old_values},
                 )
             except Exception as exc:
                 raise HTTPException(500, f"Failed to create approval request: {exc}")
