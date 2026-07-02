@@ -5,7 +5,7 @@ import DatePicker from '../../components/DatePicker';
 import Modal from '../../components/Modal';
 import {
   CheckCircle, XCircle, IndianRupee,
-  ChevronDown, ChevronUp, Calendar, UserMinus, RefreshCw,
+  Calendar, UserMinus, RefreshCw,
 } from 'lucide-react';
 
 // ── Salary helpers ─────────────────────────────────────────────────────────────
@@ -358,88 +358,63 @@ function SalaryCard({ item, onAction, acting }) {
   );
 }
 
-function LeaveCard({ item, onAction, acting }) {
-  const [open, setOpen] = useState(false);
+// ── Leave detail modal (pending) ──────────────────────────────────────────────
+
+function LeaveDetailModal({ item, onClose, onAction, acting }) {
   const [localAct, setLocalAct] = useState(null);
-  const isHR  = item.requester_role === 'HR';
-  const days  = item.total_days;
-  const t     = TYPES.leave;
+  const isHR = item.requester_role === 'HR';
+  const days = item.total_days;
 
   async function handle(action) {
     setLocalAct(action);
-    try { await onAction('leave', item.id, action, {}); }
+    try { await onAction(action); }
     finally { setLocalAct(null); }
   }
 
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center justify-between gap-3 px-5 py-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.iconCls}`}>
-            <t.Icon size={17} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
-              {item.employee_name || `Employee #${item.employee_id}`}
-              {isHR && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">HR</span>}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {item.leave_type} · {days}d · {item.from_date} → {item.to_date}
-            </div>
-          </div>
+    <Modal open title={`Leave Request — ${item.employee_name || '—'}`} onClose={onClose} hideSave>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <InfoBlock label="Employee"   value={item.employee_name || '—'} />
+          <InfoBlock label="Leave Type" value={item.leave_type} />
+          <InfoBlock label="From"       value={item.from_date} />
+          <InfoBlock label="To"         value={item.to_date} />
+          <InfoBlock label="Duration"   value={`${days} day${days !== 1 ? 's' : ''}${item.half_day ? ' (half day)' : ''}`} />
+          {item.leave_category && <InfoBlock label="Category" value={item.leave_category} />}
+          {isHR && <InfoBlock label="Requested by" value="HR Staff" highlight />}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.tagCls}`}>Leave</span>
-          <Badge text="Pending" />
-          <button onClick={() => setOpen(o => !o)} className="btn btn-secondary btn-xs gap-1">
-            {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            {open ? 'Hide' : 'Review'}
+        {item.reason && (
+          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg px-4 py-3">
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Reason</div>
+            <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
+          </div>
+        )}
+        <div className="flex gap-3 pt-1">
+          <button onClick={() => handle('approve')} disabled={!!localAct || acting}
+            className="btn btn-approve flex-1 justify-center gap-2">
+            <CheckCircle size={14} />{localAct === 'approve' ? 'Approving…' : 'Approve'}
+          </button>
+          <button onClick={() => handle('reject')} disabled={!!localAct || acting}
+            className="btn btn-reject flex-1 justify-center gap-2">
+            <XCircle size={14} />{localAct === 'reject' ? 'Rejecting…' : 'Reject'}
           </button>
         </div>
       </div>
-      {open && (
-        <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-2">
-            <InfoBlock label="Leave Type" value={item.leave_type} />
-            <InfoBlock label="Duration"   value={`${days} day${days !== 1 ? 's' : ''}${item.half_day ? ' (half)' : ''}`} />
-            <InfoBlock label="From" value={item.from_date} />
-            <InfoBlock label="To"   value={item.to_date} />
-            {item.leave_category && <InfoBlock label="Category" value={item.leave_category} />}
-            {isHR && <InfoBlock label="Requested by" value="HR Staff" highlight />}
-          </div>
-          {item.reason && (
-            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg px-4 py-3">
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Reason</div>
-              <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
-            </div>
-          )}
-          <div className="flex gap-3">
-            <button onClick={() => handle('approve')} disabled={!!localAct || acting}
-              className="btn btn-approve flex-1 justify-center gap-2">
-              <CheckCircle size={14} />{localAct === 'approve' ? 'Approving…' : 'Approve'}
-            </button>
-            <button onClick={() => handle('reject')} disabled={!!localAct || acting}
-              className="btn btn-reject flex-1 justify-center gap-2">
-              <XCircle size={14} />{localAct === 'reject' ? 'Rejecting…' : 'Reject'}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    </Modal>
   );
 }
 
-function ResignationCard({ item, onAction, acting }) {
-  const [open, setOpen]           = useState(false);
-  const [remarks, setRemarks]     = useState('');
-  const [approvedLwd, setLwd]     = useState(item.last_working_date || '');
-  const [localAct, setLocalAct]   = useState(null);
-  const t = TYPES.resignation;
+// ── Resignation detail modal (pending) ────────────────────────────────────────
+
+function ResignationDetailModal({ item, onClose, onAction, acting }) {
+  const [remarks,     setRemarks]     = useState('');
+  const [approvedLwd, setApprovedLwd] = useState(item.last_working_date || '');
+  const [localAct,    setLocalAct]    = useState(null);
 
   async function handle(action) {
     setLocalAct(action);
     try {
-      await onAction('resignation', item.id, action,
+      await onAction(action,
         action === 'approve'
           ? { hr_remarks: remarks, approved_last_working_date: approvedLwd || item.last_working_date }
           : { hr_remarks: remarks });
@@ -447,70 +422,134 @@ function ResignationCard({ item, onAction, acting }) {
   }
 
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center justify-between gap-3 px-5 py-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.iconCls}`}>
-            <t.Icon size={17} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
-              {item.employee_name || `Employee #${item.employee_id}`}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {item.employee_code && <span className="mr-2 font-medium">{item.employee_code}</span>}
-              {item.designation || 'Employee'} · LWD: {item.last_working_date || '—'}
-            </div>
-          </div>
+    <Modal open title={`Resignation — ${item.employee_name || '—'}`} onClose={onClose} hideSave>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <InfoBlock label="Employee"    value={item.employee_name || '—'} />
+          {item.employee_code && <InfoBlock label="Employee Code" value={item.employee_code} />}
+          {item.department    && <InfoBlock label="Department"    value={item.department} />}
+          {item.designation   && <InfoBlock label="Designation"   value={item.designation} />}
+          {item.date_of_joining && <InfoBlock label="Date of Joining" value={item.date_of_joining} />}
+          <InfoBlock label="Requested LWD" value={item.last_working_date || '—'} />
+          {item.notice_period_days != null && <InfoBlock label="Notice Period" value={`${item.notice_period_days} days`} />}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.tagCls}`}>Resignation</span>
-          <Badge text="Pending" />
-          <button onClick={() => setOpen(o => !o)} className="btn btn-secondary btn-xs gap-1">
-            {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            {open ? 'Hide' : 'Review'}
+        {item.reason && (
+          <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-3">
+            <div className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1">Reason for Resignation</div>
+            <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
+          </div>
+        )}
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Approved Last Working Day</label>
+          <DatePicker value={approvedLwd} onChange={setApprovedLwd} placeholder="Select approved last working day" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+            Remarks <span className="font-normal text-gray-400">(optional)</span>
+          </label>
+          <textarea value={remarks} onChange={e => setRemarks(e.target.value)}
+            placeholder="Add a note for the employee…" rows={2} className="form-input resize-y" />
+        </div>
+        <div className="flex gap-3 pt-1">
+          <button onClick={() => handle('approve')} disabled={!!localAct || acting}
+            className="btn btn-approve flex-1 justify-center gap-2">
+            <CheckCircle size={14} />{localAct === 'approve' ? 'Accepting…' : 'Accept'}
+          </button>
+          <button onClick={() => handle('reject')} disabled={!!localAct || acting}
+            className="btn btn-reject flex-1 justify-center gap-2">
+            <XCircle size={14} />{localAct === 'reject' ? 'Rejecting…' : 'Not Accept'}
           </button>
         </div>
       </div>
-      {open && (
-        <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-2">
-            {item.department      && <InfoBlock label="Department"     value={item.department} />}
-            {item.designation     && <InfoBlock label="Designation"    value={item.designation} />}
-            {item.date_of_joining && <InfoBlock label="Date of Joining" value={item.date_of_joining} />}
-            <InfoBlock label="Requested LWD" value={item.last_working_date || '—'} />
-            {item.notice_period_days != null && <InfoBlock label="Notice Period" value={`${item.notice_period_days} days`} />}
-          </div>
-          {item.reason && (
-            <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg px-4 py-3">
-              <div className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1">Reason</div>
-              <div className="text-sm text-gray-700 dark:text-gray-300">{item.reason}</div>
+    </Modal>
+  );
+}
+
+// ── Compact pending cards (click name → modal) ────────────────────────────────
+
+function LeaveCard({ item, onAction, acting }) {
+  const [open, setOpen] = useState(false);
+  const isHR = item.requester_role === 'HR';
+  const days = item.total_days;
+  const t    = TYPES.leave;
+  return (
+    <>
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.iconCls}`}>
+              <t.Icon size={17} />
             </div>
-          )}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Approved Last Working Day</label>
-            <DatePicker value={approvedLwd} onChange={setLwd} placeholder="Select approved last working day" />
+            <div className="min-w-0">
+              <button onClick={() => setOpen(true)}
+                className="text-sm font-bold text-left hover:underline truncate block"
+                style={{ color: 'var(--accent)' }}>
+                {item.employee_name || `Employee #${item.employee_id}`}
+                {isHR && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">HR</span>}
+              </button>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {item.leave_type} · {days}d · {item.from_date} → {item.to_date}
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              Remarks <span className="font-normal text-gray-400">(optional)</span>
-            </label>
-            <textarea value={remarks} onChange={e => setRemarks(e.target.value)}
-              placeholder="Add a note for the employee…" rows={2} className="form-input resize-y" />
-          </div>
-          <div className="flex gap-3">
-            <button onClick={() => handle('approve')} disabled={!!localAct || acting}
-              className="btn btn-approve flex-1 justify-center gap-2">
-              <CheckCircle size={14} />{localAct === 'approve' ? 'Accepting…' : 'Accept'}
-            </button>
-            <button onClick={() => handle('reject')} disabled={!!localAct || acting}
-              className="btn btn-reject flex-1 justify-center gap-2">
-              <XCircle size={14} />{localAct === 'reject' ? 'Rejecting…' : 'Not Accept'}
-            </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.tagCls}`}>Leave</span>
+            <Badge text="Pending" />
+            {item.from_date && <span className="hidden sm:block text-[11px] text-gray-400">{item.from_date}</span>}
+            <button onClick={() => setOpen(true)} className="btn btn-secondary btn-xs">View</button>
           </div>
         </div>
+      </div>
+      {open && (
+        <LeaveDetailModal item={item} acting={acting} onClose={() => setOpen(false)}
+          onAction={async (action) => {
+            await onAction('leave', item.id, action, {});
+            setOpen(false);
+          }} />
       )}
-    </div>
+    </>
+  );
+}
+
+function ResignationCard({ item, onAction, acting }) {
+  const [open, setOpen] = useState(false);
+  const t = TYPES.resignation;
+  return (
+    <>
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.iconCls}`}>
+              <t.Icon size={17} />
+            </div>
+            <div className="min-w-0">
+              <button onClick={() => setOpen(true)}
+                className="text-sm font-bold text-left hover:underline truncate block"
+                style={{ color: 'var(--accent)' }}>
+                {item.employee_name || `Employee #${item.employee_id}`}
+              </button>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {item.employee_code && <span className="mr-2 font-medium">{item.employee_code}</span>}
+                {item.designation || 'Employee'} · LWD: {item.last_working_date || '—'}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${t.tagCls}`}>Resignation</span>
+            <Badge text="Pending" />
+            {item.created_at && <span className="hidden sm:block text-[11px] text-gray-400">{item.created_at.slice(0, 10)}</span>}
+            <button onClick={() => setOpen(true)} className="btn btn-secondary btn-xs">View</button>
+          </div>
+        </div>
+      </div>
+      {open && (
+        <ResignationDetailModal item={item} acting={acting} onClose={() => setOpen(false)}
+          onAction={async (action, body) => {
+            await onAction('resignation', item.id, action, body);
+            setOpen(false);
+          }} />
+      )}
+    </>
   );
 }
 
