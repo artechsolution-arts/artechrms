@@ -11,7 +11,7 @@ import {
   Monitor, Undo2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   LayoutList, LayoutGrid, X,
   Phone, Mail, Calendar, Building2, Briefcase, CreditCard,
-  User, UserCheck, AlertCircle, Clock, TrendingUp, Star, AlertTriangle,
+  User, UserCheck, Users, AlertCircle, Clock, TrendingUp, Star, AlertTriangle,
   LogOut, CheckCircle2, ArrowRightLeft, History,
   GraduationCap, Briefcase as BriefcaseIcon, Plus as PlusIcon,
   Upload, Download, FileText, CalendarDays, IndianRupee,
@@ -1773,6 +1773,21 @@ export default function Employees({ toast }) {
                   }
                   const getSnap = ev => _snapMap.get(ev.id ?? `__s_${ev.effective_date}`) || null;
 
+                  // Compute effective end dates: each period ends the day before the next event
+                  const _endMap = new Map();
+                  _sortedAsc.forEach((ev, i) => {
+                    const next = _sortedAsc[i + 1];
+                    const key  = ev.id ?? `__s_${ev.effective_date}`;
+                    if (next) {
+                      const d = new Date(next.effective_date);
+                      d.setDate(d.getDate() - 1);
+                      _endMap.set(key, d.toISOString().slice(0, 10));
+                    } else {
+                      _endMap.set(key, null); // still active — "Present"
+                    }
+                  });
+                  const getEndDate = ev => _endMap.get(ev.id ?? `__s_${ev.effective_date}`) ?? null;
+
                   return (
                     <div className="p-6 space-y-5">
 
@@ -1982,54 +1997,84 @@ export default function Employees({ toast }) {
                               const m = EVENT_META[ev.change_type] || { icon: Clock, color: 'bg-gray-100 text-gray-600' };
                               const Icon = m.icon;
                               const isHire = ev.change_type === 'Joining';
-                              const summary = [
-                                ev.to_designation || ev.from_designation,
-                                ev.to_department  || ev.from_department,
-                              ].filter(Boolean).join(' · ');
+                              const snap = getSnap(ev);
+                              const endDate = getEndDate(ev);
+                              const isActive = endDate === null;
                               return (
-                                <div key={ev.id || i} className="flex items-center gap-3 px-4 py-3 group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                  <div className={`w-7 h-7 rounded-full ${m.color} flex items-center justify-center flex-shrink-0`}>
-                                    <Icon size={12} />
-                                  </div>
-                                  <div
-                                    className="flex-1 min-w-0 cursor-pointer"
-                                    onClick={() => { const snap = getSnap(ev); if (isHire) { setHireSnapshot(snap); setShowHireDetail(true); } else setViewEvent({ ...ev, _snap: snap }); }}>
-                                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{isHire ? 'Hired' : ev.change_type}</p>
-                                    <p className="text-[11px] text-gray-400 mt-0.5">{fmtDate(ev.effective_date)}{summary ? ` · ${summary}` : ''}</p>
-                                  </div>
-                                  <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                                    <button
-                                      title="Edit"
-                                      className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-300 hover:text-blue-500 transition-colors"
-                                      onClick={() => {
-                                        if (ev._synthetic) {
-                                          setUpdateEventType('Joining');
-                                          setUpdateForm({
-                                            effective_date:   ev.effective_date || detailEmp.date_of_joining || '',
-                                            from_designation: '',
-                                            to_designation:   ev.to_designation || detailEmp.designation || '',
-                                            from_department:  '',
-                                            to_department:    ev.to_department || detailEmp.department || '',
-                                            salary_before:    '',
-                                            salary_after:     detailEmp.basic_salary ? String(detailEmp.basic_salary) : '',
-                                            approved_by:      ev.created_by || '',
-                                            remarks:          ev.remarks || '',
-                                          });
-                                          setUpdateModalOpen(true);
-                                        } else {
-                                          openEditEvent(ev);
-                                        }
-                                      }}>
-                                      <Pencil size={11} />
-                                    </button>
-                                    {!ev._synthetic && (
-                                      <button
-                                        title="Delete"
-                                        className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-300 hover:text-red-400 transition-colors"
-                                        onClick={() => deleteHistoryEvent(ev.id)}>
-                                        <Trash2 size={11} />
+                                <div key={ev.id || i} className="group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                  {/* Row — top line: event badge + date range + actions */}
+                                  <div className="flex items-center gap-3 px-4 pt-3 pb-1">
+                                    <div className={`w-6 h-6 rounded-full ${m.color} flex items-center justify-center flex-shrink-0`}>
+                                      <Icon size={11} />
+                                    </div>
+                                    <span className={`text-[11px] font-bold uppercase tracking-wide ${m.color.split(' ')[1] || 'text-gray-600'}`}>
+                                      {isHire ? 'Hired' : ev.change_type}
+                                    </span>
+                                    <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                                      {fmtDate(ev.effective_date)}
+                                      <span className="text-gray-300 dark:text-gray-600">→</span>
+                                      {isActive
+                                        ? <span className="text-green-600 dark:text-green-400 font-semibold">Present</span>
+                                        : <span>{fmtDate(endDate)}</span>}
+                                    </span>
+                                    <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                                      <button title="Edit" className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-300 hover:text-blue-500 transition-colors"
+                                        onClick={() => {
+                                          if (ev._synthetic) {
+                                            setUpdateEventType('Joining');
+                                            setUpdateForm({
+                                              effective_date:   ev.effective_date || detailEmp.date_of_joining || '',
+                                              from_designation: '',
+                                              to_designation:   ev.to_designation || detailEmp.designation || '',
+                                              from_department:  '',
+                                              to_department:    ev.to_department || detailEmp.department || '',
+                                              salary_before:    '',
+                                              salary_after:     detailEmp.basic_salary ? String(detailEmp.basic_salary) : '',
+                                              approved_by:      ev.created_by || '',
+                                              remarks:          ev.remarks || '',
+                                            });
+                                            setUpdateModalOpen(true);
+                                          } else {
+                                            openEditEvent(ev);
+                                          }
+                                        }}>
+                                        <Pencil size={10} />
                                       </button>
-                                    )}
+                                      {!ev._synthetic && (
+                                        <button title="Delete" className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-300 hover:text-red-400 transition-colors"
+                                          onClick={() => deleteHistoryEvent(ev.id)}>
+                                          <Trash2 size={10} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {/* Row — full state snapshot (click to open detail) */}
+                                  <div className="px-4 pb-3 pl-13 cursor-pointer"
+                                    style={{ paddingLeft: '2.75rem' }}
+                                    onClick={() => { if (isHire) { setHireSnapshot(snap); setShowHireDetail(true); } else setViewEvent({ ...ev, _snap: snap }); }}>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+                                      {snap?.designation && (
+                                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">{snap.designation}</span>
+                                      )}
+                                      {snap?.department && (
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                          <Building2 size={10} />{snap.department}
+                                        </span>
+                                      )}
+                                      {snap?.salary != null && (
+                                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                                          ₹{Number(snap.salary).toLocaleString('en-IN')}/mo
+                                        </span>
+                                      )}
+                                      {snap?.manager && (
+                                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                                          <Users size={10} />{snap.manager}
+                                        </span>
+                                      )}
+                                      {snap?.location && (
+                                        <span className="text-xs text-gray-400">{snap.location}</span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               );
